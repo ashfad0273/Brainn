@@ -4,7 +4,8 @@ import { useStore } from '../store';
 import { useP, Button, Spinner, Badge } from './ui';
 import { SuggestionCard } from './Suggestions';
 import { askProject } from '../lib/assistant';
-import { geminiOn } from '../lib/brain';
+import { aiOn, aiName } from '../lib/brain';
+import { engineName } from '../lib/gemini';
 import { addMessage, resolveSuggestion } from '../lib/model';
 import { TYPES, STATUS } from '../lib/meta';
 import { cx, fmtRel, copyText } from '../lib/util';
@@ -94,7 +95,7 @@ export default function Assistant({ compact }) {
   const [q, setQ] = useState('');
   const [busy, setBusy] = useState(false);
   const ta = useRef();
-  const gem = geminiOn(state.settings);
+  const gem = aiOn(state.settings);
 
   useEffect(() => {
     const el = ta.current;
@@ -121,7 +122,7 @@ export default function Assistant({ compact }) {
       <div className="flex items-center gap-2">
         <Sparkles size={15} className="text-sky-300" />
         <div className="text-sm font-semibold flex-1">Project assistant</div>
-        <Badge tone={gem ? 'emerald' : 'neutral'}>{gem ? 'Gemini' : 'Built-in'}</Badge>
+        <Badge tone={gem ? 'emerald' : 'neutral'}>{gem ? aiName(state.settings) : 'Built-in'}</Badge>
       </div>
       <p className="text-xs text-neutral-500 mt-1">Ask anything, tell it to create or update records, or have it write for you. Changes come back as proposals you approve.</p>
 
@@ -141,14 +142,14 @@ export default function Assistant({ compact }) {
           className="flex-1 bg-transparent outline-none resize-none text-sm py-1 placeholder:text-neutral-600" />
         <button type="submit" disabled={busy || !q.trim()} className="h-8 w-8 rounded-lg grid place-items-center bg-sky-600 text-white hover:bg-sky-500 disabled:opacity-30">{busy ? <Spinner /> : <ArrowUp size={16} />}</button>
       </form>
-      {!gem && <p className="text-[11px] text-neutral-600 mt-1.5">Built-in mode understands the quick actions and simple commands. Add a Gemini key in Settings for open-ended requests.</p>}
+      {!gem && <p className="text-[11px] text-neutral-600 mt-1.5">Built-in mode understands the quick actions and simple commands. Connect Cloudflare AI or Gemini in Settings → AI for open-ended requests.</p>}
 
       <div className="mt-4 space-y-5">
         {asks.map(a => (
           <div key={a.id} className="anim-up">
             <div className="flex justify-end"><div className="max-w-[85%] text-sm bg-white/[.06] rounded-2xl rounded-tr-md px-3 py-2 text-neutral-200">{a.question}</div></div>
             <div className="mt-2 text-sm text-neutral-100 whitespace-pre-wrap leading-relaxed">{a.answer}</div>
-            <div className="text-[11px] text-neutral-600 mt-1">{fmtRel(a.ts)} · {a.engine === 'gemini' ? 'Gemini' : 'built-in'}</div>
+            <div className="text-[11px] text-neutral-600 mt-1">{fmtRel(a.ts)} · {engineName(a.engine, 'built-in')}</div>
             <Refs refs={a.refs} />
             {a.draft && <Draft text={a.draft} />}
             {a.suggestionIds?.length > 0 && <Proposals ids={a.suggestionIds} />}

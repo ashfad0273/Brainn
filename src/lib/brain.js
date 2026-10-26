@@ -1,21 +1,24 @@
-// Orchestration: decide between Gemini and the built-in rules, then write results into the record.
+// Orchestration: decide between the AI provider (Cloudflare or Gemini) and the built-in rules,
+// then write results into the record. Any AI failure falls back to the rules.
 
-import * as gemini from './gemini';
+import * as ai from './gemini';
 import { extractLocal } from './extract';
 import { prepareSuggestions, log } from './model';
 import { TYPES, isActive } from './meta';
 import { uid, now, overlap, isOverdue, fmtDue } from './util';
 
 export const peopleOf = (state, p) => ({ ownerName: state.settings.ownerName || 'Owner', clientName: p.invite?.name || p.client || 'Client' });
-export const geminiOn = s => !!(s.apiKey && s.useGemini);
+/** True when an AI provider is configured; aiName() is its display name. */
+export const aiOn = s => ai.aiReady(s);
+export const aiName = s => (ai.aiReady(s) ? ai.PROVIDERS[ai.providerOf(s)] : ai.PROVIDERS.rules);
 
 /** Read the given messages and add new suggestions. Returns {count, engine}. */
 export async function analyze({ state, project: p, ids, mutate, toast }) {
   const ctx = peopleOf(state, p);
   let ops = null, engine = 'rules';
-  if (geminiOn(state.settings)) {
-    try { ops = await gemini.extract(state.settings, p, ids, ctx); engine = 'gemini'; }
-    catch (e) { toast?.(`Gemini: ${e.message}. Used built-in rules instead.`, 'error'); }
+  if (aiOn(state.settings)) {
+    try { ops = await ai.extract(state.settings, p, ids, ctx); engine = ai.providerOf(state.settings); }
+    catch (e) { toast?.(`${aiName(state.settings)}: ${e.message}. Used built-in rules instead.`, 'error'); }
   }
   if (!ops) ops = ids.flatMap(id => { const m = p.messages.find(x => x.id === id); return m ? extractLocal(p, m, ctx) : []; });
   const fresh = prepareSuggestions(p, ops, engine);
@@ -77,9 +80,9 @@ function cleanSummary(raw, p) {
 
 export async function refreshMemory({ state, project: p, mutate, toast }) {
   let data, engine = 'rules';
-  if (geminiOn(state.settings)) {
-    try { data = cleanSummary(await gemini.summarize(state.settings, p, peopleOf(state, p)), p); engine = 'gemini'; }
-    catch (e) { toast?.(`Gemini: ${e.message}. Built a summary from the records instead.`, 'error'); }
+  if (aiOn(state.settings)) {
+    try { data = cleanSummary(await ai.summarize(state.settings, p, peopleOf(state, p)), p); engine = ai.providerOf(state.settings); }
+    catch (e) { toast?.(`${aiName(state.settings)}: ${e.message}. Built a summary from the records instead.`, 'error'); }
   }
   if (!data) data = localSummary(p);
   const sum = { id: uid('sum'), ts: now(), engine, basedOn: { messages: p.messages.length, events: p.log.length }, ...data };

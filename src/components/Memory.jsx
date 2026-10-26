@@ -4,7 +4,8 @@ import { useStore } from '../store';
 import { useP, Button, Spinner, Section, Badge } from './ui';
 import { ItemRow } from './Items';
 import Assistant from './Assistant';
-import { refreshMemory, localSummary, geminiOn } from '../lib/brain';
+import { refreshMemory, localSummary, aiOn, aiName } from '../lib/brain';
+import { engineName } from '../lib/gemini';
 import { isActive } from '../lib/meta';
 import { cx, fmtDateTime, fmtRel } from '../lib/util';
 
@@ -30,7 +31,7 @@ function SummaryCard({ s, live }) {
     <div className="rounded-2xl bg-gradient-to-br from-sky-500/[.07] to-violet-500/[.05] ring-1 ring-white/[.07] p-5">
       <div className="flex items-center gap-2 text-xs text-neutral-400">
         <Brain size={14} className="text-sky-300" />
-        {live ? 'Live view from the records' : <>Memory from {fmtDateTime(s.ts)} · {s.engine === 'gemini' ? 'Gemini' : 'built from records'}</>}
+        {live ? 'Live view from the records' : <>Memory from {fmtDateTime(s.ts)} · {engineName(s.engine, 'built from records')}</>}
       </div>
       {s.headline && <h2 className="text-lg font-semibold mt-2 leading-snug">{s.headline}</h2>}
       {s.overview && <p className="text-sm text-neutral-300 mt-2 leading-relaxed">{s.overview}</p>}
@@ -63,7 +64,7 @@ export default function MemoryView() {
 
   const refresh = async () => {
     setBusy(true);
-    try { const s = await refreshMemory({ state: stateRef.current, project: stateRef.current.projects.find(x => x.id === p.id), mutate, toast }); setSel(null); toast(s.engine === 'gemini' ? '🧠 Memory refreshed by Gemini' : '🧠 Memory rebuilt from the records'); }
+    try { const s = await refreshMemory({ state: stateRef.current, project: stateRef.current.projects.find(x => x.id === p.id), mutate, toast }); setSel(null); toast(s.engine !== 'rules' ? `🧠 Memory refreshed by ${engineName(s.engine)}` : '🧠 Memory rebuilt from the records'); }
     finally { setBusy(false); }
   };
 
@@ -76,7 +77,7 @@ export default function MemoryView() {
               <div className="flex-1 text-sm text-neutral-500">
                 {latest ? <>Last refreshed {fmtRel(latest.ts)}{stale > 0 && <span className="text-amber-300"> · {stale} change{stale > 1 ? 's' : ''} since</span>}</> : 'No saved memory yet — showing a live view built from the records.'}
               </div>
-              <Button variant="primary" size="sm" onClick={refresh} disabled={busy}>{busy ? <Spinner size={12} /> : <RefreshCw size={13} />}{geminiOn(state.settings) ? 'Refresh with Gemini' : 'Refresh memory'}</Button>
+              <Button variant="primary" size="sm" onClick={refresh} disabled={busy}>{busy ? <Spinner size={12} /> : <RefreshCw size={13} />}{aiOn(state.settings) ? `Refresh with ${aiName(state.settings)}` : 'Refresh memory'}</Button>
             </div>
           )}
           {cur ? <SummaryCard s={cur} /> : <SummaryCard s={localSummary(p)} live />}
@@ -92,7 +93,7 @@ export default function MemoryView() {
             <Section title="Memory timeline" count={sums.length}>
               {[...sums].reverse().map(s => (
                 <button key={s.id} onClick={() => setSel(s.id)} className={cx('w-full text-left px-3 py-2 rounded-xl hover:bg-white/[.04]', cur?.id === s.id && 'bg-white/[.06]')}>
-                  <div className="text-xs text-neutral-500 flex items-center gap-1.5"><Clock size={11} />{fmtDateTime(s.ts)} {s.engine === 'gemini' && <Badge tone="sky">Gemini</Badge>}</div>
+                  <div className="text-xs text-neutral-500 flex items-center gap-1.5"><Clock size={11} />{fmtDateTime(s.ts)} {s.engine !== 'rules' && <Badge tone="sky">{engineName(s.engine)}</Badge>}</div>
                   <div className="text-sm text-neutral-300 line-clamp-2 mt-0.5">{s.headline}</div>
                 </button>
               ))}

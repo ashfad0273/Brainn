@@ -16,3 +16,4 @@ const run = (mode, fn) => db().then(d => new Promise((res, rej) => {
 
 export const get = k => run('readonly', s => s.get(k));
 export const set = (k, v) => run('readwrite', s => s.put(v, k));
+export const keys = () => run('readonly', s => s.getAllKeys());

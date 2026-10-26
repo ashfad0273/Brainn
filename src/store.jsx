@@ -4,6 +4,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import * as kv from './lib/kv';
 import * as vault from './lib/crypto';
+import { setBlobKey, reencryptAll, isQuotaError } from './lib/blobs';
 import { mergeState, normalizeState } from './lib/model';
 import { buildSeed } from './seed';
 import { uid, clone, now } from './lib/util';
@@ -30,7 +31,7 @@ export function StoreProvider({ children }) {
     setTimeout(() => setToasts(t => t.filter(x => x.id !== id)), tone === 'error' ? 6000 : 3200);
   }, []);
 
-  const lockOut = salt => { saltRef.current = salt; keyRef.current = null; setState(null); setEncrypted(true); setPhase('locked'); };
+  const lockOut = salt => { saltRef.current = salt; keyRef.current = null; setBlobKey(null); setState(null); setEncrypted(true); setPhase('locked'); };
 
   // initial load
   useEffect(() => {
@@ -64,7 +65,7 @@ export function StoreProvider({ children }) {
   useEffect(() => {
     if (phase !== 'ready' || !state) return;
     if (JSON.stringify(state) === lastJson.current) return;
-    const h = setTimeout(() => write(state).catch(e => toast('Could not save: ' + e.message, 'error')), 250);
+    const h = setTimeout(() => write(state).catch(e => toast(isQuotaError(e) ? 'Browser storage is full — the latest changes could not be saved. Free up space or export the workspace.' : 'Could not save: ' + e.message, 'error')), 250);
     return () => clearTimeout(h);
   }, [state, phase, write, toast]);
 
@@ -83,7 +84,7 @@ export function StoreProvider({ children }) {
         if (blob.enc) {
           try { data = await vault.decryptJSON(keyRef.current, blob); } catch { lockOut(blob.salt); return; }
         } else {
-          if (keyRef.current) { keyRef.current = null; setEncrypted(false); }
+          if (keyRef.current) { keyRef.current = null; setBlobKey(null); setEncrypted(false); }
           data = blob.data;
         }
         if (phaseRef.current !== 'ready') return;
@@ -119,6 +120,7 @@ export function StoreProvider({ children }) {
     const key = await vault.deriveKey(pass, blob.salt);
     const data = await vault.decryptJSON(key, blob); // throws on a wrong passphrase
     keyRef.current = key;
+    setBlobKey(key);
     saltRef.current = blob.salt;
     const s = normalizeState(data);
     lastJson.current = JSON.stringify(s);
@@ -127,16 +129,21 @@ export function StoreProvider({ children }) {
     setPhase('ready');
   }, []);
   const enableEncryption = useCallback(async pass => {
-    const salt = vault.newSalt();
+    const salt = vault.newSalt(), old = keyRef.current;
     keyRef.current = await vault.deriveKey(pass, salt);
+    setBlobKey(keyRef.current);
     saltRef.current = salt;
     setEncrypted(true);
+    await reencryptAll(old);
     await write(stateRef.current);
   }, [write]);
   const disableEncryption = useCallback(async () => {
+    const old = keyRef.current;
     keyRef.current = null;
+    setBlobKey(null);
     saltRef.current = null;
     setEncrypted(false);
+    if (old) await reencryptAll(old);
     await write(stateRef.current);
   }, [write]);
   const lock = useCallback(() => { if (keyRef.current) lockOut(saltRef.current); }, []);

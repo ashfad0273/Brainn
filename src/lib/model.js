@@ -13,6 +13,8 @@ import { TYPES, SENSITIVE_CATS, REPLACED_STATUS, SOLVED_STATUS, isActive, DEFAUL
 export const defaultSettings = () => ({
   ownerName: 'You', workspaceName: 'My workspace', apiKey: '', model: 'gemini-3.5-flash-lite',
   useGemini: true, autoAnalyze: true, settingsAt: 0,
+  // provider: 'rules' | 'cloudflare' | 'gemini' ('' = derive from the Gemini key, for older workspaces)
+  provider: '', workerUrl: '', workerToken: '', cfModel: '',
 });
 
 export function log(p, actor, action, ref = null, data = null) {
@@ -64,7 +66,7 @@ export function addItem(p, actor, d) {
     kind: d.kind || '', file: d.file || null, sourceMsg: d.sourceMsg || null,
     createdAt: t, createdBy: actor, updatedAt: t, via: d.via || 'manual',
     replaces: d.replaces || null, supersededBy: null,
-    history: [{ ts: t, by: actor, action: 'created', msg: d.sourceMsg || null, note: d.via === 'assistant' ? 'Proposed by the project assistant, approved by owner' : d.via && !['manual', 'upload'].includes(d.via) ? `Accepted from ${d.via === 'gemini' ? 'Gemini' : 'built-in rules'} suggestion` : '' }],
+    history: [{ ts: t, by: actor, action: 'created', msg: d.sourceMsg || null, note: d.via === 'assistant' ? 'Proposed by the project assistant, approved by owner' : d.via && !['manual', 'upload'].includes(d.via) ? `Accepted from ${d.via === 'gemini' ? 'Gemini' : d.via === 'cloudflare' ? 'Cloudflare AI' : 'built-in rules'} suggestion` : '' }],
     notes: [],
     versions: d.type === 'requirement' ? [{ ts: t, by: actor, title: (d.title || '').trim(), detail: d.detail || '', msg: d.sourceMsg || null }] : [],
   };

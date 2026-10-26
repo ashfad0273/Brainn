@@ -6,7 +6,7 @@ import SettingsModal from './Settings';
 import SearchModal from './Search';
 import { newProject, updateMeta, secretValues, maskText } from '../lib/model';
 import { PROJECT_COLORS, isActive } from '../lib/meta';
-import { geminiOn } from '../lib/brain';
+import { aiOn, aiName } from '../lib/brain';
 import { cx, fmtRel, uid, now } from '../lib/util';
 
 const TAB_FOR_TYPE = { task: 'tasks', requirement: 'requirements', decision: 'decisions', sensitive: 'vault', file: 'files', question: 'memory', risk: 'memory' };
@@ -84,7 +84,7 @@ export default function Home() {
   const [q, setQ] = useState('');
   const [modal, setModal] = useState(null);
   const [newSpace, setNewSpace] = useState('');
-  const gem = geminiOn(state.settings);
+  const gem = aiOn(state.settings);
 
   const inSpace = state.projects.filter(p => space === 'all' || p.spaceId === space);
   const list = inSpace.filter(p => (view === 'archived') === !!p.archived)
@@ -121,7 +121,7 @@ export default function Home() {
         </nav>
         <div className="p-2 border-t border-white/[.06] space-y-0.5">
           <button onClick={() => setModal('settings')} className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm text-neutral-300 hover:bg-white/5">
-            <Sparkles size={15} />Gemini<span className={cx('ml-auto w-2 h-2 rounded-full', gem ? 'bg-emerald-400' : 'bg-neutral-600')} />
+            <Sparkles size={15} /><span className="truncate">AI · {aiName(state.settings)}</span><span className={cx('ml-auto w-2 h-2 rounded-full', gem ? 'bg-emerald-400' : 'bg-neutral-600')} />
           </button>
           <button onClick={() => setModal('settings')} className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm text-neutral-300 hover:bg-white/5"><SettingsIcon size={15} />Settings</button>
           {encrypted && <button onClick={lock} className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm text-neutral-300 hover:bg-white/5"><Lock size={15} />Lock workspace</button>}

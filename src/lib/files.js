@@ -1,4 +1,5 @@
 import { uid } from './util';
+import { putBlob, isQuotaError } from './blobs';
 
 const BY_NAME = [
   ['Contracts & finance', /\b(contract|agreement|nda|sow|invoice|quote|quotation|proposal|receipt|estimate|po)\b/i],
@@ -48,24 +49,23 @@ export function linkTitle(url) {
   } catch { return url.slice(0, 48); }
 }
 
-export const MAX_INLINE = 2 * 1024 * 1024;
-export const readAsDataURL = blob => new Promise((res, rej) => {
-  const r = new FileReader();
-  r.onload = () => res(r.result);
-  r.onerror = () => rej(r.error);
-  r.readAsDataURL(blob);
-});
-
-/** Browser File → attachment record. Files up to 2 MB are kept inline so they can be downloaded later. */
+/** Browser File → attachment record. The original bytes go to IndexedDB (lib/blobs); the record only references them. */
 export async function toAttachment(file, kind) {
-  const k = kind || (file.type.startsWith('image/') ? 'image' : 'file');
+  const k = kind || (file.type.startsWith('image/') || /\.(heic|heif)$/i.test(file.name) ? 'image' : 'file');
+  const id = uid('a');
+  try { await putBlob(id, file); }
+  catch (e) {
+    throw new Error(isQuotaError(e)
+      ? `Browser storage is full — “${file.name}” (${(file.size / 1048576).toFixed(1)} MB) was not saved. Free up space and try again.`
+      : `Could not store “${file.name}”: ${e.message}`);
+  }
   return {
-    id: uid('a'),
+    id,
     name: file.name || 'file',
     size: file.size,
     mime: file.type || '',
     kind: k,
     category: k === 'voice' ? 'Audio' : categorizeFile(file.name, file.type),
-    dataUrl: file.size <= MAX_INLINE ? await readAsDataURL(file) : null,
+    stored: true,
   };
 }

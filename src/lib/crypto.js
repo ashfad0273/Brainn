@@ -25,6 +25,14 @@ export async function encryptJSON(key, saltB64, json) {
   return { salt: saltB64, iv: toB64(iv), ct: toB64(ct) };
 }
 
+/** Raw bytes in, { iv, ct } (ArrayBuffers) out — used for stored attachment files. */
+export async function encryptBytes(key, buf) {
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  return { iv, ct: await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, buf) };
+}
+
+export const decryptBytes = (key, { iv, ct }) => crypto.subtle.decrypt({ name: 'AES-GCM', iv }, key, ct);
+
 export async function decryptJSON(key, blob) {
   const pt = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: fromB64(blob.iv) }, key, fromB64(blob.ct));
   return JSON.parse(td.decode(pt));

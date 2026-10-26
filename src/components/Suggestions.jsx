@@ -3,7 +3,8 @@ import { Sparkles, MessageSquareQuote, RefreshCw, ChevronDown, Undo2, CheckCheck
 import { useStore } from '../store';
 import { useP, Button, Badge, Input, Select, Spinner, Secret } from './ui';
 import { resolveSuggestion } from '../lib/model';
-import { analyze, geminiOn } from '../lib/brain';
+import { analyze, aiOn, aiName } from '../lib/brain';
+import { engineName } from '../lib/gemini';
 import { TYPES, STATUS, COLOR, isActive } from '../lib/meta';
 import { cx, fmtDue, fmtRel, isOverdue } from '../lib/util';
 
@@ -28,7 +29,7 @@ export function SuggestionCard({ s }) {
     <div className="anim-pop rounded-xl bg-[#1d1d1d] ring-1 ring-white/[.07] p-3">
       <div className="flex items-center gap-2">
         <span className={cx('text-[11px] font-medium px-1.5 py-0.5 rounded-md ring-1 ring-inset', COLOR[T.color].badge)}>{opLabel(s)}</span>
-        <span className="text-[10px] text-neutral-600 uppercase tracking-wide">{s.askId ? 'Assistant' : s.engine === 'gemini' ? 'Gemini' : 'Rules'}</span>
+        <span className="text-[10px] text-neutral-600 uppercase tracking-wide">{s.askId ? 'Assistant' : engineName(s.engine, 'Rules')}</span>
         <div className="flex-1" />
         {s.msg && <button title="Show the message" onClick={() => jumpTo(s.msg)} className="text-neutral-500 hover:text-white"><MessageSquareQuote size={14} /></button>}
       </div>
@@ -87,7 +88,7 @@ export function SuggestionsInbox() {
     try {
       const cur = stateRef.current.projects.find(x => x.id === p.id);
       const { count, engine } = await analyze({ state: stateRef.current, project: cur, ids: cur.messages.filter(m => m.text?.trim()).map(m => m.id), mutate, toast });
-      toast(count ? `✨ ${count} new suggestion${count > 1 ? 's' : ''} (${engine === 'gemini' ? 'Gemini' : 'built-in rules'})` : 'Read the whole chat — nothing new to record');
+      toast(count ? `✨ ${count} new suggestion${count > 1 ? 's' : ''} (${engineName(engine)})` : 'Read the whole chat — nothing new to record');
     } finally { setBusy(false); }
   };
   const acceptAll = () => mut(q => pending.forEach(s => resolveSuggestion(q, 'owner', s.id, 'accept')));
@@ -100,7 +101,7 @@ export function SuggestionsInbox() {
         {pending.length > 1 && <Button size="xs" variant="ghost" onClick={acceptAll} title="Accept every pending suggestion"><CheckCheck size={13} />All</Button>}
         <Button size="xs" variant="ghost" onClick={rescan} disabled={busy} title="Read the whole conversation again">{busy ? <Spinner size={11} /> : <RefreshCw size={12} />}Re-scan</Button>
       </div>
-      <p className="text-xs text-neutral-500">Only you see these. {geminiOn(state.settings) ? 'Read by Gemini.' : 'Read by built-in rules — add a Gemini key for deeper understanding.'}{unread ? ` Reading ${unread} new message${unread > 1 ? 's' : ''}…` : ''}</p>
+      <p className="text-xs text-neutral-500">Only you see these. {aiOn(state.settings) ? `Read by ${aiName(state.settings)}.` : 'Read by built-in rules — connect an AI provider in Settings for deeper understanding.'}{unread ? ` Reading ${unread} new message${unread > 1 ? 's' : ''}…` : ''}</p>
       {pending.length === 0 && <div className="text-sm text-neutral-500 rounded-xl border border-dashed border-white/10 p-4 text-center">All caught up. New messages are read automatically.</div>}
       {pending.map(s => <SuggestionCard key={s.id} s={s} />)}
       {ignored.length > 0 && (

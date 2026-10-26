@@ -6,6 +6,8 @@ import { ItemFormModal } from './Items';
 import { addMessage, secretValues } from '../lib/model';
 import { TYPES, TYPE_ORDER, COLOR } from '../lib/meta';
 import { toAttachment } from '../lib/files';
+import { hasFile, useAttachmentUrl } from '../lib/blobs';
+import { ImageThumb, useDownload } from './Viewer';
 import { cx, fmtTime, fmtDay, fmtSize, flash, copyText } from '../lib/util';
 import { cleanTitle } from '../lib/extract';
 
@@ -30,19 +32,23 @@ function MaskedText({ text, secrets }) {
         className="inline rounded px-1.5 mx-0.5 bg-black/30 ring-1 ring-rose-400/40 font-mono text-[0.9em]">{shown[i] ? x.secret : '••••••'}</button>));
 }
 
+function VoiceNote({ a }) {
+  const { url } = useAttachmentUrl(a);
+  return <div className="mt-2">{url ? <audio controls src={url} className="h-10 max-w-full" /> : <span className="text-xs text-neutral-500">{hasFile(a) ? 'Loading voice note…' : 'Voice note (audio too large to keep in the browser)'}</span>}</div>;
+}
+
 function Attachment({ a }) {
-  if (a.kind === 'image' && a.dataUrl) {
-    return <a href={a.dataUrl} download={a.name} className="block mt-2"><img src={a.dataUrl} alt={a.name} className="max-h-64 rounded-xl ring-1 ring-white/10" /></a>;
+  const dl = useDownload();
+  if (a.kind === 'image' && hasFile(a)) {
+    return <ImageThumb a={a} className="block mt-2 cursor-zoom-in" imgClass="max-h-64 rounded-xl ring-1 ring-white/10" />;
   }
-  if (a.kind === 'voice') {
-    return <div className="mt-2">{a.dataUrl ? <audio controls src={a.dataUrl} className="h-10 max-w-full" /> : <span className="text-xs text-neutral-500">Voice note (audio too large to keep in the browser)</span>}</div>;
-  }
+  if (a.kind === 'voice') return <VoiceNote a={a} />;
   return (
     <div className="mt-2 flex items-center gap-3 rounded-xl bg-[#1d1d1d] ring-1 ring-white/10 px-3 py-2 max-w-sm">
       <span className="w-9 h-9 rounded-lg bg-cyan-500/10 text-cyan-300 grid place-items-center shrink-0"><FileText size={17} /></span>
       <div className="min-w-0 flex-1"><div className="text-sm truncate text-neutral-100">{a.name}</div><div className="text-xs text-neutral-500">{a.category} · {fmtSize(a.size)}</div></div>
-      {a.dataUrl
-        ? <a href={a.dataUrl} download={a.name} title="Download" className="text-neutral-400 hover:text-white"><Download size={16} /></a>
+      {hasFile(a)
+        ? <button onClick={() => dl(a)} title="Download" className="text-neutral-400 hover:text-white"><Download size={16} /></button>
         : <span className="text-[10px] text-neutral-600" title="Only the file details were stored">no copy</span>}
     </div>
   );
@@ -115,7 +121,8 @@ function useRecorder(onDone) {
         const type = mr.mimeType || 'audio/webm';
         const blob = new Blob(cur.chunks, { type });
         const file = new File([blob], `Voice note ${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}.${type.includes('mp4') ? 'm4a' : 'webm'}`, { type });
-        const att = await toAttachment(file, 'voice');
+        let att;
+        try { att = await toAttachment(file, 'voice'); } catch (e) { return toast(e.message, 'error'); }
         setTimeout(() => done.current({ text: cur.transcript.trim(), voice: { duration: Math.max(1, Math.round((Date.now() - cur.started) / 1000)) }, attachments: [att] }), 350);
       };
       const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -144,6 +151,7 @@ function useRecorder(onDone) {
 
 function Composer({ onSend, files, setFiles, simulate, setSimulate }) {
   const { role, names } = useP();
+  const { toast } = useStore();
   const [text, setText] = useState('');
   const fileRef = useRef(), ta = useRef();
   const { rec, start, stop, cancel } = useRecorder(onSend);
@@ -162,8 +170,9 @@ function Composer({ onSend, files, setFiles, simulate, setSimulate }) {
     setText(''); setFiles([]);
   };
   const add = async list => {
-    const atts = await Promise.all([...list].map(f => toAttachment(f)));
-    setFiles(f => [...f, ...atts]);
+    const res = await Promise.allSettled([...list].map(f => toAttachment(f)));
+    res.filter(r => r.status === 'rejected').forEach(r => toast(r.reason.message, 'error'));
+    setFiles(f => [...f, ...res.filter(r => r.status === 'fulfilled').map(r => r.value)]);
   };
 
   return (
@@ -222,6 +231,7 @@ export default function Chat({ focus }) {
   const [searching, setSearching] = useState(false);
   const [drag, setDrag] = useState(false);
   const [record, setRecord] = useState(null);
+  const { toast } = useStore();
   const end = useRef();
   const owner = role === 'owner';
 
@@ -263,7 +273,7 @@ export default function Chat({ focus }) {
     <div className="flex-1 min-w-0 flex flex-col relative"
       onDragOver={e => { if (e.dataTransfer.types.includes('Files')) { e.preventDefault(); setDrag(true); } }}
       onDragLeave={e => { if (e.currentTarget === e.target) setDrag(false); }}
-      onDrop={async e => { e.preventDefault(); setDrag(false); const atts = await Promise.all([...e.dataTransfer.files].map(f => toAttachment(f))); setFiles(f => [...f, ...atts]); }}>
+      onDrop={async e => { e.preventDefault(); setDrag(false); const res = await Promise.allSettled([...e.dataTransfer.files].map(f => toAttachment(f))); res.filter(r => r.status === 'rejected').forEach(r => toast(r.reason.message, 'error')); setFiles(f => [...f, ...res.filter(r => r.status === 'fulfilled').map(r => r.value)]); }}>
       {drag && <div className="absolute inset-3 z-10 rounded-2xl border-2 border-dashed border-sky-400/70 bg-sky-500/10 grid place-items-center text-sky-200 pointer-events-none">Drop files to attach</div>}
 
       <div className="flex items-center gap-2 px-4 md:px-8 pt-3">

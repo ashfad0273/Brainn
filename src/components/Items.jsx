@@ -5,6 +5,8 @@ import { useP, Button, Modal, Field, Input, Textarea, Select, Badge, StatusBadge
 import { addItem, setStatus } from '../lib/model';
 import { TYPES, TYPE_ORDER, SENSITIVE_CATS, isActive } from '../lib/meta';
 import { FILE_CATEGORIES, categorizeLink, linkTitle } from '../lib/files';
+import { hasFile } from '../lib/blobs';
+import { ImageThumb, useDownload } from './Viewer';
 import { cx, fmtDue, isOverdue, fmtDateTime, fmtSize } from '../lib/util';
 
 const closedAt = it => [...it.history].reverse().find(h => h.action === 'status')?.ts || it.updatedAt;
@@ -292,7 +294,8 @@ export function FilesView() {
   const { p, role, openItem, jumpTo } = useP();
   const [cat, setCat] = useState('All');
   const [adding, setAdding] = useState(false);
-  const files = p.items.filter(i => i.type === 'file').sort((a, b) => b.createdAt - a.createdAt);
+  const dl = useDownload();
+  const files =p.items.filter(i => i.type === 'file').sort((a, b) => b.createdAt - a.createdAt);
   const att = useMemo(() => Object.fromEntries(p.messages.flatMap(m => m.attachments.map(a => [a.id, a]))), [p.messages]);
   const cats = ['All', ...new Set(files.map(f => f.category || 'Other'))];
   const list = cat === 'All' ? files : files.filter(f => (f.category || 'Other') === cat);
@@ -315,7 +318,7 @@ export function FilesView() {
           return (
             <div key={f.id} className={cx('rounded-2xl bg-[#181818] ring-1 ring-white/[.06] overflow-hidden hover:ring-white/15 transition group', !isActive(f) && 'opacity-60')}>
               <div onClick={() => openItem(f.id)} className="h-28 bg-gradient-to-br from-cyan-500/10 to-transparent grid place-items-center cursor-pointer overflow-hidden">
-                {a?.kind === 'image' && a.dataUrl ? <img src={a.dataUrl} alt="" className="w-full h-full object-cover group-hover:scale-105 transition duration-500" />
+                {a?.kind === 'image' && hasFile(a) ? <ImageThumb a={a} className="w-full h-full cursor-zoom-in" imgClass="w-full h-full object-cover group-hover:scale-105 transition duration-500" />
                   : isLink ? <ExternalLink className="text-cyan-300/70" size={28} /> : f.kind === 'voice' ? <Mic className="text-cyan-300/70" size={28} /> : <Layers className="text-cyan-300/70" size={28} />}
               </div>
               <div className="p-3">
@@ -323,7 +326,7 @@ export function FilesView() {
                 <div className="text-xs text-neutral-500 mt-0.5 flex items-center gap-1.5">{f.category || 'Other'}{f.file?.size ? ' · ' + fmtSize(f.file.size) : ''}{!isActive(f) && <StatusBadge status={f.status} />}</div>
                 <div className="flex items-center gap-1 mt-2 -ml-1">
                   {isLink && <a href={f.value} target="_blank" rel="noreferrer" className="text-xs px-2 py-1 rounded-md hover:bg-white/5 text-sky-300 flex items-center gap-1"><ExternalLink size={12} />Open</a>}
-                  {a?.dataUrl && <a href={a.dataUrl} download={a.name} className="text-xs px-2 py-1 rounded-md hover:bg-white/5 text-neutral-300 flex items-center gap-1"><Download size={12} />Download</a>}
+                  {hasFile(a) && <button onClick={() => dl(a)} className="text-xs px-2 py-1 rounded-md hover:bg-white/5 text-neutral-300 flex items-center gap-1"><Download size={12} />Download</button>}
                   {f.sourceMsg && <button onClick={() => jumpTo(f.sourceMsg)} className="text-xs px-2 py-1 rounded-md hover:bg-white/5 text-neutral-400 flex items-center gap-1"><MessageSquareQuote size={12} />In chat</button>}
                 </div>
               </div>

@@ -6,7 +6,7 @@ import { prepareSuggestions, log, secretValues, maskText } from './model';
 import { TYPES, isActive } from './meta';
 import { expand } from './shorthand';
 import { uid, now, overlap, isOverdue, fmtDue } from './util';
-import { peopleOf, geminiOn } from './brain';
+import { peopleOf, aiOn, aiName } from './brain';
 
 const TASK_FROM = {
   risk: t => `Address risk: ${t}`,
@@ -138,9 +138,9 @@ function localAsk(p, question, ctx) {
 export async function askProject({ state, project: p, mutate, toast, question }) {
   const ctx = peopleOf(state, p);
   let res, engine = 'rules';
-  if (geminiOn(state.settings)) {
-    try { res = await gemini.ask(state.settings, p, ctx, question, p.asks); engine = 'gemini'; }
-    catch (e) { toast?.(`Gemini: ${e.message}. Used the built-in assistant instead.`, 'error'); }
+  if (aiOn(state.settings)) {
+    try { res = await gemini.ask(state.settings, p, ctx, question, p.asks); engine = gemini.providerOf(state.settings); }
+    catch (e) { toast?.(`${aiName(state.settings)}: ${e.message}. Used the built-in assistant instead.`, 'error'); }
   }
   if (!res) res = localAsk(p, question, ctx);
   const ids = new Set([...p.items.map(i => i.id), ...p.messages.map(m => m.id)]);

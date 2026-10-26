@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { History, Braces, Download } from 'lucide-react';
 import { useP, Button, Modal, Toggle, Empty } from './ui';
 import { TYPES, STATUS } from '../lib/meta';
+import { engineName } from '../lib/gemini';
 import { cx, fmtDateTime, fmtDay, download } from '../lib/util';
 
 function describe(e, p, who) {
@@ -18,11 +19,11 @@ function describe(e, p, who) {
     case 'item.status': return `${who} moved ${title} from ${STATUS[d.from]?.label} to ${STATUS[d.to]?.label}`;
     case 'item.edit': return `${who} changed ${(d.fields || []).join(', ')} of ${title}`;
     case 'item.note': return `${who} added a note to ${title}`;
-    case 'suggestions.add': return `Project brain (${d.engine === 'gemini' ? 'Gemini' : 'rules'}) proposed ${d.count} suggestion${d.count > 1 ? 's' : ''}`;
+    case 'suggestions.add': return `Project brain (${engineName(d.engine, 'rules')}) proposed ${d.count} suggestion${d.count > 1 ? 's' : ''}`;
     case 'suggestion.accept': return `${who} accepted: ${TYPES[d.type]?.label.toLowerCase()} “${d.title || ''}”`;
     case 'suggestion.ignore': return `${who} ignored a suggestion: “${d.title}”`;
     case 'suggestion.restore': return `${who} restored an ignored suggestion: “${d.title}”`;
-    case 'memory.refresh': return `${who} refreshed the project memory (${d.engine === 'gemini' ? 'Gemini' : 'records'})`;
+    case 'memory.refresh': return `${who} refreshed the project memory (${engineName(d.engine, 'records')})`;
     case 'ask': return `${who} asked: “${d.question}”`;
     case 'invite.create': return `${who} invited ${d.name}`;
     case 'invite.perms': return `${who} changed what the client can see`;

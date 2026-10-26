@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { useStore } from '../store';
 import { analyze } from '../lib/brain';
+import { engineName } from '../lib/gemini';
 
 /** Runs in the owner's tab: reads every new message (batched per project) and proposes records. */
 export default function Analyzer() {
@@ -20,7 +21,7 @@ export default function Analyzer() {
         ids.forEach(i => busy.current.add(i));
         try {
           const { count, engine } = await analyze({ state: stateRef.current, project: cur, ids, mutate, toast });
-          if (count) toast(`✨ ${count} new suggestion${count > 1 ? 's' : ''} in ${cur.name} (${engine === 'gemini' ? 'Gemini' : 'built-in rules'})`);
+          if (count) toast(`✨ ${count} new suggestion${count > 1 ? 's' : ''} in ${cur.name} (${engineName(engine)})`);
         } catch (e) {
           console.error(e);
         } finally {

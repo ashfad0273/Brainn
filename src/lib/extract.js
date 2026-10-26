@@ -120,6 +120,17 @@ function sensitives(c, ctx, from, active) {
   return out;
 }
 
+/** Every password / PIN / token / username value written as "pwd is x", "pass: y", "token = z". */
+export function credentialValues(text) {
+  const out = [];
+  for (const x of (text || '').matchAll(CRED_RE)) {
+    const v = trimVal(x[3]);
+    if (v.length >= 2 && !BAD_VALUE.test(v)) out.push(v);
+  }
+  return out;
+}
+export const isCardNumber = s => { const d = s.replace(/\D/g, ''); return d.length >= 13 && d.length <= 19 && luhn(d); };
+
 function best(list, text, min = 0.5) {
   let top = null, score = 0;
   for (const it of list) {

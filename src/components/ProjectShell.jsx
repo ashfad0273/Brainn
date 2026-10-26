@@ -14,7 +14,7 @@ import InviteModal from './Invite';
 import SettingsModal from './Settings';
 import { ProjectFormModal } from './Home';
 import { updateMeta } from '../lib/model';
-import { geminiOn } from '../lib/brain';
+import { aiOn, aiName } from '../lib/brain';
 import { isActive } from '../lib/meta';
 import { cx, download } from '../lib/util';
 
@@ -109,7 +109,7 @@ export default function ProjectPage({ p, tab, deep }) {
   const [modal, setModal] = useState(null);
   const names = useMemo(() => ({ owner: state.settings.ownerName || 'You', client: p.invite?.name || p.client || 'Client' }), [state.settings.ownerName, p.invite?.name, p.client]);
   const setTab = useCallback(t => { location.hash = `#/p/${p.id}/${t}`; }, [p.id]);
-  const gem = geminiOn(state.settings);
+  const gem = aiOn(state.settings);
 
   const header = (
     <>
@@ -119,15 +119,15 @@ export default function ProjectPage({ p, tab, deep }) {
         <div className="font-semibold truncate leading-tight">{p.name}{p.archived && <span className="ml-2 text-xs text-amber-300 font-normal">archived</span>}</div>
         <div className="text-xs text-neutral-500 truncate">{names.client}</div>
       </div>
-      <button onClick={() => setModal('settings')} className={cx('hidden md:flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full ring-1 ring-inset', gem ? 'ring-emerald-500/30 text-emerald-300' : 'ring-white/10 text-neutral-400')} title="Gemini settings">
-        <span className={cx('w-1.5 h-1.5 rounded-full', gem ? 'bg-emerald-400' : 'bg-neutral-500')} />{gem ? 'Gemini on' : 'Built-in rules'}
+      <button onClick={() => setModal('settings')} className={cx('hidden md:flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full ring-1 ring-inset', gem ? 'ring-emerald-500/30 text-emerald-300' : 'ring-white/10 text-neutral-400')} title="AI settings">
+        <span className={cx('w-1.5 h-1.5 rounded-full', gem ? 'bg-emerald-400' : 'bg-neutral-500')} />{aiName(state.settings)}
       </button>
       <Button size="sm" variant={p.invite ? 'default' : 'primary'} onClick={() => setModal('invite')}><UserPlus size={14} /><span className="hidden sm:inline">{p.invite ? `Client · PIN ${p.invite.pin}` : 'Invite client'}</span></Button>
       <Menu trigger={t => <Button variant="ghost" size="icon" onClick={t} title="More"><MoreHorizontal size={18} /></Button>}>
         <MenuItem icon={Pencil} onClick={() => setModal('edit')}>Edit project details</MenuItem>
         <MenuItem icon={Braces} onClick={() => setTab('timeline')}>Timeline & raw JSON</MenuItem>
         <MenuItem icon={Download} onClick={() => download(`${p.name.replace(/\W+/g, '-').toLowerCase()}-record.json`, JSON.stringify(p, null, 2))}>Export project record</MenuItem>
-        <MenuItem icon={KeyRound} onClick={() => setModal('settings')}>Gemini & settings</MenuItem>
+        <MenuItem icon={KeyRound} onClick={() => setModal('settings')}>AI & settings</MenuItem>
         {p.archived
           ? <MenuItem icon={ArchiveRestore} onClick={() => { mutate(p.id, q => updateMeta(q, 'owner', { archived: false }, 'project.unarchive')); toast('Project restored'); }}>Restore from archive</MenuItem>
           : <MenuItem icon={Archive} onClick={() => { mutate(p.id, q => updateMeta(q, 'owner', { archived: true }, 'project.archive')); toast('Archived — full history kept'); }}>Archive project</MenuItem>}

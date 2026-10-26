@@ -1,0 +1,18 @@
+name = "project-brain-ai"
+main = "src/index.js"
+compatibility_date = "2025-09-01"
+
+# Workers AI binding (env.AI)
+[ai]
+binding = "AI"
+
+[vars]
+# Browser origins allowed to call the Worker (comma-separated). Add your hosted app's URL later.
+ALLOWED_ORIGINS = "http://localhost:5173"
+# Model used when the app doesn't ask for one, and the only models it may ask for.
+DEFAULT_MODEL = "@cf/meta/llama-3.3-70b-instruct-fp8-fast"
+ALLOWED_MODELS = "@cf/meta/llama-3.3-70b-instruct-fp8-fast,@cf/meta/llama-3.1-8b-instruct-fast"
+# Largest request body accepted, in bytes.
+MAX_BODY_BYTES = "200000"
+
+# The shared token is a secret, not a var:  npx wrangler secret put APP_TOKEN

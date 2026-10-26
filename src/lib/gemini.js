@@ -1,22 +1,43 @@
-// Gemini (Generative Language API) calls. The key never leaves this browser except to Google.
+// AI calls for Project Brain. Two providers:
+//   gemini     – Google Generative Language API, called from the browser with the user's key
+//   cloudflare – the user's own Worker in front of Workers AI (see /worker)
+// Everything sent is redacted first (lib/redact): secrets become [SECRET_n] placeholders.
 
 import { GLOSSARY } from './shorthand';
 import { todayISO } from './util';
+import { createRedactor } from './redact';
 
 const BASE = 'https://generativelanguage.googleapis.com/v1beta';
 const modelId = m => (m || '').trim().replace(/^models\//, '');
 
+/* ---------- providers ---------- */
+
+export const PROVIDERS = { rules: 'Built-in rules', cloudflare: 'Cloudflare AI', gemini: 'Gemini' };
+/** Older workspaces only had a Gemini key + toggle; derive the provider from that. */
+export const providerOf = s => s.provider || (s.apiKey && s.useGemini ? 'gemini' : 'rules');
+export function aiReady(s) {
+  const pv = providerOf(s);
+  if (pv === 'gemini') return !!s.apiKey;
+  if (pv === 'cloudflare') return !!(s.workerUrl && s.workerToken);
+  return false;
+}
+/** Label for an engine stored on a suggestion / summary / answer. */
+export const engineName = (e, fallback = 'built-in rules') => (e === 'gemini' ? 'Gemini' : e === 'cloudflare' ? 'Cloudflare AI' : fallback);
+/** Smaller context for Workers AI models. */
+const budget = s => (providerOf(s) === 'cloudflare' ? { chat: 80, text: 700, records: 150, glossary: false } : { chat: 600, text: 1500, records: 1000, glossary: true });
+
+class BadJSON extends Error {}
 export function parseJSON(t) {
-  const s = t.replace(/^\s*```(?:json)?/i, '').replace(/```\s*$/, '').trim();
+  const s = String(t).replace(/^\s*```(?:json)?/i, '').replace(/```\s*$/, '').trim();
   try { return JSON.parse(s); } catch {
     const a = s.search(/[[{]/), b = Math.max(s.lastIndexOf('}'), s.lastIndexOf(']'));
-    if (a >= 0 && b > a) return JSON.parse(s.slice(a, b + 1));
-    throw new Error('could not read the model output');
+    if (a >= 0 && b > a) { try { return JSON.parse(s.slice(a, b + 1)); } catch { /* fall through */ } }
+    throw new BadJSON('the model did not return valid JSON');
   }
 }
 
-export async function generate(settings, prompt, { temperature = 0.2 } = {}) {
-  if (!settings.apiKey) throw new Error('no API key');
+async function callGemini(settings, prompt, temperature) {
+  if (!settings.apiKey) throw new Error('no Gemini API key');
   const r = await fetch(`${BASE}/models/${encodeURIComponent(modelId(settings.model))}:generateContent`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'x-goog-api-key': settings.apiKey.trim() },
@@ -26,7 +47,43 @@ export async function generate(settings, prompt, { temperature = 0.2 } = {}) {
   if (!r.ok) throw new Error(j.error?.message || `HTTP ${r.status}`);
   const text = (j.candidates?.[0]?.content?.parts || []).map(x => x.text || '').join('');
   if (!text) throw new Error(j.promptFeedback?.blockReason ? `blocked (${j.promptFeedback.blockReason})` : 'empty response');
-  return parseJSON(text);
+  return text;
+}
+
+/** Header values must be printable ASCII without spaces. */
+export const badTokenChar = t => /[^\x21-\x7E]/.test((t || '').trim());
+const workerEndpoint = url => url.trim().replace(/\/+$/, '').replace(/\/v1\/generate$/, '') + '/v1/generate';
+const SYSTEM_JSON = 'You are a precise assistant that replies with a single valid JSON object and nothing else — no prose, no markdown fences.';
+
+async function callCloudflare(settings, prompt, temperature, schema) {
+  if (!settings.workerUrl || !settings.workerToken) throw new Error('Worker URL and token are not set');
+  if (badTokenChar(settings.workerToken)) throw new Error('the token contains spaces or characters that can’t be sent in a request — use only letters, numbers and ASCII symbols');
+  let r;
+  try {
+    r = await fetch(workerEndpoint(settings.workerUrl), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${settings.workerToken.trim()}` },
+      body: JSON.stringify({ prompt, system: SYSTEM_JSON, model: settings.cfModel || undefined, schema, temperature, maxTokens: 3000 }),
+    });
+  } catch (e) {
+    throw new Error(`could not reach the Worker from ${location.origin} (${e.message}). Check the URL, and that “${location.origin}” is listed in ALLOWED_ORIGINS in worker/wrangler.toml`);
+  }
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(j.error || `Worker HTTP ${r.status}`);
+  return j.output;
+}
+
+/** Ask the configured provider for JSON. Retries once when the reply isn't valid JSON. */
+export async function generate(settings, prompt, { temperature = 0.2, schema } = {}) {
+  const pv = providerOf(settings);
+  const once = async text => {
+    const out = pv === 'cloudflare' ? await callCloudflare(settings, text, temperature, schema) : await callGemini(settings, text, temperature);
+    return out && typeof out === 'object' ? out : parseJSON(out ?? '');
+  };
+  try { return await once(prompt); } catch (e) {
+    if (!(e instanceof BadJSON)) throw e;
+    return once(`${prompt}\n\nIMPORTANT: your previous reply was not valid JSON. Reply again with ONLY the JSON object described above.`);
+  }
 }
 
 export async function listModels(apiKey) {
@@ -36,31 +93,46 @@ export async function listModels(apiKey) {
   return (j.models || []).filter(m => (m.supportedGenerationMethods || []).includes('generateContent')).map(m => m.name.replace(/^models\//, ''));
 }
 
-export const testConnection = settings => generate(settings, 'Reply with exactly {"ok":true}');
+export async function testConnection(settings) {
+  const out = await generate(settings, 'Reply with exactly this JSON: {"ok":true}', { schema: { type: 'object', properties: { ok: { type: 'boolean' } }, required: ['ok'] } });
+  if (!out || out.ok !== true) throw new Error('unexpected reply from the model');
+  return true;
+}
 
-/* ---------- context builders ---------- */
+/* ---------- JSON schemas (Workers AI JSON mode) ---------- */
+
+const str = { type: 'string' };
+const OP = { type: 'object', properties: Object.fromEntries(['msg', 'op', 'type', 'targetId', 'title', 'detail', 'value', 'category', 'status', 'priority', 'due', 'assignee', 'scope', 'replaces', 'reason'].map(k => [k, str])), required: ['op', 'type', 'title'] };
+const POINTS = { type: 'array', items: { type: 'object', properties: { text: str, refs: { type: 'array', items: str } }, required: ['text'] } };
+const OPS_SCHEMA = { type: 'object', properties: { ops: { type: 'array', items: OP } }, required: ['ops'] };
+const SUMMARY_SCHEMA = { type: 'object', properties: { headline: str, overview: str, ...Object.fromEntries(['keyFacts', 'done', 'inProgress', 'next', 'openQuestions', 'risks', 'recentChanges'].map(k => [k, POINTS])) }, required: ['headline', 'overview'] };
+const ASK_SCHEMA = { type: 'object', properties: { answer: str, refs: { type: 'array', items: str }, ops: { type: 'array', items: OP }, draft: str }, required: ['answer'] };
+
+/* ---------- context builders (always redacted) ---------- */
 
 const who = (ctx, from) => (from === 'owner' ? `${ctx.ownerName} (owner)` : `${ctx.clientName} (client)`);
-function chat(p, ctx, include = [], limit = 600) {
+function chat(p, ctx, R, b, include = [], limit = b.chat) {
   const keep = new Set(include);
   return p.messages.filter((m, i) => i >= p.messages.length - limit || keep.has(m.id)).map(m => ({
     id: m.id, from: who(ctx, m.from), at: new Date(m.ts).toISOString().slice(0, 16).replace('T', ' '),
-    text: (m.text || '').slice(0, 1500),
+    text: R.text((m.text || '').slice(0, b.text)),
     ...(m.attachments?.length ? { files: m.attachments.map(a => a.name) } : {}),
     ...(m.voice ? { voice_note_transcript: true } : {}),
   }));
 }
-function records(p) {
-  return p.items.map(i => ({
-    id: i.id, type: i.type, title: i.title, status: i.status,
-    ...(i.detail ? { detail: i.detail.slice(0, 300) } : {}), ...(i.due ? { due: i.due } : {}),
+function records(p, R, b) {
+  return p.items.slice(-b.records).map(i => ({
+    id: i.id, type: i.type, title: R.text(i.title), status: i.status,
+    ...(i.detail ? { detail: R.text(i.detail.slice(0, 300)) } : {}), ...(i.due ? { due: i.due } : {}),
     ...(i.category ? { category: i.category } : {}), ...(i.assignee ? { assignee: i.assignee } : {}),
     ...(i.type === 'requirement' ? { scope: i.scope, versions: i.versions.length } : {}),
-    ...(i.type === 'file' && i.value ? { url: i.value } : {}),
+    ...(i.type === 'file' && i.value ? { url: R.text(i.value) } : {}),
     source_message: i.sourceMsg, changes: i.history.length - 1,
   }));
 }
 const today = () => `${todayISO()} (${new Date().toLocaleDateString('en-US', { weekday: 'long' })})`;
+const shorthand = b => (b.glossary ? `SHORTHAND (non-exhaustive — infer similar ones): ${GLOSSARY}` : 'Messages use chat shorthand (pwd/pw/pass = password, stg = staging, info = details, doc/txt = document, mail = email, tmrw = tomorrow, eow = end of week, pls = please, nvm = cancel, lgtm = approved) — infer similar ones.');
+const REDACTED = 'Values shown as [SECRET_n] are secrets hidden for privacy. Never guess them; when one is a record value, copy the placeholder exactly.';
 
 /** Shared by extraction and the assistant: what records exist and how to change them. */
 const SCHEMA = `RECORD TYPES
@@ -83,10 +155,12 @@ Allowed statuses: task(open,in_progress,blocked,done,cancelled) requirement(acti
 /* ---------- extraction ---------- */
 
 export async function extract(settings, p, ids, ctx) {
+  const R = createRedactor(p), b = budget(settings);
   const prompt = `You are the memory engine of "Project Brain", a private workspace where a freelancer (owner) talks with a client about one project.
 You read the chat and propose structured records. Messages are casual: shorthand, abbreviations, typos, missing punctuation, mixed languages, emoji. Understand intent, not keywords.
 
-SHORTHAND (non-exhaustive — infer similar ones): ${GLOSSARY}
+${shorthand(b)}
+${REDACTED}
 
 Today is ${today()}. Convert relative dates ("by fri", "tmrw", "eow", "next mon", "in 2 days") to YYYY-MM-DD.
 
@@ -100,27 +174,31 @@ RULES
 - Titles: short and clear, in English, shorthand expanded, imperative for tasks, max ~12 words.
 - msg = id of the message the record comes from. priority = high only when urgent.
 
-Return JSON only: {"ops":[{"msg":"","op":"create|update|status|note","type":"","targetId":"","title":"","detail":"","value":"","category":"","status":"","priority":"low|normal|high","due":"","assignee":"","scope":"","replaces":"","reason":""}]}
+Return ONLY this JSON object, nothing else: {"ops":[{"msg":"","op":"create|update|status|note","type":"","targetId":"","title":"","detail":"","value":"","category":"","status":"","priority":"low|normal|high","due":"","assignee":"","scope":"","replaces":"","reason":""}]}
 Return {"ops":[]} when there is nothing to record.
 
 PEOPLE: owner = ${ctx.ownerName}; client = ${ctx.clientName}
-PROJECT: ${p.name}${p.description ? ' — ' + p.description : ''}
-EXISTING RECORDS: ${JSON.stringify(records(p))}
+PROJECT: ${p.name}${p.description ? ' — ' + R.text(p.description) : ''}
+EXISTING RECORDS: ${JSON.stringify(records(p, R, b))}
 ANALYSE: ${JSON.stringify(ids)}
-CHAT: ${JSON.stringify(chat(p, ctx, ids))}`;
-  const out = await generate(settings, prompt, { temperature: 0.1 });
-  return Array.isArray(out) ? out : out.ops || [];
+CHAT: ${JSON.stringify(chat(p, ctx, R, b, ids))}`;
+  const out = await generate(settings, prompt, { temperature: 0.1, schema: OPS_SCHEMA });
+  return unredactOps(R, Array.isArray(out) ? out : out.ops);
 }
+
+/** Only an op's value (what goes into the vault) gets the real secret back; titles and reasons stay masked. */
+const unredactOps = (R, ops) => (Array.isArray(ops) ? ops : []).filter(o => o && typeof o === 'object').map(o => ({ ...R.mask(o), value: R.restore(o.value ?? '') }));
 
 /* ---------- memory ---------- */
 
 export async function summarize(settings, p, ctx) {
+  const R = createRedactor(p), b = budget(settings);
   const prev = p.summaries[p.summaries.length - 1];
   const prompt = `You maintain the living memory of a client project. From the full project record below, write the CURRENT state.
 Records with status done/cancelled/delivered/dropped/replaced/superseded/revoked/answered/mitigated/closed/outdated are closed; the rest are still open.
-Only state facts present in the record. Never include secret values (passwords, keys, card numbers) — refer to them by name. Expand shorthand. Be concise and concrete.
+Only state facts present in the record. Never include secret values — refer to them by name. ${REDACTED} Expand shorthand. Be concise and concrete.
 
-Return JSON only:
+Return ONLY this JSON object, nothing else:
 {"headline":"one sentence on where the project stands",
  "overview":"3-6 sentences: what the project is, progress, what changed recently, what matters next",
  "keyFacts":[{"text":"","refs":[]}],
@@ -132,18 +210,20 @@ Return JSON only:
  "recentChanges":[{"text":"","refs":[]}]}
 refs = ids of the records or messages backing each point. keyFacts = small but critical details that must never be forgotten (preferences, constraints, limits).
 
-Today is ${today()}. Owner = ${ctx.ownerName}; client = ${ctx.clientName}. Project: ${p.name}${p.description ? ' — ' + p.description : ''}
-PREVIOUS SUMMARY: ${prev ? JSON.stringify({ at: new Date(prev.ts).toISOString(), headline: prev.headline, overview: prev.overview }) : 'none'}
-RECORDS: ${JSON.stringify(records(p))}
-CHAT: ${JSON.stringify(chat(p, ctx, [], 400))}`;
-  return generate(settings, prompt, { temperature: 0.3 });
+Today is ${today()}. Owner = ${ctx.ownerName}; client = ${ctx.clientName}. Project: ${p.name}${p.description ? ' — ' + R.text(p.description) : ''}
+PREVIOUS SUMMARY: ${prev ? JSON.stringify({ at: new Date(prev.ts).toISOString(), headline: R.text(prev.headline), overview: R.text(prev.overview) }) : 'none'}
+RECORDS: ${JSON.stringify(records(p, R, b))}
+CHAT: ${JSON.stringify(chat(p, ctx, R, b, [], Math.min(400, b.chat)))}`;
+  return R.mask(await generate(settings, prompt, { temperature: 0.3, schema: SUMMARY_SCHEMA }));
 }
 
 /**
  * The project assistant: answers questions, proposes changes to the record and drafts messages.
  * It never changes anything itself — every proposed change becomes a suggestion the owner approves.
+ * Returned ops get real values restored; answer and draft keep secrets masked.
  */
 export async function ask(settings, p, ctx, question, history = []) {
+  const R = createRedactor(p), b = budget(settings);
   const prompt = `You are the project assistant inside "Project Brain", working for the owner (${ctx.ownerName}) on a client project with ${ctx.clientName}.
 You can do three things, alone or combined:
 1. ANSWER questions using ONLY the project record below. If the record doesn't contain it, say so.
@@ -153,24 +233,25 @@ You can do three things, alone or combined:
    So NEVER say something "has been created/updated" — say e.g. "I've proposed 11 tasks — review them below."
    Do not propose duplicates of existing open records. Link each op to its origin with msg = the source_message of the record or message it is based on (or "" if none).
 3. DRAFT TEXT when asked to write something (a client update, a reply, an email, a meeting agenda, a summary to share).
-   Put the ready-to-use text in "draft", written in the owner's voice, friendly and concise. Never include secret values.
+   Put the ready-to-use text in "draft", written in the owner's voice, friendly and concise.
 
-Never reveal secret values (passwords, keys, card numbers) in "answer" or "draft"; point to the vault record by name instead.
-SHORTHAND used in the chat: ${GLOSSARY}
+Never reveal secret values in "answer" or "draft"; point to the vault record by name instead. ${REDACTED}
+${shorthand(b)}
 Today is ${today()}. Convert relative dates to YYYY-MM-DD.
 
 ${SCHEMA}
 
-Return JSON only:
+Return ONLY this JSON object, nothing else:
 {"answer":"short plain text for the owner (bullets with • allowed)","refs":["ids of records or messages used"],
  "ops":[{"msg":"","op":"create|update|status|note","type":"","targetId":"","title":"","detail":"","value":"","category":"","status":"","priority":"low|normal|high","due":"","assignee":"owner|client","scope":"","replaces":"","reason":"why"}],
  "draft":""}
 Use "ops":[] and "draft":"" when not needed.
 
-PROJECT: ${p.name}${p.description ? ' — ' + p.description : ''}
-EARLIER IN THIS CONVERSATION WITH YOU: ${JSON.stringify(history.slice(-4).map(a => ({ q: a.question, a: a.answer.slice(0, 400) })))}
-OWNER'S REQUEST: ${question}
-RECORDS: ${JSON.stringify(records(p))}
-CHAT: ${JSON.stringify(chat(p, ctx, [], 600))}`;
-  return generate(settings, prompt, { temperature: 0.25 });
+PROJECT: ${p.name}${p.description ? ' — ' + R.text(p.description) : ''}
+EARLIER IN THIS CONVERSATION WITH YOU: ${JSON.stringify(history.slice(-4).map(a => ({ q: R.text(a.question), a: R.text(a.answer.slice(0, 400)) })))}
+OWNER'S REQUEST: ${R.text(question)}
+RECORDS: ${JSON.stringify(records(p, R, b))}
+CHAT: ${JSON.stringify(chat(p, ctx, R, b))}`;
+  const out = await generate(settings, prompt, { temperature: 0.25, schema: ASK_SCHEMA });
+  return { ...R.mask(out), ops: unredactOps(R, out.ops) };
 }

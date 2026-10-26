@@ -4,6 +4,8 @@ import { useP, Button, Field, Input, Textarea, Select, Drawer, StatusBadge, Type
 import { setStatus, editItem, addNote, secretValues, maskText } from '../lib/model';
 import { TYPES, STATUS, SENSITIVE_CATS, isActive } from '../lib/meta';
 import { FILE_CATEGORIES } from '../lib/files';
+import { hasFile } from '../lib/blobs';
+import { useDownload } from './Viewer';
 import { cx, fmtDateTime, fmtDue, isOverdue } from '../lib/util';
 
 const FIELD_LABEL = { title: 'Title', detail: 'Details', value: 'Value', category: 'Category', priority: 'Priority', due: 'Due date', assignee: 'Assigned to', scope: 'Scope' };
@@ -13,6 +15,7 @@ export default function ItemDrawer({ id, onClose }) {
   const it = p.items.find(i => i.id === id);
   const [edit, setEdit] = useState(null);
   const [note, setNote] = useState('');
+  const dl = useDownload();
   if (!it) return null;
 
   const T = TYPES[it.type];
@@ -67,7 +70,7 @@ export default function ItemDrawer({ id, onClose }) {
             {it.detail && it.detail !== it.title && <p className="text-sm text-neutral-400 mt-2 whitespace-pre-wrap">{it.detail}</p>}
             {it.type === 'sensitive' && it.value && owner && <div className="mt-3 inline-flex rounded-lg bg-black/30 ring-1 ring-rose-500/25 px-3 py-2"><Secret value={it.value} /></div>}
             {it.type === 'file' && it.kind === 'link' && <a href={it.value} target="_blank" rel="noreferrer" className="mt-3 inline-flex items-center gap-1.5 text-sm text-sky-300 hover:underline break-all"><ExternalLink size={14} />{it.value}</a>}
-            {att?.dataUrl && <a href={att.dataUrl} download={att.name} className="mt-3 inline-flex items-center gap-1.5 text-sm text-sky-300 hover:underline"><Download size={14} />Download {att.name}</a>}
+            {hasFile(att) && <button onClick={() => dl(att)} className="mt-3 inline-flex items-center gap-1.5 text-sm text-sky-300 hover:underline"><Download size={14} />Download {att.name}</button>}
             <div className="flex flex-wrap gap-1.5 mt-3">
               {it.due && <Badge tone={isOverdue(it.due) && isActive(it) ? 'rose' : 'neutral'}>Due {fmtDue(it.due)}</Badge>}
               {it.priority !== 'normal' && <Badge tone={it.priority === 'high' ? 'orange' : 'neutral'}>{it.priority} priority</Badge>}
