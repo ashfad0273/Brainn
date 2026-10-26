@@ -37,3 +37,9 @@ select option { background: #1a1a1a; }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; }
 }
+
+/* the exact passage a record came from, when jumping to it from the record */
+@keyframes hl-in { 0% { background: rgba(250, 204, 21, .75) } 100% { background: rgba(250, 204, 21, .32) } }
+.hl-mark { color: inherit; background: rgba(250, 204, 21, .32); box-shadow: 0 0 0 2px rgba(250, 204, 21, .32); border-radius: 4px; animation: hl-in 1.6s ease; }
+/* phones: the app fills the visible screen, not the area behind the browser bars */
+@supports (height: 100dvh) { html, body, #root { height: 100dvh; } }

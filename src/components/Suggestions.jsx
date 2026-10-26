@@ -1,8 +1,8 @@
 import { useState } from 'react';
-import { Sparkles, MessageSquareQuote, RefreshCw, ChevronDown, Undo2, CheckCheck, Calendar } from 'lucide-react';
+import { Sparkles, MessageSquareQuote, RefreshCw, ChevronDown, Undo2, CheckCheck, Calendar, XCircle, FileText } from 'lucide-react';
 import { useStore } from '../store';
 import { useP, Button, Badge, Input, Select, Spinner, Secret } from './ui';
-import { resolveSuggestion } from '../lib/model';
+import { resolveSuggestion, secretValues, maskText } from '../lib/model';
 import { analyze, aiOn, aiName } from '../lib/brain';
 import { engineName } from '../lib/gemini';
 import { TYPES, STATUS, COLOR, isActive } from '../lib/meta';
@@ -16,12 +16,27 @@ const opLabel = s => {
   return `Note on ${t}`;
 };
 
+/** The words a suggestion came from: a passage of the chat message, or a quote from a file. */
+function SourcePassage({ s, p }) {
+  const m = s.msg && p.messages.find(x => x.id === s.msg);
+  const file = s.attachmentId && m?.attachments.find(a => a.id === s.attachmentId);
+  const text = s.span && m?.text ? m.text.slice(s.span.start, s.span.end) : s.quote;
+  if (!text || s.reason?.includes(text.trim())) return null; // the rules' reason often quotes the clause already
+  return (
+    <div className="mt-1.5 text-xs text-neutral-400 border-l-2 border-amber-400/40 pl-2 line-clamp-3">
+      {file && <span className="text-neutral-500 mr-1 inline-flex items-center gap-0.5"><FileText size={10} />{file.name}:</span>}“{maskText(text, secretValues(p))}”
+    </div>
+  );
+}
+
 export function SuggestionCard({ s }) {
   const { p, mut, jumpTo, openItem, names } = useP();
   const [edit, setEdit] = useState(null);
+  const [sent, setSent] = useState(false);
   const target = s.targetId && p.items.find(i => i.id === s.targetId);
   const T = TYPES[s.type];
-  const act = (decision, edits) => mut(q => resolveSuggestion(q, 'owner', s.id, decision, edits));
+  // one click = one decision: the card disables itself until the record updates
+  const act = (decision, edits) => { if (sent) return; setSent(true); mut(q => resolveSuggestion(q, 'owner', s.id, decision, edits)); };
   const canEdit = s.op === 'create' || s.op === 'update' || s.op === 'note';
   const set = k => e => setEdit(x => ({ ...x, [k]: e.target.value }));
 
@@ -31,7 +46,7 @@ export function SuggestionCard({ s }) {
         <span className={cx('text-[11px] font-medium px-1.5 py-0.5 rounded-md ring-1 ring-inset', COLOR[T.color].badge)}>{opLabel(s)}</span>
         <span className="text-[10px] text-neutral-600 uppercase tracking-wide">{s.askId ? 'Assistant' : engineName(s.engine, 'Rules')}</span>
         <div className="flex-1" />
-        {s.msg && <button title="Show the message" onClick={() => jumpTo(s.msg)} className="text-neutral-500 hover:text-white"><MessageSquareQuote size={14} /></button>}
+        {s.msg && <button title={s.span ? 'Show the exact words in the chat' : 'Show the message'} onClick={() => jumpTo(s.msg, s.span)} className="text-neutral-500 hover:text-white"><MessageSquareQuote size={14} /></button>}
       </div>
 
       {edit ? (
@@ -44,10 +59,10 @@ export function SuggestionCard({ s }) {
               <Select value={edit.priority} onChange={set('priority')}><option value="low">Low</option><option value="normal">Normal</option><option value="high">High</option></Select>
             </div>
           )}
-          {s.type === 'task' && s.op === 'create' && <Select value={edit.assignee || 'owner'} onChange={set('assignee')}><option value="owner">{names.owner} does it</option><option value="client">{names.client} does it</option></Select>}
+          {s.type === 'task' && s.op === 'create' && <Select value={edit.assignee || 'owner'} onChange={set('assignee')}>{names.assignees(edit.assignee).map(([k, n]) => <option key={k} value={k}>{n} does it</option>)}</Select>}
           <div className="flex gap-1.5 justify-end">
             <Button size="sm" variant="ghost" onClick={() => setEdit(null)}>Cancel</Button>
-            <Button size="sm" variant="primary" onClick={() => act('accept', edit)}>Save & accept</Button>
+            <Button size="sm" variant="primary" disabled={sent} onClick={() => act('accept', edit)}>Save & accept</Button>
           </div>
         </div>
       ) : (
@@ -58,15 +73,16 @@ export function SuggestionCard({ s }) {
           <div className="flex flex-wrap gap-1 mt-1.5 empty:hidden">
             {s.due && <Badge tone={isOverdue(s.due) ? 'rose' : 'neutral'}><Calendar size={10} />{fmtDue(s.due)}</Badge>}
             {s.priority === 'high' && <Badge tone="orange">High</Badge>}
-            {s.assignee === 'client' && <Badge tone="amber">{names.client.split(' ')[0]} does it</Badge>}
+            {s.assignee && s.assignee !== 'owner' && <Badge tone="amber">{names.of(s.assignee).split(' ')[0]} does it</Badge>}
             {s.scope === 'out' && <Badge>Out of scope</Badge>}
             {s.category && s.type !== 'task' && <Badge>{s.category}</Badge>}
           </div>
+          <SourcePassage s={s} p={p} />
           {s.reason && <div className="mt-1.5 text-xs text-neutral-500 line-clamp-2">{s.reason}</div>}
           <div className="flex items-center gap-1.5 mt-2.5">
-            <Button size="sm" variant="primary" onClick={() => act('accept')}>Accept</Button>
+            <Button size="sm" variant="primary" disabled={sent} onClick={() => act('accept')}>Accept</Button>
             {canEdit && <Button size="sm" onClick={() => setEdit({ title: s.title, value: s.value, due: s.due, priority: s.priority, assignee: s.assignee })}>Edit</Button>}
-            <Button size="sm" variant="ghost" onClick={() => act('ignore')}>Ignore</Button>
+            <Button size="sm" variant="ghost" disabled={sent} onClick={() => act('ignore')}>Ignore</Button>
           </div>
         </>
       )}
@@ -87,21 +103,28 @@ export function SuggestionsInbox() {
     setBusy(true);
     try {
       const cur = stateRef.current.projects.find(x => x.id === p.id);
-      const { count, engine } = await analyze({ state: stateRef.current, project: cur, ids: cur.messages.filter(m => m.text?.trim()).map(m => m.id), mutate, toast });
+      const latest = () => stateRef.current.projects.find(x => x.id === p.id);
+      const { count, engine } = await analyze({ state: stateRef.current, project: cur, ids: cur.messages.filter(m => m.text?.trim()).map(m => m.id), mutate, toast, latest });
       toast(count ? `✨ ${count} new suggestion${count > 1 ? 's' : ''} (${engineName(engine)})` : 'Read the whole chat — nothing new to record');
     } finally { setBusy(false); }
   };
-  const acceptAll = () => mut(q => pending.forEach(s => resolveSuggestion(q, 'owner', s.id, 'accept')));
+  // decide on the suggestions shown right now (ones arriving meanwhile stay pending)
+  const all = decision => { const ids = pending.map(s => s.id); mut(q => ids.forEach(id => resolveSuggestion(q, 'owner', id, decision))); toast(`${decision === 'accept' ? 'Accepted' : 'Ignored'} ${ids.length} suggestion${ids.length > 1 ? 's' : ''}${decision === 'ignore' ? ' — restore any of them below' : ''}`); };
 
   return (
     <div className="space-y-2.5">
       <div className="flex items-center gap-2">
         <Sparkles size={15} className="text-sky-300" />
         <div className="text-sm font-semibold flex-1">Suggestions {pending.length > 0 && <span className="text-neutral-500 font-normal">{pending.length}</span>}</div>
-        {pending.length > 1 && <Button size="xs" variant="ghost" onClick={acceptAll} title="Accept every pending suggestion"><CheckCheck size={13} />All</Button>}
         <Button size="xs" variant="ghost" onClick={rescan} disabled={busy} title="Read the whole conversation again">{busy ? <Spinner size={11} /> : <RefreshCw size={12} />}Re-scan</Button>
       </div>
       <p className="text-xs text-neutral-500">Only you see these. {aiOn(state.settings) ? `Read by ${aiName(state.settings)}.` : 'Read by built-in rules — connect an AI provider in Settings for deeper understanding.'}{unread ? ` Reading ${unread} new message${unread > 1 ? 's' : ''}…` : ''}</p>
+      {pending.length > 1 && (
+        <div className="flex gap-1.5">
+          <Button size="sm" className="flex-1 justify-center" onClick={() => all('accept')} title="Accept every pending suggestion"><CheckCheck size={13} />Accept all {pending.length}</Button>
+          <Button size="sm" variant="ghost" className="flex-1 justify-center" onClick={() => all('ignore')} title="Ignore every pending suggestion (they stay restorable)"><XCircle size={13} />Ignore all</Button>
+        </div>
+      )}
       {pending.length === 0 && <div className="text-sm text-neutral-500 rounded-xl border border-dashed border-white/10 p-4 text-center">All caught up. New messages are read automatically.</div>}
       {pending.map(s => <SuggestionCard key={s.id} s={s} />)}
       {ignored.length > 0 && (

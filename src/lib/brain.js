@@ -3,17 +3,33 @@
 
 import * as ai from './gemini';
 import { extractLocal } from './extract';
-import { prepareSuggestions, log } from './model';
-import { TYPES, isActive } from './meta';
-import { uid, now, overlap, isOverdue, fmtDue } from './util';
+import { prepareSuggestions, addSuggestions, log, liveView, activeMembers, primaryClient, recordReading } from './model';
+import { getBlob } from './blobs';
+import { readFile, docStats } from './docread';
+import { createRedactor } from './redact';
+import { TYPES, isActive, memberRole } from './meta';
+import { uid, now, isOverdue, fmtDue } from './util';
 
-export const peopleOf = (state, p) => ({ ownerName: state.settings.ownerName || 'Owner', clientName: p.invite?.name || p.client || 'Client' });
+/** Who is in the project, for prompts and the built-in rules. */
+export function peopleOf(state, p) {
+  const owner = state.settings.ownerName || 'Owner';
+  const all = new Map((p.members || []).map(m => [m.id, m]));
+  const clientName = primaryClient(p)?.name || p.client || 'Client';
+  return {
+    ownerName: owner, clientName,
+    members: activeMembers(p).map(m => ({ id: m.id, name: m.name, role: memberRole(m) })),
+    /** Display name and role of whoever wrote a message. */
+    nameOf: m => (m.from === 'owner' ? owner : all.get(m.memberId)?.name || clientName),
+    roleOf: m => (m.from === 'owner' ? 'owner' : all.get(m.memberId) ? memberRole(all.get(m.memberId)).toLowerCase() : 'client'),
+  };
+}
 /** True when an AI provider is configured; aiName() is its display name. */
 export const aiOn = s => ai.aiReady(s);
 export const aiName = s => (ai.aiReady(s) ? ai.PROVIDERS[ai.providerOf(s)] : ai.PROVIDERS.rules);
 
 /** Read the given messages and add new suggestions. Returns {count, engine}. */
-export async function analyze({ state, project: p, ids, mutate, toast }) {
+export async function analyze({ state, project, ids, mutate, toast, latest }) {
+  const p = liveView(project);
   const ctx = peopleOf(state, p);
   let ops = null, engine = 'rules';
   if (aiOn(state.settings)) {
@@ -21,12 +37,13 @@ export async function analyze({ state, project: p, ids, mutate, toast }) {
     catch (e) { toast?.(`${aiName(state.settings)}: ${e.message}. Used built-in rules instead.`, 'error'); }
   }
   if (!ops) ops = ids.flatMap(id => { const m = p.messages.find(x => x.id === id); return m ? extractLocal(p, m, ctx) : []; });
-  const fresh = prepareSuggestions(p, ops, engine);
+  // The AI call takes a while: check against the record as it is now (other runs and tabs may have added the same thing),
+  // and once more inside the update itself.
+  const fresh = prepareSuggestions(latest?.() || project, ops, engine);
   mutate(p.id, q => {
-    const known = new Set(q.suggestions.map(s => s.id));
-    fresh.forEach(s => !known.has(s.id) && q.suggestions.push(s));
+    const added = addSuggestions(q, fresh);
     q.messages.forEach(m => { if (ids.includes(m.id)) m.analyzed = true; });
-    if (fresh.length) log(q, 'system', 'suggestions.add', null, { count: fresh.length, engine });
+    if (added.length) log(q, 'system', 'suggestions.add', null, { count: added.length, engine });
   });
   return { count: fresh.length, engine };
 }
@@ -78,7 +95,8 @@ function cleanSummary(raw, p) {
   return out;
 }
 
-export async function refreshMemory({ state, project: p, mutate, toast }) {
+export async function refreshMemory({ state, project, mutate, toast }) {
+  const p = liveView(project);
   let data, engine = 'rules';
   if (aiOn(state.settings)) {
     try { data = cleanSummary(await ai.summarize(state.settings, p, peopleOf(state, p)), p); engine = ai.providerOf(state.settings); }
@@ -90,3 +108,39 @@ export async function refreshMemory({ state, project: p, mutate, toast }) {
   return sum;
 }
 
+
+/**
+ * Read an uploaded file with the provider the owner picked ('gemini' | 'cloudflare'):
+ * extract it in the browser → structured JSON → redact → AI → suggestions + a description on the file record.
+ * vision: also let Gemini see the picture(s) themselves (raw pixels can't be redacted, so this is opt-in).
+ */
+export async function readAttachment({ state, project, message, attachment, provider, vision = false, mutate, latest, onProgress }) {
+  const settings = { ...state.settings, provider };
+  if (!ai.aiReady(settings)) throw new Error(`${ai.PROVIDERS[provider]} is not set up — add it in Settings first`);
+  const blob = await getBlob(attachment.id);
+  if (!blob) throw new Error('No stored copy of this file');
+  onProgress?.('Reading the file in your browser…');
+  const { doc, vision: images } = await readFile(blob, attachment, { onProgress, vision: vision && provider === 'gemini' });
+  if (!doc.blocks.length) throw new Error('No text or structure could be read from this file');
+  onProgress?.(`Sending the structured text to ${ai.PROVIDERS[provider]} (secrets redacted)…`);
+  const p = liveView(project);
+  const res = await ai.readDocument(settings, p, peopleOf(state, p), { doc, message, images: vision ? images : [] });
+  const fresh = prepareSuggestions(latest?.() || project, res.ops, provider, { attachment: attachment.id });
+  // keep what was sent, with secrets masked, so the owner can see exactly what the AI read
+  const R = createRedactor(p);
+  let sent = R.mask(R.deep(doc));
+  if (JSON.stringify(sent).length > 150000) sent = { ...sent, blocks: sent.blocks.slice(0, 400), truncated: true };
+  let added = [];
+  mutate(project.id, q => {
+    added = addSuggestions(q, fresh);
+    if (added.length) log(q, 'system', 'suggestions.add', null, { count: added.length, engine: provider, file: attachment.name });
+    const item = q.items.find(i => i.file?.attachmentId === attachment.id && !i.deleted);
+    if (item) {
+      recordReading(q, 'owner', item.id, {
+        engine: provider, vision: !!(vision && images.length), description: res.description, imageContext: res.imageContext,
+        stats: docStats(doc), suggestions: fresh.length, truncated: res.truncated, doc: sent,
+      });
+    }
+  });
+  return { count: fresh.length, description: res.description, imageContext: res.imageContext, stats: docStats(doc), truncated: res.truncated, doc: sent };
+}

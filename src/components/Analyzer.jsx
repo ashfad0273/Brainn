@@ -1,16 +1,33 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useStore } from '../store';
 import { analyze } from '../lib/brain';
 import { engineName } from '../lib/gemini';
+
+/**
+ * Only one open tab reads new messages: the one holding the "analyzer" lock. Otherwise two owner
+ * tabs would analyse the same message at the same time and propose everything twice.
+ */
+function useLeader() {
+  const [leader, setLeader] = useState(!navigator.locks);
+  useEffect(() => {
+    if (!navigator.locks) return;
+    let release;
+    const held = new Promise(r => { release = r; });
+    navigator.locks.request('project-brain-analyzer', () => { setLeader(true); return held; }).catch(() => {});
+    return () => { release(); setLeader(false); };
+  }, []);
+  return leader;
+}
 
 /** Runs in the owner's tab: reads every new message (batched per project) and proposes records. */
 export default function Analyzer() {
   const { state, stateRef, mutate, toast } = useStore();
   const busy = useRef(new Set());
   const timers = useRef({});
+  const leader = useLeader();
 
   useEffect(() => {
-    if (!state?.settings.autoAnalyze) return;
+    if (!leader || !state?.settings.autoAnalyze) return;
     for (const p of state.projects) {
       if (p.archived || !p.messages.some(m => !m.analyzed && !busy.current.has(m.id))) continue;
       clearTimeout(timers.current[p.id]);
@@ -20,7 +37,8 @@ export default function Analyzer() {
         if (!ids.length) return;
         ids.forEach(i => busy.current.add(i));
         try {
-          const { count, engine } = await analyze({ state: stateRef.current, project: cur, ids, mutate, toast });
+          const latest = () => stateRef.current.projects.find(x => x.id === p.id);
+          const { count, engine } = await analyze({ state: stateRef.current, project: cur, ids, mutate, toast, latest });
           if (count) toast(`✨ ${count} new suggestion${count > 1 ? 's' : ''} in ${cur.name} (${engineName(engine)})`);
         } catch (e) {
           console.error(e);
@@ -29,7 +47,7 @@ export default function Analyzer() {
         }
       }, 900);
     }
-  }, [state, stateRef, mutate, toast]);
+  }, [state, stateRef, mutate, toast, leader]);
 
   return null;
 }

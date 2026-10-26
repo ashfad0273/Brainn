@@ -56,6 +56,8 @@ export function createRedactor(p) {
 
   return {
     text,
+    /** Redact every string inside a structured value (e.g. a document read in the browser). */
+    deep: x => walk(x, text),
     /** Put the real values back (only for structured ops that are stored in the vault). */
     restore: x => walk(x, s => s.replace(PLACEHOLDER, t => toValue.get(t) ?? t)),
     /** Replace placeholders with a mask (for prose the owner reads: answers, drafts, summaries). */

@@ -1,7 +1,10 @@
 import { useState } from 'react';
-import { X, MessageSquareQuote, Pencil, ExternalLink, Download, StickyNote, History, Info } from 'lucide-react';
-import { useP, Button, Field, Input, Textarea, Select, Drawer, StatusBadge, TypeBadge, Secret, Badge } from './ui';
-import { setStatus, editItem, addNote, secretValues, maskText } from '../lib/model';
+import { X, MessageSquareQuote, Pencil, ExternalLink, Download, StickyNote, History, Info, Trash2, ScanText } from 'lucide-react';
+import { useStore } from '../store';
+import { useP, Button, Field, Input, Textarea, Select, Drawer, Modal, StatusBadge, TypeBadge, Secret, Badge } from './ui';
+import ReadFileModal, { ReadingView } from './ReadFile';
+import { readableKind } from '../lib/docread';
+import { setStatus, editItem, addNote, deleteItem, secretValues, maskText } from '../lib/model';
 import { TYPES, STATUS, SENSITIVE_CATS, isActive } from '../lib/meta';
 import { FILE_CATEGORIES } from '../lib/files';
 import { hasFile } from '../lib/blobs';
@@ -15,12 +18,16 @@ export default function ItemDrawer({ id, onClose }) {
   const it = p.items.find(i => i.id === id);
   const [edit, setEdit] = useState(null);
   const [note, setNote] = useState('');
+  const [confirmDel, setConfirmDel] = useState(false);
+  const [reason, setReason] = useState('');
+  const [reading, setReading] = useState(false);
+  const { toast } = useStore();
   const dl = useDownload();
   if (!it) return null;
 
   const T = TYPES[it.type];
   const owner = role === 'owner';
-  const who = by => (by === 'owner' ? names.owner : by === 'client' ? names.client : 'Project brain');
+  const who = by => names.of(by);
   const src = p.messages.find(m => m.id === it.sourceMsg);
   const att = it.file && p.messages.flatMap(m => m.attachments).find(a => a.id === it.file.attachmentId);
   const replaced = it.supersededBy && p.items.find(i => i.id === it.supersededBy);
@@ -41,6 +48,7 @@ export default function ItemDrawer({ id, onClose }) {
         <TypeBadge type={it.type} /><StatusBadge status={it.status} />
         <div className="flex-1" />
         {owner && !edit && <Button size="sm" variant="ghost" onClick={startEdit}><Pencil size={13} />Edit</Button>}
+        {owner && !edit && <Button size="icon" variant="ghost" className="text-neutral-500 hover:text-rose-300" onClick={() => setConfirmDel(true)} title="Delete (created by mistake)"><Trash2 size={15} /></Button>}
         <Button variant="ghost" size="icon" onClick={onClose}><X size={18} /></Button>
       </div>
 
@@ -56,7 +64,7 @@ export default function ItemDrawer({ id, onClose }) {
               <div className="grid grid-cols-3 gap-3">
                 <Field label="Due"><Input type="date" value={edit.due} onChange={set('due')} /></Field>
                 <Field label="Priority"><Select value={edit.priority} onChange={set('priority')}><option value="low">Low</option><option value="normal">Normal</option><option value="high">High</option></Select></Field>
-                <Field label="Who"><Select value={edit.assignee} onChange={set('assignee')}><option value="owner">{names.owner}</option><option value="client">{names.client}</option></Select></Field>
+                <Field label="Who"><Select value={edit.assignee} onChange={set('assignee')}>{names.assignees(edit.assignee).map(([k, n]) => <option key={k} value={k}>{n}</option>)}</Select></Field>
               </div>
             )}
             {it.type === 'requirement' && <Field label="Scope"><Select value={edit.scope} onChange={set('scope')}><option value="in">In scope</option><option value="out">Out of scope</option></Select></Field>}
@@ -74,7 +82,7 @@ export default function ItemDrawer({ id, onClose }) {
             <div className="flex flex-wrap gap-1.5 mt-3">
               {it.due && <Badge tone={isOverdue(it.due) && isActive(it) ? 'rose' : 'neutral'}>Due {fmtDue(it.due)}</Badge>}
               {it.priority !== 'normal' && <Badge tone={it.priority === 'high' ? 'orange' : 'neutral'}>{it.priority} priority</Badge>}
-              {it.assignee && <Badge>{it.assignee === 'owner' ? names.owner : names.client}</Badge>}
+              {it.assignee && <Badge>{names.of(it.assignee)}</Badge>}
               {it.category && <Badge>{SENSITIVE_CATS[it.category] || it.category}</Badge>}
               {it.type === 'requirement' && <Badge>{it.scope === 'out' ? 'Out of scope' : 'In scope'}</Badge>}
             </div>
@@ -92,17 +100,28 @@ export default function ItemDrawer({ id, onClose }) {
                   className={cx('px-2.5 py-1 rounded-lg text-xs ring-1 ring-inset transition', it.status === s ? 'bg-white text-neutral-900 ring-white' : 'ring-white/10 text-neutral-300 hover:bg-white/5')}>{STATUS[s].label}</button>
               ))}
             </div>
-            <p className="text-xs text-neutral-500 mt-2 flex items-center gap-1.5"><Info size={12} />Records are never deleted. Close one by changing its status — the full trail stays below.</p>
+            <p className="text-xs text-neutral-500 mt-2 flex items-center gap-1.5"><Info size={12} />Close a record by changing its status — the full trail stays below. Delete it only if it was created by mistake.</p>
           </div>
         )}
 
         {src && (
           <div>
             <div className="text-xs font-medium text-neutral-400 mb-2">Where it came from</div>
-            <button onClick={() => jumpTo(src.id)} className="w-full text-left rounded-xl bg-white/[.03] ring-1 ring-white/[.06] p-3 hover:bg-white/[.06] transition">
-              <div className="text-xs text-neutral-500 mb-1 flex items-center gap-1.5"><MessageSquareQuote size={12} />{who(src.from)} · {fmtDateTime(src.ts)}</div>
-              <div className="text-sm text-neutral-300 line-clamp-4">{maskText(src.text, secretValues(p)) || src.attachments.map(a => a.name).join(', ')}</div>
+            <button onClick={() => jumpTo(src.id, it.sourceSpan)} className="w-full text-left rounded-xl bg-white/[.03] ring-1 ring-white/[.06] p-3 hover:bg-white/[.06] transition">
+              <div className="text-xs text-neutral-500 mb-1 flex items-center gap-1.5"><MessageSquareQuote size={12} />{names.msg(src)} · {fmtDateTime(src.ts)}{it.sourceSpan && <span className="ml-auto text-amber-300/80">exact words ↗</span>}</div>
+              {it.sourceSpan && src.text
+                ? <div className="text-sm text-neutral-200 line-clamp-4"><mark className="hl-mark">{maskText(src.text.slice(it.sourceSpan.start, it.sourceSpan.end), secretValues(p))}</mark></div>
+                : <div className="text-sm text-neutral-300 line-clamp-4">{maskText(src.text, secretValues(p)) || src.attachments.map(a => a.name).join(', ')}</div>}
+              {it.sourceQuote && <div className="text-sm text-neutral-300 mt-1.5 border-l-2 border-amber-400/40 pl-2">From the file: “{it.sourceQuote}”</div>}
             </button>
+          </div>
+        )}
+
+        {it.type === 'file' && att && (it.reading || (owner && hasFile(att) && readableKind(att))) && (
+          <div>
+            <div className="text-xs font-medium text-neutral-400 mb-2 flex items-center gap-1.5"><ScanText size={12} />What's inside{it.reading && <span className="text-neutral-600">· read {fmtDateTime(it.reading.ts)}</span>}</div>
+            {it.reading ? (owner ? <ReadingView r={it.reading} /> : it.reading.description && <p className="text-sm text-neutral-300">{it.reading.description}</p>) : <p className="text-sm text-neutral-500">Not read yet. The AI can read its text, tables and pictures and propose records.</p>}
+            {owner && src && hasFile(att) && readableKind(att) && <Button size="sm" className="mt-3" onClick={() => setReading(true)}><ScanText size={13} />{it.reading ? 'Read again' : 'Read with AI'}</Button>}
           </div>
         )}
 
@@ -147,6 +166,8 @@ export default function ItemDrawer({ id, onClose }) {
                   {h.action === 'status' && <>{who(h.by)} changed status: <b className="font-medium">{STATUS[h.from]?.label}</b> → <b className="font-medium">{STATUS[h.to]?.label}</b></>}
                   {h.action === 'edit' && <>{who(h.by)} changed {FIELD_LABEL[h.field] || h.field}{!secretField(h.field) && h.field !== 'detail' && <>: <span className="text-neutral-500 line-through">{String(h.from || '—')}</span> → {String(h.to || '—')}</>}{secretField(h.field) && owner && <> (previous: <Secret value={String(h.from || '')} copy={false} />)</>}</>}
                   {h.action === 'note' && <>{who(h.by)} added a note</>}
+                  {h.action === 'read' && <>{who(h.by)} had the file read{h.note ? ` — ${h.note}` : ''}</>}
+                  {h.action === 'deleted' && <>{who(h.by)} deleted it</>}
                 </div>
                 <div className="text-xs text-neutral-500">{fmtDateTime(h.ts)}{h.note && h.action !== 'note' ? ` · ${h.note}` : ''}{h.msg && h.action !== 'created' && <button onClick={() => jumpTo(h.msg)} className="ml-2 text-sky-400 hover:underline">message</button>}</div>
               </li>
@@ -154,6 +175,17 @@ export default function ItemDrawer({ id, onClose }) {
           </ol>
         </div>
       </div>
+      {reading && src && att && <ReadFileModal message={src} attachment={att} onClose={() => setReading(false)} />}
+      {confirmDel && (
+        <Modal title={`Delete this ${T.label.toLowerCase()}?`} sub="Only for records created by mistake. To close a real one, change its status instead (e.g. cancelled, dropped)." onClose={() => setConfirmDel(false)}
+          footer={<><Button variant="ghost" onClick={() => setConfirmDel(false)}>Keep it</Button><Button variant="danger" onClick={() => { mut(q => deleteItem(q, 'owner', it.id, reason.trim())); toast(`Deleted “${it.title}”`); onClose(); }}><Trash2 size={14} />Delete</Button></>}>
+          <div className="space-y-3">
+            <div className="rounded-xl bg-white/[.03] p-3 text-sm">{it.title}</div>
+            <p className="text-sm text-neutral-400">It disappears from every list, the chat links, search and the AI's view, in every open tab. The project log keeps a line saying it was deleted.</p>
+            <Field label="Why? (optional)"><Input value={reason} onChange={e => setReason(e.target.value)} placeholder="e.g. Duplicate, created by mistake" /></Field>
+          </div>
+        </Modal>
+      )}
     </Drawer>
   );
 }

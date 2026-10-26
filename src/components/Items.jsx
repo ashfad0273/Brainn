@@ -42,7 +42,7 @@ export function ItemRow({ it, showType }) {
           {it.status !== T.initial && <StatusBadge status={it.status} />}
           {it.due && <Badge tone={isOverdue(it.due) && !closed ? 'rose' : 'neutral'}><Calendar size={10} />{fmtDue(it.due)}</Badge>}
           {it.priority === 'high' && <Badge tone="orange"><Flag size={10} />High</Badge>}
-          {it.type === 'task' && it.assignee === 'client' && <Badge tone="amber">Waiting on {names.client.split(' ')[0]}</Badge>}
+          {it.type === 'task' && it.assignee && it.assignee !== 'owner' && <Badge tone="amber">Waiting on {names.of(it.assignee).split(' ')[0]}</Badge>}
           {it.type === 'requirement' && it.versions.length > 1 && <Badge tone="sky" title="Changed during the conversation">v{it.versions.length}</Badge>}
           {it.type === 'requirement' && it.scope === 'out' && <Badge>Out of scope</Badge>}
           {it.notes.length > 0 && <Badge>{it.notes.length} note{it.notes.length > 1 ? 's' : ''}</Badge>}
@@ -50,7 +50,7 @@ export function ItemRow({ it, showType }) {
         </div>
       </div>
       {it.sourceMsg && (
-        <button type="button" title="Jump to the message where this came from" onClick={e => { e.stopPropagation(); jumpTo(it.sourceMsg); }}
+        <button type="button" title="Jump to the message where this came from" onClick={e => { e.stopPropagation(); jumpTo(it.sourceMsg, it.sourceSpan); }}
           className="opacity-0 group-hover:opacity-100 p-1 rounded-md text-neutral-500 hover:text-white hover:bg-white/5 transition"><MessageSquareQuote size={15} /></button>
       )}
     </div>
@@ -101,7 +101,7 @@ export function ItemFormModal({ type: initialType = 'task', sourceMsg = null, in
           <div className="grid grid-cols-3 gap-3">
             <Field label="Due"><Input type="date" value={d.due} onChange={set('due')} /></Field>
             <Field label="Priority"><Select value={d.priority} onChange={set('priority')}><option value="low">Low</option><option value="normal">Normal</option><option value="high">High</option></Select></Field>
-            <Field label="Who"><Select value={d.assignee} onChange={set('assignee')}><option value="owner">{names.owner}</option><option value="client">{names.client}</option></Select></Field>
+            <Field label="Who"><Select value={d.assignee} onChange={set('assignee')}>{names.assignees(d.assignee).map(([k, n]) => <option key={k} value={k}>{n}</option>)}</Select></Field>
           </div>
         )}
         {d.type === 'requirement' && <Field label="Scope"><Select value={d.scope} onChange={set('scope')}><option value="in">In scope</option><option value="out">Out of scope</option></Select></Field>}
@@ -247,7 +247,7 @@ export function DecisionsView() {
                 </div>
                 <div className="text-xs text-neutral-500 mt-1">{fmtDateTime(d.createdAt)}</div>
                 {src?.text && (
-                  <button onClick={e => { e.stopPropagation(); jumpTo(src.id); }} className="mt-3 block text-left text-sm text-neutral-400 border-l-2 border-violet-400/40 pl-3 italic hover:text-neutral-200">“{src.text}”</button>
+                  <button onClick={e => { e.stopPropagation(); jumpTo(src.id, d.sourceSpan); }} className="mt-3 block text-left text-sm text-neutral-400 border-l-2 border-violet-400/40 pl-3 italic hover:text-neutral-200 line-clamp-4">“{d.sourceSpan ? src.text.slice(d.sourceSpan.start, d.sourceSpan.end) : src.text}”</button>
                 )}
               </div>
             </li>
@@ -327,7 +327,7 @@ export function FilesView() {
                 <div className="flex items-center gap-1 mt-2 -ml-1">
                   {isLink && <a href={f.value} target="_blank" rel="noreferrer" className="text-xs px-2 py-1 rounded-md hover:bg-white/5 text-sky-300 flex items-center gap-1"><ExternalLink size={12} />Open</a>}
                   {hasFile(a) && <button onClick={() => dl(a)} className="text-xs px-2 py-1 rounded-md hover:bg-white/5 text-neutral-300 flex items-center gap-1"><Download size={12} />Download</button>}
-                  {f.sourceMsg && <button onClick={() => jumpTo(f.sourceMsg)} className="text-xs px-2 py-1 rounded-md hover:bg-white/5 text-neutral-400 flex items-center gap-1"><MessageSquareQuote size={12} />In chat</button>}
+                  {f.sourceMsg && <button onClick={() => jumpTo(f.sourceMsg, f.sourceSpan)} className="text-xs px-2 py-1 rounded-md hover:bg-white/5 text-neutral-400 flex items-center gap-1"><MessageSquareQuote size={12} />In chat</button>}
                 </div>
               </div>
             </div>

@@ -1,21 +1,48 @@
-import { useState } from 'react';
-import { Plus, Search, Settings as SettingsIcon, FolderOpen, Layers, MessageSquare, ListTodo, Sparkles, Archive, Lock, Brain } from 'lucide-react';
+import { useRef, useState } from 'react';
+import { Plus, Search, Settings as SettingsIcon, FolderOpen, Layers, MessageSquare, ListTodo, Sparkles, Archive, Lock, Brain, ImagePlus, X, Users } from 'lucide-react';
 import { useStore } from '../store';
 import { Button, Modal, Field, Input, Textarea, Select, Empty } from './ui';
 import SettingsModal from './Settings';
 import SearchModal from './Search';
-import { newProject, updateMeta, secretValues, maskText } from '../lib/model';
+import { newProject, updateMeta, secretValues, maskText, liveItems, liveView, activeMembers, primaryClient } from '../lib/model';
+import { putBlob, isQuotaError } from '../lib/blobs';
+import { ProjectAvatar, ProjectCover } from './ProjectArt';
 import { PROJECT_COLORS, isActive } from '../lib/meta';
 import { aiOn, aiName } from '../lib/brain';
 import { cx, fmtRel, uid, now } from '../lib/util';
 
 const TAB_FOR_TYPE = { task: 'tasks', requirement: 'requirements', decision: 'decisions', sensitive: 'vault', file: 'files', question: 'memory', risk: 'memory' };
 
+/** Picks an image, stores it as a blob and returns a small reference ({ id, stored, name, mime }). */
+function ImagePick({ label, value, onChange, wide }) {
+  const { toast } = useStore();
+  const ref = useRef();
+  const pick = async file => {
+    if (!file) return;
+    if (!file.type.startsWith('image/')) return toast('Choose an image file', 'error');
+    const id = uid('img_');
+    try { await putBlob(id, file); } catch (e) { return toast(isQuotaError(e) ? 'Browser storage is full — image not saved' : 'Could not store the image: ' + e.message, 'error'); }
+    onChange({ id, stored: true, name: file.name, mime: file.type, size: file.size });
+  };
+  return (
+    <div>
+      <div className="text-xs font-medium text-neutral-400 mb-1">{label}</div>
+      <input ref={ref} type="file" accept="image/*" hidden onChange={e => { pick(e.target.files[0]); e.target.value = ''; }} />
+      <div className="flex items-center gap-2">
+        <button type="button" onClick={() => ref.current.click()} className={cx('rounded-xl ring-1 ring-inset ring-white/10 hover:ring-white/25 bg-[#111] grid place-items-center text-neutral-500 overflow-hidden', wide ? 'h-16 flex-1' : 'h-16 w-16')}>
+          {value ? <span className="text-xs text-neutral-300 px-2 truncate">{value.name}</span> : <ImagePlus size={18} />}
+        </button>
+        {value && <Button variant="ghost" size="iconSm" onClick={() => onChange(null)} title="Remove"><X size={14} /></Button>}
+      </div>
+    </div>
+  );
+}
+
 export function ProjectFormModal({ project, onClose, spaceId }) {
   const { state, update, mutate, toast } = useStore();
   const [d, setD] = useState(project
-    ? { name: project.name, client: project.client, description: project.description, color: project.color, spaceId: project.spaceId || '' }
-    : { name: '', client: '', description: '', color: PROJECT_COLORS[state.projects.length % PROJECT_COLORS.length], spaceId: spaceId || state.spaces[0]?.id || '' });
+    ? { name: project.name, client: project.client, description: project.description, color: project.color, spaceId: project.spaceId || '', cover: project.cover || null, avatar: project.avatar || null }
+    : { name: '', client: '', description: '', color: PROJECT_COLORS[state.projects.length % PROJECT_COLORS.length], spaceId: spaceId || state.spaces[0]?.id || '', cover: null, avatar: null });
   const set = k => e => setD(x => ({ ...x, [k]: e.target.value }));
   const save = () => {
     if (!d.name.trim()) return toast('Give the project a name', 'error');
@@ -35,6 +62,14 @@ export function ProjectFormModal({ project, onClose, spaceId }) {
         <Field label="Project name"><Input autoFocus value={d.name} onChange={set('name')} placeholder="e.g. Nova Café Website" /></Field>
         <Field label="Client"><Input value={d.client} onChange={set('client')} placeholder="Client or company name" /></Field>
         <Field label="What is it? (helps the brain)"><Textarea value={d.description} onChange={set('description')} placeholder="One or two lines about the project" /></Field>
+        <div className="flex gap-3">
+          <ImagePick label="Profile picture" value={d.avatar} onChange={v => setD(x => ({ ...x, avatar: v }))} />
+          <div className="flex-1"><ImagePick wide label="Cover image" value={d.cover} onChange={v => setD(x => ({ ...x, cover: v }))} /></div>
+        </div>
+        <ProjectCover p={{ ...d, name: d.name || 'P' }} className="h-20 rounded-xl">
+          <ProjectAvatar p={{ ...d, name: d.name || 'P' }} className="absolute left-3 bottom-3 w-10 h-10 shadow-lg" />
+          <span className="absolute right-3 bottom-2 text-[11px] text-white/70">Preview — either image fills in for the other</span>
+        </ProjectCover>
         <div className="grid grid-cols-2 gap-3">
           <Field label="Space"><Select value={d.spaceId} onChange={set('spaceId')}><option value="">No space</option>{state.spaces.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}</Select></Field>
           <Field label="Colour">
@@ -47,23 +82,27 @@ export function ProjectFormModal({ project, onClose, spaceId }) {
 }
 
 function ProjectCard({ p, i }) {
-  const openTasks = p.items.filter(x => x.type === 'task' && isActive(x)).length;
+  const items = liveItems(p);
+  const members = activeMembers(p);
+  const openTasks = items.filter(x => x.type === 'task' && isActive(x)).length;
   const pending = p.suggestions.filter(s => s.state === 'pending').length;
   const last = p.messages[p.messages.length - 1];
-  const done = p.items.filter(x => x.type === 'task' && x.status === 'done').length;
-  const total = p.items.filter(x => x.type === 'task' && x.status !== 'cancelled').length;
+  const done = items.filter(x => x.type === 'task' && x.status === 'done').length;
+  const total = items.filter(x => x.type === 'task' && x.status !== 'cancelled').length;
   return (
     <a href={`#/p/${p.id}/chat`} className="anim-up group block rounded-2xl overflow-hidden bg-[#181818] ring-1 ring-white/[.06] hover:ring-white/20 hover:-translate-y-1 transition duration-300" style={{ animationDelay: i * 50 + 'ms' }}>
-      <div className="h-24 relative" style={{ background: `linear-gradient(135deg, ${p.color}55, ${p.color}08 70%)` }}>
-        <div className="absolute left-5 bottom-0 translate-y-1/2 w-12 h-12 rounded-2xl grid place-items-center text-lg font-bold text-white shadow-lg" style={{ background: p.color }}>{p.name[0]}</div>
-        <div className="absolute top-3 right-3 flex gap-1.5">
-          {p.archived && <span className="text-[11px] px-2 py-0.5 rounded-full bg-black/40 text-amber-200">Archived</span>}
-          {p.invite && <span className="text-[11px] px-2 py-0.5 rounded-full bg-black/40 text-emerald-200">Client invited</span>}
-        </div>
+      <div className="relative">
+        <ProjectCover p={p} className="h-24">
+          <div className="absolute top-3 right-3 flex gap-1.5">
+            {p.archived && <span className="text-[11px] px-2 py-0.5 rounded-full bg-black/40 text-amber-200">Archived</span>}
+            {members.length > 0 && <span className="text-[11px] px-2 py-0.5 rounded-full bg-black/40 text-emerald-200 flex items-center gap-1"><Users size={11} />{members.length} member{members.length > 1 ? 's' : ''}</span>}
+          </div>
+        </ProjectCover>
+        <ProjectAvatar p={p} className="absolute left-5 bottom-0 translate-y-1/2 w-12 h-12 shadow-lg ring-2 ring-[#181818]" rounded="rounded-2xl" text="text-lg" />
       </div>
       <div className="p-5 pt-8">
         <h3 className="font-semibold text-lg leading-tight group-hover:text-white">{p.name}</h3>
-        <p className="text-sm text-neutral-500 mt-0.5">{p.invite?.name || p.client || 'No client yet'}</p>
+        <p className="text-sm text-neutral-500 mt-0.5 truncate">{p.client || primaryClient(p)?.name || 'No client yet'}</p>
         {last && <p className="text-sm text-neutral-400 mt-3 line-clamp-2 min-h-[2.5rem]">{maskText(last.text, secretValues(p)) || last.attachments.map(a => a.name).join(', ')}</p>}
         <div className="h-1 bg-white/5 rounded-full overflow-hidden mt-4"><div className="h-full rounded-full" style={{ width: (total ? (done / total) * 100 : 0) + '%', background: p.color }} /></div>
         <div className="flex items-center gap-4 mt-3 text-xs text-neutral-500">
@@ -165,7 +204,7 @@ export default function Home() {
       {modal === 'project' && <ProjectFormModal spaceId={space === 'all' ? undefined : space} onClose={() => setModal(null)} />}
       {modal === 'settings' && <SettingsModal onClose={() => setModal(null)} />}
       {modal === 'search' && (
-        <SearchModal projects={state.projects} names={{ owner: state.settings.ownerName }} onClose={() => setModal(null)}
+        <SearchModal projects={state.projects.map(liveView)} names={{ owner: state.settings.ownerName }} onClose={() => setModal(null)}
           onPick={r => { setModal(null); location.hash = r.kind === 'message' ? `#/p/${r.p.id}/chat/m/${r.id}` : r.kind === 'item' ? `#/p/${r.p.id}/${TAB_FOR_TYPE[r.it.type]}/i/${r.id}` : `#/p/${r.p.id}/memory`; }} />
       )}
       {modal === 'space' && (

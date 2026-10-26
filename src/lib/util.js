@@ -84,3 +84,24 @@ export function flash(id) {
   return true;
 }
 export const secureDigits = n => Array.from(crypto.getRandomValues(new Uint8Array(n)), b => b % 10).join('');
+
+/** Short stable id from a string (FNV-1a, two rounds). Same input → same id in every tab. */
+export function hashId(s) {
+  let a = 0x811c9dc5, b = 0x01000193 ^ 0x5bd1e995;
+  for (let i = 0; i < s.length; i++) {
+    const c = s.charCodeAt(i);
+    a = Math.imul(a ^ c, 0x01000193);
+    b = Math.imul(b ^ c, 0x5bd1e995) ^ (b >>> 15);
+  }
+  return (a >>> 0).toString(36) + (b >>> 0).toString(36);
+}
+
+/** Scroll to an element and play the highlight animation, without the generic id lookup. */
+export function flashEl(el, block = 'center') {
+  if (!el) return false;
+  el.scrollIntoView({ behavior: 'smooth', block });
+  el.classList.remove('flash');
+  void el.offsetWidth;
+  el.classList.add('flash');
+  return true;
+}

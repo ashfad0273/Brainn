@@ -64,9 +64,8 @@ const CRED_WORD = /^(pass(?:word|wd|code)?|pwd|pw|pswd|pin|otp|token|login|usern
 const CONTEXT_SKIP = /^(new|the|my|our|your|a|an|updated|current|old|latest|and|or|is|hey|hi|hello|pls|please|here'?s|heres|btw|also|ty|thx|thanks|ok|so|i|we|use|its|it's)$/i;
 
 /** Find credentials, contact details, money and IDs in one clause. */
-function sensitives(c, ctx, from, active) {
+function sensitives(c, who, active) {
   const out = [], used = new Set();
-  const who = from === 'owner' ? ctx.ownerName : ctx.clientName;
   const poss = /\b(my|mine|me)\b/i.test(c) ? `${who}'s ` : /\bour\b/i.test(c) ? `${who}'s team ` : '';
   const add = (category, title, value, reason) => {
     used.add(value);
@@ -155,12 +154,13 @@ export function extractLocal(p, m, ctx) {
 
   for (const url of text.match(URL_RE) || []) {
     const u = trimVal(url);
-    push({ op: 'create', type: 'file', title: linkTitle(u), value: u, category: categorizeLink(u), reason: 'Link shared in chat' });
+    push({ op: 'create', type: 'file', quote: u, title: linkTitle(u), value: u, category: categorizeLink(u), reason: 'Link shared in chat' });
   }
 
   for (const c of splitClauses(text)) {
-    const sens = sensitives(c, ctx, m.from, active);
-    sens.forEach(push);
+    const add = o => push({ quote: c, ...o }); // the clause is the exact passage the record came from
+    const sens = sensitives(c, ctx.nameOf ? ctx.nameOf(m) : m.from === 'owner' ? ctx.ownerName : ctx.clientName, active);
+    sens.forEach(add);
     if (sens.length) continue;
 
     const e = expand(c.replace(URL_RE, ' ').replace(EMAIL_RE, ' ')).toLowerCase().replace(/\s+/g, ' ').trim();
@@ -170,20 +170,20 @@ export function extractLocal(p, m, ctx) {
 
     if (CUE.done.test(e)) {
       const t = best(tasks, e);
-      if (t) { push({ op: 'status', type: 'task', targetId: t.id, status: 'done', title: t.title, reason: `“${c}”` }); continue; }
+      if (t) { add({ op: 'status', type: 'task', targetId: t.id, status: 'done', title: t.title, reason: `“${c}”` }); continue; }
       if (fromOwner) continue;
     }
     if (CUE.cancel.test(e)) {
       const t = best([...tasks, ...reqs], e);
-      if (t) { push({ op: 'status', type: t.type, targetId: t.id, status: t.type === 'task' ? 'cancelled' : 'dropped', title: t.title, reason: `“${c}”` }); continue; }
+      if (t) { add({ op: 'status', type: t.type, targetId: t.id, status: t.type === 'task' ? 'cancelled' : 'dropped', title: t.title, reason: `“${c}”` }); continue; }
     }
     if (CUE.change.test(e)) {
       const r = best(reqs, e, 0.34);
       if (r) {
         const title = cleanTitle(c.split(/,\s*/)[0]);
-        push({ op: 'update', type: 'requirement', targetId: r.id, title, detail: c.trim(), reason: `Changed in conversation — was “${r.title}”` });
+        add({ op: 'update', type: 'requirement', targetId: r.id, title, detail: c.trim(), reason: `Changed in conversation — was “${r.title}”` });
         tasks.filter(t => overlap(e, t.title).inter >= Math.min(2, keywords(t.title).length) && overlap(e, t.title).score >= 0.34)
-          .forEach(t => push({ op: 'note', type: 'task', targetId: t.id, title: `Requirement changed: ${title}`, reason: 'Related requirement changed — check this task' }));
+          .forEach(t => add({ op: 'note', type: 'task', targetId: t.id, title: `Requirement changed: ${title}`, reason: 'Related requirement changed — check this task' }));
         continue;
       }
     }
@@ -194,20 +194,20 @@ export function extractLocal(p, m, ctx) {
         const prev = [...p.messages].reverse().find(x => x.ts < m.ts && x.from !== m.from && x.text?.trim());
         title = prev ? `Approved: ${cleanTitle(prev.text, 70)}` : title;
       }
-      push({ op: 'create', type: 'decision', title, detail: c.trim(), reason: 'Agreement in conversation' });
+      add({ op: 'create', type: 'decision', title, detail: c.trim(), reason: 'Agreement in conversation' });
       continue;
     }
     if (isTask) {
       const self = CUE.self.test(e) && !/\b(can|could|would|will) you\b/.test(e);
-      push({ op: 'create', type: 'task', title: cleanTitle(c), due: parseDue(e), priority, assignee: self ? m.from : other, reason: 'Request in conversation' });
+      add({ op: 'create', type: 'task', title: cleanTitle(c), due: parseDue(e), priority, assignee: self ? m.memberId || m.from : other, reason: 'Request in conversation' });
       continue;
     }
     if (CUE.req.test(e) || PREFIX.test(c)) {
-      push({ op: 'create', type: 'requirement', title: cleanTitle(c), scope: CUE.out.test(e) ? 'out' : 'in', reason: 'Preference or constraint stated' });
+      add({ op: 'create', type: 'requirement', title: cleanTitle(c), scope: CUE.out.test(e) ? 'out' : 'in', reason: 'Preference or constraint stated' });
       continue;
     }
-    if (/\?\s*$/.test(c)) { push({ op: 'create', type: 'question', title: cleanTitle(c, 120) + '?', reason: 'Question asked in chat' }); continue; }
-    if (CUE.risk.test(e)) push({ op: 'create', type: 'risk', title: cleanTitle(c), priority, reason: 'Possible risk mentioned' });
+    if (/\?\s*$/.test(c)) { add({ op: 'create', type: 'question', title: cleanTitle(c, 120) + '?', reason: 'Question asked in chat' }); continue; }
+    if (CUE.risk.test(e)) add({ op: 'create', type: 'risk', title: cleanTitle(c), priority, reason: 'Possible risk mentioned' });
   }
   return ops;
 }

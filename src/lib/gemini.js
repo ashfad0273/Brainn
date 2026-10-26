@@ -36,12 +36,14 @@ export function parseJSON(t) {
   }
 }
 
-async function callGemini(settings, prompt, temperature) {
+/** images: [{ mime, data (base64) }] — only sent when the owner explicitly lets Gemini see a file. */
+async function callGemini(settings, prompt, temperature, images = []) {
   if (!settings.apiKey) throw new Error('no Gemini API key');
+  const parts = [{ text: prompt }, ...images.map(im => ({ inline_data: { mime_type: im.mime, data: im.data } }))];
   const r = await fetch(`${BASE}/models/${encodeURIComponent(modelId(settings.model))}:generateContent`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'x-goog-api-key': settings.apiKey.trim() },
-    body: JSON.stringify({ contents: [{ role: 'user', parts: [{ text: prompt }] }], generationConfig: { temperature, responseMimeType: 'application/json' } }),
+    body: JSON.stringify({ contents: [{ role: 'user', parts }], generationConfig: { temperature, responseMimeType: 'application/json' } }),
   });
   const j = await r.json().catch(() => ({}));
   if (!r.ok) throw new Error(j.error?.message || `HTTP ${r.status}`);
@@ -74,10 +76,11 @@ async function callCloudflare(settings, prompt, temperature, schema) {
 }
 
 /** Ask the configured provider for JSON. Retries once when the reply isn't valid JSON. */
-export async function generate(settings, prompt, { temperature = 0.2, schema } = {}) {
+export async function generate(settings, prompt, { temperature = 0.2, schema, images } = {}) {
   const pv = providerOf(settings);
+  if (images?.length && pv !== 'gemini') throw new Error('only Gemini can look at images');
   const once = async text => {
-    const out = pv === 'cloudflare' ? await callCloudflare(settings, text, temperature, schema) : await callGemini(settings, text, temperature);
+    const out = pv === 'cloudflare' ? await callCloudflare(settings, text, temperature, schema) : await callGemini(settings, text, temperature, images);
     return out && typeof out === 'object' ? out : parseJSON(out ?? '');
   };
   try { return await once(prompt); } catch (e) {
@@ -102,7 +105,7 @@ export async function testConnection(settings) {
 /* ---------- JSON schemas (Workers AI JSON mode) ---------- */
 
 const str = { type: 'string' };
-const OP = { type: 'object', properties: Object.fromEntries(['msg', 'op', 'type', 'targetId', 'title', 'detail', 'value', 'category', 'status', 'priority', 'due', 'assignee', 'scope', 'replaces', 'reason'].map(k => [k, str])), required: ['op', 'type', 'title'] };
+const OP = { type: 'object', properties: Object.fromEntries(['msg', 'op', 'type', 'targetId', 'title', 'detail', 'value', 'category', 'status', 'priority', 'due', 'assignee', 'scope', 'replaces', 'reason', 'quote'].map(k => [k, str])), required: ['op', 'type', 'title'] };
 const POINTS = { type: 'array', items: { type: 'object', properties: { text: str, refs: { type: 'array', items: str } }, required: ['text'] } };
 const OPS_SCHEMA = { type: 'object', properties: { ops: { type: 'array', items: OP } }, required: ['ops'] };
 const SUMMARY_SCHEMA = { type: 'object', properties: { headline: str, overview: str, ...Object.fromEntries(['keyFacts', 'done', 'inProgress', 'next', 'openQuestions', 'risks', 'recentChanges'].map(k => [k, POINTS])) }, required: ['headline', 'overview'] };
@@ -110,11 +113,14 @@ const ASK_SCHEMA = { type: 'object', properties: { answer: str, refs: { type: 'a
 
 /* ---------- context builders (always redacted) ---------- */
 
-const who = (ctx, from) => (from === 'owner' ? `${ctx.ownerName} (owner)` : `${ctx.clientName} (client)`);
+const who = (ctx, m) => `${ctx.nameOf(m)} (${ctx.roleOf(m)})`;
+/** The people line of a prompt: owner, members with their roles, and how to assign work to them. */
+const people = ctx => `PEOPLE: owner = ${ctx.ownerName}${ctx.members.length ? '; members: ' + ctx.members.map(m => `${m.name} (${m.role}, id ${m.id})`).join(', ') : `; client = ${ctx.clientName}`}
+assignee = "owner", "client"${ctx.members.length ? ', or a member id' : ''} (who has to do it).`;
 function chat(p, ctx, R, b, include = [], limit = b.chat) {
   const keep = new Set(include);
   return p.messages.filter((m, i) => i >= p.messages.length - limit || keep.has(m.id)).map(m => ({
-    id: m.id, from: who(ctx, m.from), at: new Date(m.ts).toISOString().slice(0, 16).replace('T', ' '),
+    id: m.id, from: who(ctx, m), at: new Date(m.ts).toISOString().slice(0, 16).replace('T', ' '),
     text: R.text((m.text || '').slice(0, b.text)),
     ...(m.attachments?.length ? { files: m.attachments.map(a => a.name) } : {}),
     ...(m.voice ? { voice_note_transcript: true } : {}),
@@ -173,11 +179,12 @@ RULES
 - Skip greetings, thanks and small talk.
 - Titles: short and clear, in English, shorthand expanded, imperative for tasks, max ~12 words.
 - msg = id of the message the record comes from. priority = high only when urgent.
+- quote = the exact words of that message the record comes from, copied character for character (a phrase or sentence, not the whole message). Keep [SECRET_n] placeholders as they are.
 
-Return ONLY this JSON object, nothing else: {"ops":[{"msg":"","op":"create|update|status|note","type":"","targetId":"","title":"","detail":"","value":"","category":"","status":"","priority":"low|normal|high","due":"","assignee":"","scope":"","replaces":"","reason":""}]}
+Return ONLY this JSON object, nothing else: {"ops":[{"msg":"","quote":"","op":"create|update|status|note","type":"","targetId":"","title":"","detail":"","value":"","category":"","status":"","priority":"low|normal|high","due":"","assignee":"","scope":"","replaces":"","reason":""}]}
 Return {"ops":[]} when there is nothing to record.
 
-PEOPLE: owner = ${ctx.ownerName}; client = ${ctx.clientName}
+${people(ctx)}
 PROJECT: ${p.name}${p.description ? ' — ' + R.text(p.description) : ''}
 EXISTING RECORDS: ${JSON.stringify(records(p, R, b))}
 ANALYSE: ${JSON.stringify(ids)}
@@ -187,7 +194,9 @@ CHAT: ${JSON.stringify(chat(p, ctx, R, b, ids))}`;
 }
 
 /** Only an op's value (what goes into the vault) gets the real secret back; titles and reasons stay masked. */
-const unredactOps = (R, ops) => (Array.isArray(ops) ? ops : []).filter(o => o && typeof o === 'object').map(o => ({ ...R.mask(o), value: R.restore(o.value ?? '') }));
+/** quoteRaw (the quote with real values) is only used locally to find the passage in the message; it is never stored. */
+const unredactOps = (R, ops) => (Array.isArray(ops) ? ops : []).filter(o => o && typeof o === 'object')
+  .map(o => ({ ...R.mask(o), value: R.restore(o.value ?? ''), quoteRaw: R.restore(String(o.quote ?? '')) }));
 
 /* ---------- memory ---------- */
 
@@ -243,9 +252,11 @@ ${SCHEMA}
 
 Return ONLY this JSON object, nothing else:
 {"answer":"short plain text for the owner (bullets with • allowed)","refs":["ids of records or messages used"],
- "ops":[{"msg":"","op":"create|update|status|note","type":"","targetId":"","title":"","detail":"","value":"","category":"","status":"","priority":"low|normal|high","due":"","assignee":"owner|client","scope":"","replaces":"","reason":"why"}],
+ "ops":[{"msg":"","quote":"exact words from that message, if any","op":"create|update|status|note","type":"","targetId":"","title":"","detail":"","value":"","category":"","status":"","priority":"low|normal|high","due":"","assignee":"owner|client|member id","scope":"","replaces":"","reason":"why"}],
  "draft":""}
 Use "ops":[] and "draft":"" when not needed.
+
+${people(ctx)}
 
 PROJECT: ${p.name}${p.description ? ' — ' + R.text(p.description) : ''}
 EARLIER IN THIS CONVERSATION WITH YOU: ${JSON.stringify(history.slice(-4).map(a => ({ q: R.text(a.question), a: R.text(a.answer.slice(0, 400)) })))}
@@ -254,4 +265,65 @@ RECORDS: ${JSON.stringify(records(p, R, b))}
 CHAT: ${JSON.stringify(chat(p, ctx, R, b))}`;
   const out = await generate(settings, prompt, { temperature: 0.25, schema: ASK_SCHEMA });
   return { ...R.mask(out), ops: unredactOps(R, out.ops) };
+}
+
+/* ---------- reading an uploaded file ---------- */
+
+const DOC_SCHEMA = { type: 'object', properties: { description: str, imageContext: str, ops: { type: 'array', items: OP } }, required: ['description'] };
+/** How much of the document JSON fits: Workers AI text models have a much smaller context. */
+const docBudget = s => (providerOf(s) === 'cloudflare' ? 14000 : 300000);
+
+/** Keep whole blocks until the budget is used up, so the JSON stays valid and readable. */
+function fitDoc(doc, max) {
+  const out = { ...doc, blocks: [] };
+  let used = JSON.stringify({ ...doc, blocks: [] }).length;
+  for (const b of doc.blocks || []) {
+    const n = JSON.stringify(b).length + 1;
+    if (used + n > max) { out.truncated = true; out.blocksLeftOut = (doc.blocks.length - out.blocks.length); break; }
+    out.blocks.push(b);
+    used += n;
+  }
+  return out;
+}
+
+/**
+ * Read one uploaded file. `doc` is the structured JSON built in the browser (lib/docread): headings,
+ * paragraphs with bold/underlined phrases, lists, tables and images (OCR text). It is redacted here,
+ * like everything else sent. `images` (Gemini only) are the raw pictures the owner chose to share.
+ * → { description, imageContext, ops } with ops tied to the message the file came with.
+ */
+export async function readDocument(settings, p, ctx, { doc, message, images = [] }) {
+  const R = createRedactor(p), b = budget(settings);
+  const safe = fitDoc(R.deep(doc), docBudget(settings));
+  const prompt = `You are the memory engine of "Project Brain", a private workspace where a freelancer (owner) works with a client and their team on one project.
+A file was shared in the project chat. It was converted in the browser into structured JSON: headings (level), paragraphs (bold / underline = phrases that were bold or underlined), lists, tables (rows of cells) and images (ocrText = text read from the image; it may be empty or noisy).${images.length ? '\nThe image itself is attached as well — describe what it shows.' : ''}
+${REDACTED}
+${shorthand(b)}
+Today is ${today()}. Convert relative dates to YYYY-MM-DD.
+
+${SCHEMA}
+
+RULES
+- Propose records only for what the FILE says: tasks, requirements, decisions, sensitive details, questions, risks, links.
+- Never duplicate existing records; prefer update / status / note on them.
+- quote = the exact words from the FILE each record comes from (copied as written).
+- msg = "${message.id}" for every op.
+
+Return ONLY this JSON object, nothing else:
+{"description":"2-4 sentences: what this file is and what matters in it",
+ "imageContext":"what the images / visual parts show and how they relate to the project ('' if there are none)",
+ "ops":[{"msg":"${message.id}","quote":"","op":"create|update|status|note","type":"","targetId":"","title":"","detail":"","value":"","category":"","status":"","priority":"low|normal|high","due":"","assignee":"","scope":"","replaces":"","reason":""}]}
+
+${people(ctx)}
+PROJECT: ${p.name}${p.description ? ' — ' + R.text(p.description) : ''}
+EXISTING RECORDS: ${JSON.stringify(records(p, R, b))}
+MESSAGE THE FILE CAME WITH: ${JSON.stringify({ id: message.id, from: who(ctx, message), text: R.text((message.text || '').slice(0, b.text)) })}
+FILE: ${JSON.stringify(safe)}`;
+  const out = await generate(settings, prompt, { temperature: 0.15, schema: DOC_SCHEMA, images });
+  return {
+    description: R.mask(String(out.description || '')).slice(0, 3000),
+    imageContext: R.mask(String(out.imageContext || '')).slice(0, 3000),
+    ops: unredactOps(R, out.ops).map(o => ({ ...o, msg: message.id })),
+    truncated: !!safe.truncated,
+  };
 }

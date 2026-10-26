@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { History, Braces, Download } from 'lucide-react';
 import { useP, Button, Modal, Toggle, Empty } from './ui';
-import { TYPES, STATUS } from '../lib/meta';
+import { TYPES, STATUS, MEMBER_ROLES } from '../lib/meta';
 import { engineName } from '../lib/gemini';
 import { cx, fmtDateTime, fmtDay, download } from '../lib/util';
 
@@ -26,6 +26,13 @@ function describe(e, p, who) {
     case 'memory.refresh': return `${who} refreshed the project memory (${engineName(d.engine, 'records')})`;
     case 'ask': return `${who} asked: “${d.question}”`;
     case 'invite.create': return `${who} invited ${d.name}`;
+    case 'member.add': return `${who} invited ${d.name} as ${d.role === 'other' ? d.designation || 'a member' : MEMBER_ROLES[d.role]?.toLowerCase() || 'a member'}`;
+    case 'member.update': return `${who} updated ${d.name}'s details`;
+    case 'member.perms': return `${who} changed what ${d.name} can see`;
+    case 'member.reset': return `${who} gave ${d.name} a new PIN and link`;
+    case 'member.revoke': return `${who} revoked ${d.name}'s access`;
+    case 'item.delete': return `${who} deleted ${TYPES[d.type]?.label.toLowerCase() || 'a record'} “${d.title}”${d.reason ? ` (${d.reason})` : ''}`;
+    case 'file.read': return `${who} had ${title || 'a file'} read by ${engineName(d.engine)}${d.suggestions ? ` — ${d.suggestions} suggestion${d.suggestions > 1 ? 's' : ''}` : ''}`;
     case 'invite.perms': return `${who} changed what the client can see`;
     case 'invite.revoke': return `${who} revoked ${d.name}'s access`;
     default: return `${who}: ${e.action}`;
@@ -56,7 +63,7 @@ export default function TimelineView() {
   const { p, names, openItem, jumpTo } = useP();
   const [f, setF] = useState('all');
   const [raw, setRaw] = useState(false);
-  const who = a => (a === 'owner' ? names.owner : a === 'client' ? names.client : 'System');
+  const who = a => (a === 'system' ? 'System' : names.of(a));
   const FILTERS = [['all', 'Everything'], ['message', 'Messages'], ['item', 'Records'], ['suggestion', 'Suggestions'], ['other', 'Other']];
   const events = [...p.log].reverse().filter(e => f === 'all' || (f === 'other' ? !/^(message|item|suggestion)/.test(e.action) : e.action.startsWith(f)));
   let last = '';
@@ -83,7 +90,7 @@ export default function TimelineView() {
                 {sep && <div className="text-[11px] uppercase tracking-wide text-neutral-500 pt-4 pb-1.5">{day}</div>}
                 <button onClick={() => (isMsg ? jumpTo(e.ref) : it ? openItem(it.id) : null)} className={cx('w-full text-left flex gap-3 px-3 py-2 rounded-xl', (isMsg || it) && 'hover:bg-white/[.04]')}>
                   <span className="text-xs text-neutral-600 w-12 shrink-0 pt-0.5 tabular-nums">{fmtDateTime(e.ts).split(', ').pop()}</span>
-                  <span className={cx('w-1.5 h-1.5 rounded-full mt-2 shrink-0', e.actor === 'client' ? 'bg-orange-400' : e.actor === 'owner' ? 'bg-sky-400' : 'bg-violet-400')} />
+                  <span className={cx('w-1.5 h-1.5 rounded-full mt-2 shrink-0', e.actor === 'owner' ? 'bg-sky-400' : e.actor === 'system' ? 'bg-violet-400' : 'bg-orange-400')} />
                   <span className="text-sm text-neutral-300">{describe(e, p, who(e.actor))}</span>
                 </button>
               </li>

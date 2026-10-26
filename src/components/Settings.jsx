@@ -173,7 +173,7 @@ export default function SettingsModal({ onClose, initialTab = 'ai' }) {
               {encrypted && <Button onClick={() => { onClose(); lock(); }}>Lock now</Button>}
               {encrypted && <Button variant="danger" onClick={async () => { await disableEncryption(); toast('Encryption turned off'); }}>Turn off encryption</Button>}
             </div>
-            <p className="text-xs text-neutral-500">Client invite links open in this same browser, so with encryption on the workspace must be unlocked in that tab too. A hosted backend would remove this limit.</p>
+            <p className="text-xs text-neutral-500">Member invite links open in this same browser, so with encryption on the workspace must be unlocked in that tab too. A hosted backend would remove this limit.</p>
           </>}
 
           {tab === 'data' && <>

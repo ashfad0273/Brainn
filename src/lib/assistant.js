@@ -2,7 +2,7 @@
 // and drafts messages. Uses Gemini when a key is set, otherwise the built-in commands below.
 
 import * as gemini from './gemini';
-import { prepareSuggestions, log, secretValues, maskText } from './model';
+import { prepareSuggestions, addSuggestions, log, secretValues, maskText, liveView } from './model';
 import { TYPES, isActive } from './meta';
 import { expand } from './shorthand';
 import { uid, now, overlap, isOverdue, fmtDue } from './util';
@@ -135,7 +135,8 @@ function localAsk(p, question, ctx) {
     : { answer: 'Nothing in this project matches that yet. With a Gemini key I can answer open-ended questions too.', refs: [] };
 }
 
-export async function askProject({ state, project: p, mutate, toast, question }) {
+export async function askProject({ state, project, mutate, toast, question }) {
+  const p = liveView(project);
   const ctx = peopleOf(state, p);
   let res, engine = 'rules';
   if (aiOn(state.settings)) {
@@ -151,7 +152,7 @@ export async function askProject({ state, project: p, mutate, toast, question })
     draft: maskText(String(res.draft || ''), secrets), suggestionIds: [],
   };
   const ops = Array.isArray(res.ops) ? res.ops : [];
-  const fresh = prepareSuggestions(p, ops, engine, { askId: entry.id });
+  const fresh = prepareSuggestions(project, ops, engine, { askId: entry.id });
   entry.suggestionIds = fresh.map(s => s.id);
   const skipped = ops.length - fresh.length;
   if (skipped > 0) {
@@ -161,7 +162,7 @@ export async function askProject({ state, project: p, mutate, toast, question })
   }
   mutate(p.id, q => {
     q.asks.push(entry);
-    fresh.forEach(s => q.suggestions.push(s));
+    addSuggestions(q, fresh);
     log(q, 'owner', 'ask', entry.id, { question, proposed: fresh.length });
   });
   return entry;

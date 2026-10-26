@@ -46,3 +46,10 @@ export const SOLVED_STATUS = { task: 'done', requirement: 'delivered', decision:
 export const PROJECT_COLORS = ['#f59e0b', '#0ea5e9', '#8b5cf6', '#10b981', '#f43f5e', '#14b8a6', '#6366f1', '#ec4899'];
 
 export const DEFAULT_PERMS = { tasks: true, requirements: false, decisions: false, files: true, summary: false };
+
+/** Roles a project member can have. "other" uses the member's own designation. */
+export const MEMBER_ROLES = {
+  client: 'Client', developer: 'Developer', designer: 'Designer', motion: 'Motion designer',
+  video: 'Video editor', brand: 'Brand designer', other: 'Other',
+};
+export const memberRole = m => (m.role === 'other' ? m.designation?.trim() || 'Member' : MEMBER_ROLES[m.role] || 'Member');

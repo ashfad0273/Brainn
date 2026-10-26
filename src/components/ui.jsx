@@ -1,4 +1,5 @@
 import { createContext, useContext, useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { X, Eye, EyeOff, Copy } from 'lucide-react';
 import { cx, copyText } from '../lib/util';
 import { COLOR, STATUS, TYPES } from '../lib/meta';
@@ -31,7 +32,8 @@ export function useEsc(fn) {
 
 export function Modal({ title, onClose, children, wide, footer, sub }) {
   useEsc(onClose);
-  return (
+  // portalled, so a modal opened from inside a drawer still covers the whole screen
+  return createPortal(
     <div className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm grid place-items-center p-4 anim-fade" onMouseDown={e => e.target === e.currentTarget && onClose()}>
       <div className={cx('anim-pop w-full bg-[#1a1a1a] ring-1 ring-white/10 rounded-2xl shadow-2xl max-h-[90vh] flex flex-col', wide ? 'max-w-3xl' : 'max-w-lg')}>
         <div className="flex items-start gap-3 px-5 pt-5 pb-3">
@@ -41,8 +43,7 @@ export function Modal({ title, onClose, children, wide, footer, sub }) {
         <div className="px-5 pb-5 overflow-auto">{children}</div>
         {footer && <div className="px-5 py-4 border-t border-white/5 flex justify-end gap-2">{footer}</div>}
       </div>
-    </div>
-  );
+    </div>, document.body);
 }
 
 export function Drawer({ onClose, children }) {

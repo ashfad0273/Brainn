@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { Search as SearchIcon, MessageSquare, FileText } from 'lucide-react';
 import { Modal, TypeIcon, Badge } from './ui';
 import { TYPES, isActive } from '../lib/meta';
-import { secretValues, maskText } from '../lib/model';
+import { secretValues, maskText, namesFor } from '../lib/model';
 import { cx, fmtDateTime } from '../lib/util';
 
 function snippet(text, q) {
@@ -32,7 +32,7 @@ export default function SearchModal({ projects, onPick, onClose, names }) {
       const secrets = secretValues(p);
       for (const m of p.messages) {
         const hay = maskText([m.text || '', ...m.attachments.map(a => a.name)].join(' '), secrets);
-        if (hay.toLowerCase().includes(ql)) out.push({ p, kind: 'message', id: m.id, ts: m.ts, title: snippet(hay, ql), from: m.from });
+        if (hay.toLowerCase().includes(ql)) out.push({ p, kind: 'message', id: m.id, ts: m.ts, title: snippet(hay, ql), m });
       }
       for (const it of p.items) {
         const hay = it.title + ' ' + (it.detail || '') + (it.type === 'file' ? ' ' + (it.value || '') + ' ' + (it.category || '') : '');
@@ -67,7 +67,7 @@ export default function SearchModal({ projects, onPick, onClose, names }) {
               <div className={cx('text-sm', r.it && !isActive(r.it) && 'line-through text-neutral-500')}><Hl text={r.title} q={ql} /></div>
               <div className="text-xs text-neutral-500 mt-0.5 flex items-center gap-1.5">
                 {projects.length > 1 && <Badge>{r.p.name}</Badge>}
-                {r.kind === 'message' ? `${r.from === 'owner' ? names?.owner || 'You' : r.p.invite?.name || r.p.client} · ` : r.kind === 'item' ? `${TYPES[r.it.type].label} · ` : 'Memory · '}{fmtDateTime(r.ts)}
+                {r.kind === 'message' ? `${r.m.from === 'owner' ? names?.owner || 'You' : namesFor(r.p).msg(r.m)} · ` : r.kind === 'item' ? `${TYPES[r.it.type].label} · ` : 'Memory · '}{fmtDateTime(r.ts)}
               </div>
             </div>
           </button>
