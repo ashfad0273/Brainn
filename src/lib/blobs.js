@@ -7,26 +7,65 @@ import * as vault from './crypto';
 
 let key = null;
 export const setBlobKey = k => { key = k; };
+// Remote copy on the sync Worker: the owner uses their bearer token; a member portal uses its
+// session on the /v1/join routes. A member portal, while open, takes precedence.
+let owner = null, member = null;
+export const setBlobRemote = cfg => { owner = cfg?.workerUrl && cfg?.workerToken ? cfg : null; };
+export const setBlobMember = cfg => { member = cfg; };
+function remote(id) {
+  if (member) return { url: `${member.base}/v1/join/${encodeURIComponent(member.token)}/blobs/${encodeURIComponent(id)}`, auth: 'Member ' + member.session, member: true };
+  if (owner) return { url: `${owner.workerUrl.replace(/\/+$/, '')}/v1/blobs/${encodeURIComponent(id)}`, auth: 'Bearer ' + owner.workerToken.trim() };
+  return null;
+}
 const K = id => 'blob:' + id;
 
 export const isQuotaError = e => e?.name === 'QuotaExceededError' || /quota/i.test(e?.message || '');
 
 export async function putBlob(id, file) {
   const mime = file.type || '';
+  let upload;
   if (key) {
     const { iv, ct } = await vault.encryptBytes(key, await file.arrayBuffer());
     await kv.set(K(id), { enc: true, mime, iv, ct });
+    upload = new Blob([iv, ct]); // the server only ever gets the ciphertext: 12-byte IV, then the AES-GCM output
   } else {
     await kv.set(K(id), { enc: false, mime, blob: file });
+    upload = file;
   }
+  const r = remote(id);
+  if (!r) return;
+  const sent = fetch(r.url, {
+    method: 'PUT',
+    headers: { Authorization: r.auth, 'X-Attachment-Mime': mime, 'X-Attachment-Enc': key && !r.member ? '1' : '0' },
+    body: r.member && key ? file : upload,
+  }).then(res => { if (!res.ok) throw new Error(`upload failed (${res.status})`); });
+  // a member's message is only visible to the owner through the server, so its file must be there first
+  if (r.member) await sent;
+  else sent.catch(e => console.warn('blob upload', id, e));
+}
+
+/** Copy from the sync Worker into IndexedDB (encrypted with the workspace key when there is one). */
+async function fetchRemote(id) {
+  const r = remote(id);
+  if (!r) return null;
+  const res = await fetch(r.url, { headers: { Authorization: r.auth } }).catch(() => null);
+  if (!res?.ok) return null;
+  const mime = res.headers.get('Content-Type') || '';
+  const buf = await res.arrayBuffer();
+  let rec;
+  if (res.headers.get('X-Encrypted') === '1') rec = { enc: true, mime, iv: new Uint8Array(buf.slice(0, 12)), ct: buf.slice(12) };
+  else if (key) rec = { enc: true, mime, ...(await vault.encryptBytes(key, buf)) };
+  else rec = { enc: false, mime, blob: new Blob([buf], { type: mime }) };
+  await kv.set(K(id), rec);
+  return rec;
 }
 
 /** → Blob, or null if no stored copy exists. Throws if the stored copy is encrypted and the workspace is locked. */
 export async function getBlob(id) {
-  const r = await kv.get(K(id));
+  const r = (await kv.get(K(id))) || (await fetchRemote(id));
   if (!r) return null;
   if (!r.enc) return r.blob;
-  if (!key) throw new Error('Workspace is locked');
+  if (!key) throw new Error(member ? 'This file is encrypted in the owner\'s workspace' : 'Workspace is locked');
   return new Blob([await vault.decryptBytes(key, r)], { type: r.mime });
 }
 

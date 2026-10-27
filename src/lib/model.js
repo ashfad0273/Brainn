@@ -10,6 +10,7 @@
 // (deleted: true) that hides it everywhere and wins when tabs merge; its trail stays in the JSON.
 
 import { uid, now, norm, secureDigits, overlap, hashId } from './util';
+import { mergeProject, union, newer, byKey } from './merge';
 import { TYPES, SENSITIVE_CATS, REPLACED_STATUS, SOLVED_STATUS, isActive, DEFAULT_PERMS, MEMBER_ROLES } from './meta';
 
 export const defaultSettings = () => ({
@@ -423,6 +424,7 @@ export function addMember(p, actor, { id = uid('mb_'), name, role = 'client', de
     perms: { ...perms }, pin: secureDigits(4), token: uid() + uid(), createdAt: t, updatedAt: t, revokedAt: null,
   };
   p.members.push(m);
+  p.metaAt = t;
   log(p, actor, 'member.add', m.id, { name: m.name, role: m.role, designation: m.designation });
   return m;
 }
@@ -438,14 +440,17 @@ export function updateMember(p, actor, id, patch) {
   if (!changed.length) return;
   changed.forEach(k => { m[k] = next[k]; });
   touch(m);
+  p.metaAt = now();
   log(p, actor, changed.includes('perms') && changed.length === 1 ? 'member.perms' : 'member.update', id, { name: m.name, fields: changed });
 }
 /** New PIN and link for one member; the old ones stop working. */
 export function resetMemberAccess(p, actor, id) {
   const m = p.members.find(x => x.id === id);
   if (!m || m.revokedAt) return;
+  const t = now();
   Object.assign(m, { pin: secureDigits(4), token: uid() + uid() });
-  touch(m);
+  touch(m, t);
+  p.metaAt = t;
   log(p, actor, 'member.reset', id, { name: m.name });
 }
 export function revokeMember(p, actor, id) {
@@ -454,6 +459,7 @@ export function revokeMember(p, actor, id) {
   const t = now();
   m.revokedAt = t;
   touch(m, t);
+  p.metaAt = t;
   log(p, actor, 'member.revoke', id, { name: m.name });
 }
 
@@ -484,34 +490,7 @@ export function normalizeState(s) {
   return { version: 1, ...s, settings: { ...defaultSettings(), ...(s.settings || {}) }, spaces: s.spaces || [], projects: (s.projects || []).map(normalizeProject) };
 }
 
-const byKey = k => (a, b) => ((a[k] || 0) - (b[k] || 0)) || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0);
-function union(a, b, pick, sortKey) {
-  const m = new Map(a.map(x => [x.id, x]));
-  for (const y of b) { const x = m.get(y.id); m.set(y.id, x ? pick(x, y) : y); }
-  return [...m.values()].sort(byKey(sortKey));
-}
-const newer = (x, y) => ((y.updatedAt || 0) > (x.updatedAt || 0) ? y : x);
-const first = x => x;
-/** A tombstone always wins, so a deleted item never comes back from a tab that hadn't seen the delete. */
-const tombstoneFirst = (x, y) => (x.deleted && !y.deleted ? x : y.deleted && !x.deleted ? y : newer(x, y));
-/** A decision on a suggestion beats "pending"; otherwise the newer copy wins. */
-const decided = (x, y) => (x.state === 'pending' && y.state !== 'pending' ? y : y.state === 'pending' && x.state !== 'pending' ? x : newer(x, y));
-const META = ['name', 'client', 'description', 'color', 'spaceId', 'archived', 'cover', 'avatar', 'metaAt'];
-
-/** Because the record is append-only, two copies can always be merged without losing anything. */
-export function mergeProject(a, b) {
-  const src = (b.metaAt || 0) > (a.metaAt || 0) ? b : a;
-  const out = { ...a };
-  META.forEach(k => { out[k] = src[k]; });
-  out.members = union(a.members || [], b.members || [], newer, 'createdAt');
-  out.messages = union(a.messages, b.messages, (x, y) => (x.analyzed ? x : y), 'ts');
-  out.items = union(a.items, b.items, tombstoneFirst, 'createdAt');
-  out.suggestions = union(a.suggestions, b.suggestions, decided, 'ts');
-  out.summaries = union(a.summaries, b.summaries, first, 'ts');
-  out.asks = union(a.asks, b.asks, first, 'ts');
-  out.log = union(a.log, b.log, first, 'ts');
-  return out;
-}
+export { mergeProject };
 export function mergeState(a, b) {
   a = normalizeState(a); b = normalizeState(b);
   const settings = (b.settings.settingsAt || 0) > (a.settings.settingsAt || 0) ? b.settings : a.settings;

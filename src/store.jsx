@@ -4,8 +4,9 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import * as kv from './lib/kv';
 import * as vault from './lib/crypto';
-import { setBlobKey, reencryptAll, isQuotaError } from './lib/blobs';
+import { setBlobKey, setBlobRemote, reencryptAll, isQuotaError } from './lib/blobs';
 import { mergeState, normalizeState } from './lib/model';
+import { withoutVault } from './lib/merge';
 import { buildSeed } from './seed';
 import { uid, clone, now } from './lib/util';
 
@@ -61,13 +62,63 @@ export function StoreProvider({ children }) {
     chan.current?.postMessage({ type: 'saved', from: TAB });
   }, []);
 
-  // save on change
+  // save on change + push to the sync Worker if configured
   useEffect(() => {
     if (phase !== 'ready' || !state) return;
+    setBlobRemote({ workerUrl: state.settings?.workerUrl, workerToken: state.settings?.workerToken });
     if (JSON.stringify(state) === lastJson.current) return;
-    const h = setTimeout(() => write(state).catch(e => toast(isQuotaError(e) ? 'Browser storage is full — the latest changes could not be saved. Free up space or export the workspace.' : 'Could not save: ' + e.message, 'error')), 250);
+    const h = setTimeout(() => {
+      write(state).catch(e => toast(isQuotaError(e) ? 'Browser storage is full — the latest changes could not be saved. Free up space or export the workspace.' : 'Could not save: ' + e.message, 'error'));
+      // Push to the sync Worker. The server merges it with what it has (member messages included);
+      // vault records and keys stay in this browser.
+      const { workerUrl, workerToken } = state.settings || {};
+      if (workerUrl && workerToken) {
+        fetch(workerUrl.replace(/\/+$/, '') + '/v1/sync', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${workerToken.trim()}` },
+          body: JSON.stringify({
+            projects: state.projects.map(withoutVault),
+            spaces: state.spaces,
+            settings: { ...state.settings, apiKey: undefined, workerToken: undefined },
+          }),
+        }).then(res => { if (!res.ok) console.warn('sync push', res.status); }).catch(() => { /* offline: the next change pushes everything again */ });
+      }
+    }, 250);
     return () => clearTimeout(h);
   }, [state, phase, write, toast]);
+
+  // pull from the sync Worker periodically & on focus
+  useEffect(() => {
+    if (phase !== 'ready' || !state?.settings?.workerUrl || !state?.settings?.workerToken) return;
+    const pull = async () => {
+      const { workerUrl, workerToken } = stateRef.current?.settings || {};
+      if (!workerUrl || !workerToken) return;
+      try {
+        const res = await fetch(workerUrl.replace(/\/+$/, '') + '/v1/sync', {
+          headers: { Authorization: `Bearer ${workerToken.trim()}` },
+        });
+        if (!res.ok) return;
+        const remote = await res.json();
+        if (remote.projects || remote.spaces) {
+          setState(cur => {
+            if (!cur) return cur;
+            const merged = mergeState(cur, {
+              projects: remote.projects || [],
+              spaces: remote.spaces || [],
+              settings: remote.settings || {},
+            });
+            // the server never has the keys: keep this browser's, even when newer settings came in
+            const { apiKey, workerUrl, workerToken } = cur.settings;
+            return { ...merged, settings: { ...merged.settings, apiKey, workerUrl, workerToken } };
+          });
+        }
+      } catch { /* offline */ }
+    };
+    pull();
+    const timer = setInterval(pull, 20000);
+    window.addEventListener('focus', pull);
+    return () => { clearInterval(timer); window.removeEventListener('focus', pull); };
+  }, [phase, state?.settings?.workerUrl, state?.settings?.workerToken]);
 
   // other tabs saved → merge their copy into ours
   useEffect(() => {

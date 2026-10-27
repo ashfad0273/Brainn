@@ -20,9 +20,22 @@ npx wrangler secret put APP_TOKEN
 Paste a long random string when asked (for example from a password manager). You'll enter the same
 token in the app.
 
+Create the sync tables (safe to re-run; it only adds what's missing):
+
+```bash
+npx wrangler d1 execute project-brain-db --remote --file=schema.sql
+```
+
 ```bash
 npx wrangler deploy
 ```
+
+Invite links opened in another browser need to know where this Worker is. Set `VITE_WORKER_URL`
+(see `.env.example`) in `.env.local` or in the Pages build settings before `npm run build`.
+
+Member portal: the PIN is checked here, never sent to the browser; a link locks for 15 minutes after
+5 wrong PINs. Owner pushes are merged with what's stored (never overwritten), so messages members post
+through the portal are kept. Vault records and API keys are never uploaded.
 
 Wrangler prints the Worker URL, e.g. `https://project-brain-ai.<your-subdomain>.workers.dev`.
 

@@ -36,7 +36,8 @@ function counts(p, role) {
 }
 
 /** Shared frame for a project: header, tabs, views, item drawer, search. Used by owner and members. */
-export function ProjectShell({ p: record, role, me = null, names, tabs, tab, setTab, header, deep, searchProjects }) {
+/** `mut` replaces the local-store mutation, e.g. for a member portal that writes through the server. */
+export function ProjectShell({ p: record, role, me = null, names, tabs, tab, setTab, header, deep, searchProjects, mut = null }) {
   const { mutate } = useStore();
   const [drawer, setDrawer] = useState(null);
   const [focus, setFocus] = useState(null);
@@ -53,7 +54,7 @@ export function ProjectShell({ p: record, role, me = null, names, tabs, tab, set
     if (deep.kind === 'i') setDrawer(deep.ref);
   }, [deep?.kind, deep?.ref]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const ctx = useMemo(() => ({ p, role, me, names, openItem: setDrawer, jumpTo, mut: fn => mutate(p.id, fn), openSearch: () => setSearch(true) }), [p, role, me, names, jumpTo, mutate]);
+  const ctx = useMemo(() => ({ p, role, me, names, openItem: setDrawer, jumpTo, mut: mut || (fn => mutate(p.id, fn)), openSearch: () => setSearch(true) }), [p, role, me, names, jumpTo, mutate, mut]);
   const n = counts(p, role);
   const View = TABS[tab]?.[2] || Chat;
   const badge = (k, cls) => n[k] > 0 && <span className={cx('text-[10px] min-w-[18px] h-[18px] px-1 rounded-full grid place-items-center', k === 'chat' ? 'bg-sky-500 text-white' : 'bg-white/10 text-neutral-300', cls)}>{n[k]}</span>;
