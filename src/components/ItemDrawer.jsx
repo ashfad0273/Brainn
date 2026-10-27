@@ -68,7 +68,7 @@ export default function ItemDrawer({ id, onClose }) {
               </div>
             )}
             {it.type === 'requirement' && <Field label="Scope"><Select value={edit.scope} onChange={set('scope')}><option value="in">In scope</option><option value="out">Out of scope</option></Select></Field>}
-            {it.type !== 'sensitive' && <Field label="Details"><Textarea value={edit.detail} onChange={set('detail')} /></Field>}
+            <Field label={it.type === 'sensitive' ? 'Details (username, login link, notes)' : 'Details'}><Textarea value={edit.detail} onChange={set('detail')} placeholder={it.type === 'sensitive' ? 'e.g. Username: admin\nURL: https://example.com/wp-admin' : ''} /></Field>
             <Field label="Why did it change? (optional)"><Input value={edit.note} onChange={set('note')} placeholder="e.g. Client asked on the call" /></Field>
             <div className="flex gap-2 justify-end"><Button variant="ghost" onClick={() => setEdit(null)}>Cancel</Button><Button variant="primary" onClick={save}>Save change</Button></div>
           </div>

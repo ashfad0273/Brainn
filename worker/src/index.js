@@ -129,7 +129,7 @@ function memberCopy(p, me) {
   return {
     id: p.id, name: p.name, client: p.client, description: p.description, color: p.color,
     cover: p.cover, avatar: p.avatar, archived: !!p.archived, createdAt: p.createdAt, metaAt: p.metaAt,
-    messages: (p.messages || []).map(m => ({ id: m.id, from: m.from, memberId: m.memberId, text: m.text, ts: m.ts, attachments: m.attachments || [], voice: m.voice })),
+    messages: (p.messages || []).map(m => ({ id: m.id, from: m.from, memberId: m.memberId, text: m.text, ts: m.ts, attachments: m.attachments || [], voice: m.voice, replyTo: m.replyTo })),
     items: (p.items || []).filter(i => !i.deleted && allowed[i.type])
       .map(i => ({ ...i, notes: [], history: (i.history || []).filter(h => h.action !== 'note' && h.action !== 'edit'), reading: undefined })),
     suggestions: [], asks: [], log: [],
@@ -167,7 +167,10 @@ function memberMessage(p, me, body) {
   if (!text && !attachments.length) throw new HttpError(400, 'empty message');
   const voice = body.voice && Number.isFinite(Number(body.voice.duration)) ? { duration: Number(body.voice.duration) } : null;
   const id = /^m[\w-]{4,40}$/.test(body.id || '') && !(p.messages || []).some(m => m.id === body.id) ? body.id : rid('m');
-  const m = { id, from: 'client', memberId: me.id, text, ts: t, attachments, voice, analyzed: !text };
+  const replyTo = body.replyTo && typeof body.replyTo === 'object' && body.replyTo.id
+    ? { id: clip(body.replyTo.id, 40), name: clip(body.replyTo.name, 60), text: clip(body.replyTo.text, 200) }
+    : null;
+  const m = { id, from: 'client', memberId: me.id, text, ts: t, attachments, voice, analyzed: !text, replyTo };
   // same records addMessage() in src/lib/model.js makes for uploads
   const items = attachments.map(a => ({
     id: rid('fi_'), type: 'file', title: a.name, detail: '', value: '', category: a.category, status: 'active', priority: 'normal',

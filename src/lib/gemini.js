@@ -89,6 +89,38 @@ export async function generate(settings, prompt, { temperature = 0.2, schema, im
   }
 }
 
+/** Free-form text generation (drafting messages, rephrasing selection). */
+export async function generateText(settings, prompt, { system = 'You are an expert communication assistant for project management. Keep tone natural, polite, and concise. Return ONLY the final message or rephrased text with no quotation marks, labels, or meta-commentary.', temperature = 0.4 } = {}) {
+  const pv = providerOf(settings);
+  if (pv === 'cloudflare') {
+    if (!settings.workerUrl || !settings.workerToken) throw new Error('Worker URL and token are not set in Settings → AI');
+    let r;
+    try {
+      r = await fetch(workerEndpoint(settings.workerUrl), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${settings.workerToken.trim()}` },
+        body: JSON.stringify({ prompt, system, model: settings.cfModel || undefined, temperature, maxTokens: 2000 }),
+      });
+    } catch (e) {
+      throw new Error(`Could not reach AI Worker (${e.message})`);
+    }
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(j.error || `Worker HTTP ${r.status}`);
+    return (j.output || '').trim();
+  }
+
+  if (!settings.apiKey) throw new Error('no Gemini API key');
+  const r = await fetch(`${BASE}/models/${encodeURIComponent(modelId(settings.model))}:generateContent`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'x-goog-api-key': settings.apiKey.trim() },
+    body: JSON.stringify({ contents: [{ role: 'user', parts: [{ text: (system ? system + '\n\n' : '') + prompt }] }], generationConfig: { temperature } }),
+  });
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(j.error?.message || `HTTP ${r.status}`);
+  const text = (j.candidates?.[0]?.content?.parts || []).map(x => x.text || '').join('');
+  return text.trim();
+}
+
 export async function listModels(apiKey) {
   const r = await fetch(`${BASE}/models?pageSize=200`, { headers: { 'x-goog-api-key': apiKey.trim() } });
   const j = await r.json().catch(() => ({}));
@@ -145,7 +177,9 @@ const SCHEMA = `RECORD TYPES
 - task: an action someone must do. assignee "owner" or "client" (who has to do it).
 - requirement: what the deliverable must be/do/have (look, content, feature, constraint, preference). scope "in", or "out" if explicitly excluded / postponed.
 - decision: an agreement or choice ("let's go with B", "approved", "lgtm", "ok do it"). The title must say WHAT was decided, using earlier messages for context.
-- sensitive: passwords, PINs, logins/usernames, API keys, tokens, emails, phone numbers, addresses, bank/card numbers, budgets/prices/payments, personal or confidential details. value = the exact value as written. category = credential|contact|financial|personal|confidential. title = what it is for (e.g. "Staging password", "Sara's email", "Budget cap").
+- sensitive: passwords, PINs, logins/usernames, API keys, tokens, emails, phone numbers, addresses, bank/card numbers, budgets/prices/payments, personal or confidential details. value = the exact value as written. category = credential|contact|financial|personal|confidential.
+  * CRITICAL FOR CREDENTIALS: When a login/password/account is shared, NEVER use generic titles like "Password" or "Login". Look at the preceding chat to determine the specific service, tool, website, or account requested (e.g. "WordPress Admin Access", "Shopify Store Login", "Staging Server cPanel", or domain name).
+  * BUNDLE TOGETHER: Store the secret/password in value. Store username/email and URL (if shared or mentioned) in detail (e.g. detail: "Username: admin\\nURL: https://example.com/wp-admin"). Do NOT create separate fragmented items for username and password.
 - question: a question that is still unanswered.
 - risk: something that may hurt the project (tight deadline, blocker, unclear scope, budget pressure).
 - file: a shared URL (value = the URL, category e.g. Design files, Documents, Environments, Shared drives, Links). Uploaded files are already recorded — never repeat them.

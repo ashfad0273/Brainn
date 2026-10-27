@@ -43,8 +43,13 @@ export function updateMeta(p, actor, patch, action = 'project.update') {
 /* ---------------- messages ---------------- */
 
 /** from = 'owner' | 'client' (anyone invited); memberId says which invited member wrote it. */
-export function addMessage(p, { from, memberId = null, text = '', attachments = [], voice = null }) {
-  const m = { id: uid('m'), from, ...(from !== 'owner' && memberId ? { memberId } : {}), text, ts: now(), attachments, voice, analyzed: !text.trim() };
+export function addMessage(p, { from, memberId = null, text = '', attachments = [], voice = null, replyTo = null }) {
+  const m = {
+    id: uid('m'), from, ...(from !== 'owner' && memberId ? { memberId } : {}),
+    text, ts: now(), attachments, voice,
+    replyTo: replyTo && replyTo.id ? { id: replyTo.id, name: replyTo.name || '', text: (replyTo.text || '').slice(0, 180) } : null,
+    analyzed: !text.trim(),
+  };
   p.messages.push(m);
   const actor = m.memberId || from;
   log(p, actor, 'message.add', m.id, attachments.length ? { files: attachments.length } : null);

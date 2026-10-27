@@ -63,34 +63,64 @@ function credLabel(k) {
 const CRED_WORD = /^(pass(?:word|wd|code)?|pwd|pw|pswd|pin|otp|token|login|username|usr|uname|user)$/i;
 const CONTEXT_SKIP = /^(new|the|my|our|your|a|an|updated|current|old|latest|and|or|is|hey|hi|hello|pls|please|here'?s|heres|btw|also|ty|thx|thanks|ok|so|i|we|use|its|it's)$/i;
 
+/** Inspects preceding messages to infer what service, tool, website or account was requested. */
+function findPrecedingContext(p, m) {
+  const msgs = p?.messages || [];
+  const idx = msgs.findIndex(x => x.id === m.id);
+  const prevList = msgs.slice(Math.max(0, idx - 6), idx).reverse();
+
+  for (const prev of prevList) {
+    const text = prev.text || '';
+    const serviceMatch = text.match(/\b(wordpress|wp|shopify|cpanel|hosting|ftp|sftp|aws|azure|gcp|vercel|netlify|github|gitlab|bitbucket|stripe|paypal|cloudflare|figma|mailchimp|hubspot|sendgrid|mongodb|mysql|postgres|supabase|firebase|admin|dashboard|portal|staging|production|live site|website)\b/i);
+    const askMatch = text.match(/\b(?:access|login|credentials?|details?|password|account)\s+(?:for|to|of)\s+(?:the\s+)?([A-Za-z0-9_.-]+(?:\s+[A-Za-z0-9_.-]+)?)/i);
+    const urlMatch = text.match(/\bhttps?:\/\/([^\s/$.?#].[^\s]*)/i);
+
+    let domainName = '';
+    if (urlMatch) {
+      try {
+        const u = new URL(urlMatch[0]);
+        domainName = u.hostname.replace(/^www\./, '');
+      } catch {}
+    }
+
+    if (serviceMatch || askMatch || domainName) {
+      let raw = serviceMatch ? cap(serviceMatch[1].toLowerCase().replace(/^wp$/, 'WordPress')) : askMatch ? cap(askMatch[1]) : domainName;
+      if (/^wp$/i.test(raw)) raw = 'WordPress';
+      const url = urlMatch ? urlMatch[0] : '';
+      return { service: raw, url, sourceText: text };
+    }
+  }
+  return null;
+}
+
 /** Find credentials, contact details, money and IDs in one clause. */
-function sensitives(c, who, active) {
+function sensitives(c, who, active, contextHint = null) {
   const out = [], used = new Set();
   const poss = /\b(my|mine|me)\b/i.test(c) ? `${who}'s ` : /\bour\b/i.test(c) ? `${who}'s team ` : '';
-  const add = (category, title, value, reason) => {
+  const add = (category, title, value, reason, detail = '') => {
     used.add(value);
     const prev = active.find(i => i.type === 'sensitive' && i.category === category && i.title.toLowerCase() === title.toLowerCase() && i.value !== value);
-    out.push({ op: 'create', type: 'sensitive', category, title, value, replaces: prev?.id || null, reason: prev ? `Replaces the earlier “${prev.title}”` : reason });
+    out.push({ op: 'create', type: 'sensitive', category, title, value, detail, replaces: prev?.id || null, reason: prev ? `Replaces the earlier “${prev.title}”` : reason });
   };
 
-  let lastCtx = '', prevEnd = -1;
+  let lastCtx = contextHint?.service || '', prevEnd = -1;
   for (const x of c.matchAll(CRED_RE)) {
     const v = trimVal(x[3]);
     if (v.length < 2 || BAD_VALUE.test(v)) continue;
     let context = (x[2] || '').replace(/^\s*(?:for|of|to|on|at)\s+(?:the\s+)?/i, '').trim();
     if (!context) {
-      // words since the previous credential: "cms login is x / pass: y" → none → both belong to the CMS;
-      // "wifi pw: a, ftp user is b and pwd = c" → "ftp"
       const words = c.slice(Math.max(0, prevEnd), x.index).trim().split(/\s+/).map(w => w.replace(/[^\w.'-]/g, ''))
         .filter(w => /^[a-z][\w.-]*$/i.test(w) && !CONTEXT_SKIP.test(w) && !used.has(w) && !CRED_WORD.test(w));
       context = (prevEnd < 0 ? words.pop() : words[0]) || lastCtx;
     }
     prevEnd = x.index + x[0].length;
     context = expand(context).replace(/[^\w .-]/g, '').trim();
+    if (!context && contextHint?.service) context = contextHint.service;
     lastCtx = context;
     const label = credLabel(x[1]);
     const ctxLabel = /^[a-z]{2,3}$/i.test(context) ? context.toUpperCase() : cap(context);
-    add('credential', context ? `${ctxLabel} ${label}` : cap(label), v, 'Credential shared in chat');
+    const detail = contextHint?.url ? `URL: ${contextHint.url}` : '';
+    add('credential', context ? `${ctxLabel} ${label}` : cap(label), v, 'Credential shared in chat', detail);
   }
   for (const e of c.match(EMAIL_RE) || []) {
     const v = trimVal(e);
@@ -151,6 +181,7 @@ export function extractLocal(p, m, ctx) {
   const reqs = active.filter(i => i.type === 'requirement');
   const fromOwner = m.from === 'owner';
   const other = fromOwner ? 'client' : 'owner';
+  const contextHint = findPrecedingContext(p, m);
 
   for (const url of text.match(URL_RE) || []) {
     const u = trimVal(url);
@@ -159,7 +190,19 @@ export function extractLocal(p, m, ctx) {
 
   for (const c of splitClauses(text)) {
     const add = o => push({ quote: c, ...o }); // the clause is the exact passage the record came from
-    const sens = sensitives(c, ctx.nameOf ? ctx.nameOf(m) : m.from === 'owner' ? ctx.ownerName : ctx.clientName, active);
+    const sens = sensitives(c, ctx.nameOf ? ctx.nameOf(m) : m.from === 'owner' ? ctx.ownerName : ctx.clientName, active, contextHint);
+
+    // If multiple credentials in this message (e.g. user/email and password), bundle into a single cohesive login record
+    const pwCred = sens.find(s => s.type === 'sensitive' && s.category === 'credential' && /pass|pwd|pin|secret|token/i.test(s.title));
+    const userCred = sens.find(s => s.type === 'sensitive' && (s.category === 'credential' || s.category === 'contact') && /user|login|email|usr|name/i.test(s.title));
+    if (pwCred && userCred && pwCred !== userCred) {
+      const svc = contextHint?.service || 'Account';
+      pwCred.title = `${svc} Access`;
+      pwCred.detail = `Username: ${userCred.value}${contextHint?.url ? `\nURL: ${contextHint.url}` : ''}`;
+      const idx = sens.indexOf(userCred);
+      if (idx >= 0) sens.splice(idx, 1);
+    }
+
     sens.forEach(add);
     if (sens.length) continue;
 
