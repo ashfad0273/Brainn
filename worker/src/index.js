@@ -361,7 +361,7 @@ async function handleGenerate(req, env, cors) {
 export default {
   async fetch(req, env) {
     const origin = req.headers.get('Origin') || '';
-    const okOrigin = list(env.ALLOWED_ORIGINS).includes(origin);
+    const okOrigin = list(env.ALLOWED_ORIGINS).includes(origin) || /^https:\/\/[a-z0-9_-]+\.project-brain-557\.pages\.dev$/i.test(origin);
     const cors = okOrigin ? {
       'Access-Control-Allow-Origin': origin,
       'Access-Control-Allow-Methods': 'GET, POST, PUT, OPTIONS',

@@ -14,7 +14,7 @@ database_id = "b3c35b1e-21f9-47a5-9a87-03a9485b80ba"
 
 [vars]
 # Browser origins allowed to call the Worker (comma-separated). Add your hosted app's URL later.
-ALLOWED_ORIGINS = "http://localhost:5173,https://project-brain-557.pages.dev,https://e4b71cc4.project-brain-557.pages.dev"
+ALLOWED_ORIGINS = "http://localhost:5173,https://project-brain-557.pages.dev,https://ashfad-updates.project-brain-557.pages.dev"
 # Model used when the app doesn't ask for one, and the only models it may ask for.
 DEFAULT_MODEL = "@cf/meta/llama-3.3-70b-instruct-fp8-fast"
 ALLOWED_MODELS = "@cf/meta/llama-3.3-70b-instruct-fp8-fast,@cf/meta/llama-3.1-8b-instruct-fast"
