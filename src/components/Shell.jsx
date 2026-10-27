@@ -1,24 +1,26 @@
 import { AppShell } from '@ume/ui/components/shell/AppShell';
 import { ErrorBoundary } from '@ume/ui/components/session/ErrorBoundary';
-import { Brain, Files, FolderPlus, Layers, Lock, Settings, Sparkles } from '@/lib/icons';
+import { useTheme } from '@ume/ui/hooks/use-theme';
+import { Brain, Building2, Database, Files, Hash, Layers, Lock, Moon, Settings, ShieldCheck, Sparkles, Sun, User, Users } from '@/lib/icons';
 import { useStore } from '../store';
 import { useAuth } from './Auth';
-import { aiOn, aiName } from '../lib/brain';
-import { cx } from '../lib/util';
+import { hasServer } from '../lib/api';
 
 /* Brainn inside Ume's app shell: the sidebar on desktop, the phone menu in each
-   page's PageTopbar below lg. Routes are hash paths (#/, #/s/:space, #/files);
-   the shell reads them as plain paths. Ume holds no data, so the nav, the
-   account menu and the logo are built here from the store. */
+   page's PageTopbar below lg. Routes are hash paths (#/, #/files,
+   #/settings/:tab); the shell reads them as plain paths. Ume holds no data, so
+   the nav, the account menu and the logo are built here from the store. */
 
 export const hashPath = () => location.hash.replace(/^#/, '') || '/';
 
-// Projects is a parent whose children are All projects and each space.
-const isActive = (path, current) => {
-  if (path === '/projects') return current === '/' || current.startsWith('/s/');
-  if (path === '/') return current === '/';
-  return current === path || current.startsWith(path + '/');
-};
+/** The Settings tabs a person can open: [key, label, icon]. Members only have their account. */
+export function settingsTabs(member, auth) {
+  if (member) return [['profile', 'Your account', User]];
+  return [
+    ['org', 'Organization', Building2], ...(hasServer() ? [['people', 'People', Users]] : []), ['templates', 'Templates', Hash],
+    ['ai', 'AI', Sparkles], ['profile', auth ? 'Your account' : 'Profile', User], ['security', 'Security', ShieldCheck], ['data', 'Data', Database],
+  ];
+}
 
 function Logo({ org }) {
   if (org.logo) return <img src={org.logo} alt="" className="size-8 shrink-0 rounded-full object-cover" />;
@@ -29,52 +31,45 @@ function Logo({ org }) {
   );
 }
 
-/** Home and Files: `onSettings(tab)` opens Settings, `onNewSpace` and `onNewProject` the page's own dialogs. */
-export default function BrainShell({ children, onSettings, onNewSpace, onNewProject }) {
+/* The light / dark switch at the foot of the sidebar and the phone menu. */
+function ThemeToggle() {
+  const { theme, toggle } = useTheme();
+  const I = theme === 'dark' ? Sun : Moon;
+  return (
+    <button type="button" onClick={toggle} className="flex items-center gap-2 text-text-secondary hover:text-foreground">
+      <I className="size-4 text-icon-muted" />{theme === 'dark' ? 'Light mode' : 'Dark mode'}
+    </button>
+  );
+}
+
+/** Home, Files and Settings. `onNewProject` puts the phone's + on the page. */
+export default function BrainShell({ children, onNewProject }) {
   const { state, encrypted, lock, mode } = useStore();
   const auth = useAuth();
   const member = mode === 'member';
   const org = state.settings.org || {};
   const path = hashPath();
-  const gem = aiOn(state.settings);
 
   const nav = [
-    {
-      path: '/projects', label: 'Projects', icon: Layers,
-      children: [{ path: '/', label: 'All projects' }, ...(member ? [] : state.spaces.map(s => ({ path: `/s/${s.id}`, label: s.name })))],
-    },
+    { path: '/', label: 'Projects', icon: Layers },
     { path: '/files', label: 'Files', icon: Files },
+    { path: '/settings', label: 'Settings', icon: Settings },
   ];
-
-  const accountActions = [
-    { label: 'Settings', icon: Settings, onSelect: () => onSettings(member ? 'profile' : 'org'), inPhoneMenu: true },
-    !member && { label: `AI · ${aiName(state.settings)}`, icon: Sparkles, onSelect: () => onSettings('ai'), inPhoneMenu: true },
-    !member && onNewSpace && { label: 'New space', icon: FolderPlus, onSelect: onNewSpace, inPhoneMenu: true },
-    encrypted && { label: 'Lock workspace', icon: Lock, onSelect: lock, inPhoneMenu: true },
-  ].filter(Boolean);
-
-  // The AI row the sidebar used to end with: the provider, and a dot when it's live.
-  const credit = !member && (
-    <button type="button" onClick={() => onSettings('ai')} className="flex items-center gap-2 text-text-secondary hover:text-foreground">
-      <Sparkles className="size-4 text-icon-muted" />AI · {aiName(state.settings)}
-      <span className={cx('size-2 rounded-full', gem ? 'bg-green' : 'bg-grey-400')} />
-    </button>
-  );
 
   return (
     <AppShell
       nav={nav}
       currentPath={path}
-      isActive={isActive}
       hrefFor={p => `#${p}`}
       logo={<Logo org={org} />}
       user={{ name: auth?.user?.name || auth?.user?.email || state.settings.ownerName || 'You', workspace: org.name || state.settings.workspaceName }}
-      accountActions={accountActions}
+      accountActions={encrypted ? [{ label: 'Lock workspace', icon: Lock, onSelect: lock, inPhoneMenu: true }] : []}
       onSignOut={auth?.signOut}
-      themeSwitch
-      credit={credit}
+      themeSwitch={false}
+      credit={<ThemeToggle />}
+      phoneCredit={<ThemeToggle />}
       addAction={onNewProject && !member ? { label: 'New project', onSelect: onNewProject } : null}
-      pageKey={path.startsWith('/files') ? '/files' : '/'}
+      pageKey={'/' + (path.split('/')[1] || '')}
     >
       {/* One boundary per page, keyed by the path, so a broken page doesn't poison the others. */}
       <ErrorBoundary key={path}>{children}</ErrorBoundary>

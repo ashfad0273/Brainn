@@ -1,11 +1,13 @@
 import { useEffect, useRef, useState } from 'react';
 import {
-  Sparkles, ShieldCheck, Database, User, Eye, EyeOff, Lock, Building2, Users, Hash, Plus, Trash2, Pencil,
+  ShieldCheck, Eye, EyeOff, Lock, Plus, Trash2, Pencil,
   Bold, Italic, Strikethrough, List, ListOrdered, Copy, Ban, RotateCcw, ImagePlus, X,
 } from '@/lib/icons';
 import { useStore } from '../store';
 import { useAuth } from './Auth';
-import { Modal, Field, Input, Select, Button, Toggle, Spinner, Badge } from './ui';
+import { Field, Input, Select, Button, Toggle, Spinner, Badge } from './ui';
+import BrainShell, { settingsTabs } from './Shell';
+import { PageTopbar } from '@ume/ui/components/shell/PageTopbar';
 import { useTheme } from '@ume/ui/hooks/use-theme';
 import { SegmentedControl } from '@ume/ui/components/ui/segmented-control';
 import { SettingsRow } from '@ume/ui/components/patterns/SettingsRow';
@@ -499,16 +501,14 @@ function ThemeRow() {
   );
 }
 
-export default function SettingsModal({ onClose, initialTab }) {
+/** Settings as a page (#/settings/:tab), with its pages listed under Settings in the sidebar. */
+export default function SettingsPage({ tab: wanted }) {
   const { state, setSettings, toast, encrypted, enableEncryption, disableEncryption, lock, importState, mode } = useStore();
   const auth = useAuth();
   const s = state.settings;
   const member = mode === 'member';
-  const tabs = member
-    ? [['profile', 'Your account', User]]
-    : [['org', 'Organization', Building2], ...(hasServer() ? [['people', 'People', Users]] : []), ['templates', 'Templates', Hash], ['ai', 'AI', Sparkles],
-      ['profile', auth ? 'Your account' : 'Profile', User], ['security', 'Security', ShieldCheck], ['data', 'Data', Database]];
-  const [tab, setTab] = useState(tabs.some(t => t[0] === initialTab) ? initialTab : tabs[0][0]);
+  const tabs = settingsTabs(member, auth);
+  const tab = tabs.some(t => t[0] === wanted) ? wanted : tabs[0][0];
   const [owner, setOwner] = useState(s.ownerName);
   const [pass, setPass] = useState({ a: '', b: '' });
   const [busy, setBusy] = useState('');
@@ -532,14 +532,18 @@ export default function SettingsModal({ onClose, initialTab }) {
   };
 
   return (
-    <Modal wide title="Settings" onClose={onClose}>
-      <div className="flex flex-col sm:flex-row gap-5">
-        <nav className="flex sm:flex-col gap-1 sm:w-44 shrink-0 overflow-x-auto">
-          {tabs.map(([k, l, I]) => (
-            <button key={k} onClick={() => setTab(k)} className={cx('flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-left whitespace-nowrap', tab === k ? 'bg-field-hover text-foreground' : 'text-muted-foreground hover:bg-field-hover')}><I size={15} />{l}</button>
-          ))}
-        </nav>
-        <div className="flex-1 min-w-0 space-y-4">
+    <BrainShell>
+      <PageTopbar title="Settings" subtitle="Your workspace, AI, account and data.">
+        {/* The tabs; each is its own address (#/settings/:tab), so a tab can be linked to. */}
+        {tabs.length > 1 && (
+          <div className="scroll-fade-x -mx-4 overflow-x-auto px-4 sm:-mx-6 sm:px-6">
+            <SegmentedControl fit aria-label="Settings" value={tab} onValueChange={k => { location.hash = `#/settings/${k}`; }}
+              options={tabs.map(([k, l]) => ({ value: k, label: l }))} />
+          </div>
+        )}
+      </PageTopbar>
+      <div className="px-4 py-6 sm:px-6">
+        <div className="max-w-3xl space-y-4">
           {tab === 'org' && <OrgTab />}
           {tab === 'people' && <PeopleTab />}
           {tab === 'templates' && <TemplatesTab />}
@@ -560,7 +564,7 @@ export default function SettingsModal({ onClose, initialTab }) {
             <Field label="Repeat passphrase"><Input type="password" value={pass.b} onChange={e => setPass(x => ({ ...x, b: e.target.value }))} autoComplete="new-password" /></Field>
             <div className="flex flex-wrap gap-2">
               <Button variant="primary" onClick={encrypt} disabled={busy === 'enc'}>{busy === 'enc' ? <Spinner /> : encrypted ? 'Change passphrase' : 'Encrypt workspace'}</Button>
-              {encrypted && <Button onClick={() => { onClose(); lock(); }}>Lock now</Button>}
+              {encrypted && <Button onClick={lock}>Lock now</Button>}
               {encrypted && <Button variant="danger" onClick={async () => { await disableEncryption(); toast('Encryption turned off'); }}>Turn off encryption</Button>}
             </div>
             {hasServer() && <p className="text-xs text-muted-foreground">The server keeps its own copy so invited people and your other devices can see projects; vault records never leave this browser.</p>}
@@ -578,6 +582,6 @@ export default function SettingsModal({ onClose, initialTab }) {
           </>}
         </div>
       </div>
-    </Modal>
+    </BrainShell>
   );
 }

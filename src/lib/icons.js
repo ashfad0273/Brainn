@@ -32,6 +32,7 @@ export const CalendarClock = Icons.schedule;
 export const Check = Icons.check;
 export const CheckCheck = RiCheckDoubleLine;
 export const ChevronDown = Icons.chevronDown;
+export const ChevronRight = Icons.chevronRight;
 export const CircleHelp = Icons.help;
 export const Clock = Icons.time;
 export const Code = RiCodeLine;

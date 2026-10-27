@@ -10,7 +10,6 @@ import TimelineView from './Timeline';
 import SearchModal from './Search';
 import Assistant from './Assistant';
 import MembersModal from './Invite';
-import SettingsModal from './Settings';
 import { ProjectFormModal } from './Home';
 import { ProjectAvatar } from './ProjectArt';
 import ProjectOverview, { StatusPill } from './Overview';
@@ -137,7 +136,7 @@ export default function ProjectPage({ p, tab, deep }) {
         <div className="text-xs text-muted-foreground truncate">{owner ? (members.length ? members.map(m => m.name.split(' ')[0]).join(', ') : p.client || 'No members yet') : `with ${names.owner}`}</div>
       </div>
       {owner && (
-        <button onClick={() => setModal('settings')} className={cx('hidden md:flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full ring-1 ring-inset', gem ? 'ring-green-ring text-pos' : 'ring-border text-muted-foreground')} title="AI settings">
+        <button onClick={() => { location.hash = '#/settings/ai'; }} className={cx('hidden md:flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full ring-1 ring-inset', gem ? 'ring-green-ring text-pos' : 'ring-border text-muted-foreground')} title="AI settings">
           <span className={cx('w-1.5 h-1.5 rounded-full', gem ? 'bg-green' : 'bg-grey-400')} />{aiName(state.settings)}
         </button>
       )}
@@ -152,7 +151,7 @@ export default function ProjectPage({ p, tab, deep }) {
           <MenuItem icon={Users} onClick={() => setModal('members')}>Members</MenuItem>
           <MenuItem icon={Braces} onClick={() => setTab('timeline')}>Timeline & raw JSON</MenuItem>
           <MenuItem icon={Download} onClick={() => download(`${p.name.replace(/\W+/g, '-').toLowerCase()}-record.json`, JSON.stringify(p, null, 2))}>Export project record</MenuItem>
-          <MenuItem icon={KeyRound} onClick={() => setModal('settings')}>AI & settings</MenuItem>
+          <MenuItem icon={KeyRound} onClick={() => { location.hash = '#/settings/ai'; }}>AI & settings</MenuItem>
           {p.archived
             ? <MenuItem icon={ArchiveRestore} onClick={() => { mutate(p.id, q => updateMeta(q, 'owner', { archived: false }, 'project.unarchive')); toast('Project restored'); }}>Restore from archive</MenuItem>
             : <MenuItem icon={Archive} onClick={() => { mutate(p.id, q => updateMeta(q, 'owner', { archived: true }, 'project.archive')); toast('Archived — full history kept'); }}>Archive project</MenuItem>}
@@ -165,7 +164,6 @@ export default function ProjectPage({ p, tab, deep }) {
     <>
       <ProjectShell p={p} role={owner ? 'owner' : 'client'} me={me} names={names} tabs={tabs} tab={tabs.includes(tab) ? tab : 'chat'} setTab={setTab} header={header} deep={deep} searchProjects={owner ? undefined : [p]} />
       {modal === 'members' && <MembersModal p={p} onClose={() => setModal(null)} />}
-      {modal === 'settings' && <SettingsModal onClose={() => setModal(null)} />}
       {modal === 'edit' && <ProjectFormModal project={p} onClose={() => setModal(null)} />}
     </>
   );
