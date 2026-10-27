@@ -262,10 +262,12 @@ async function getBlob(env, cors, id) {
     }
   }
   const r = await env.DB.prepare('SELECT mime, data, enc FROM blobs WHERE id = ?').bind(id).first();
-  if (!r) throw new HttpError(404, 'blob not found');
+  if (!r || !r.data) throw new HttpError(404, 'blob not found');
   headers.set('Content-Type', r.mime || 'application/octet-stream');
   if (r.enc) headers.set('X-Encrypted', '1');
-  return new Response(r.data, { headers });
+  const bytes = r.data instanceof Uint8Array ? r.data : new Uint8Array(r.data);
+  headers.set('Content-Length', String(bytes.byteLength));
+  return new Response(bytes, { headers });
 }
 
 async function putBlob(req, env, cors, id) {

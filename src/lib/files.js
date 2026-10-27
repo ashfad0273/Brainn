@@ -49,8 +49,81 @@ export function linkTitle(url) {
   } catch { return url.slice(0, 48); }
 }
 
+/** Automatically downscales and compresses large camera photos so they fit within the 1.8 MB storage limit. */
+export async function optimizeImageIfNeeded(file, maxBytes = 1_500_000, maxDimension = 2048) {
+  if (!file || !file.type || !file.type.startsWith('image/') || file.type === 'image/svg+xml' || file.type === 'image/gif') {
+    return file;
+  }
+  if (file.size <= 1_200_000) return file;
+
+  return new Promise(resolve => {
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      try {
+        let { width, height } = img;
+        if (!width || !height) return resolve(file);
+
+        if (width > maxDimension || height > maxDimension) {
+          if (width > height) {
+            height = Math.round((height * maxDimension) / width);
+            width = maxDimension;
+          } else {
+            width = Math.round((width * maxDimension) / height);
+            height = maxDimension;
+          }
+        }
+
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return resolve(file);
+        ctx.drawImage(img, 0, 0, width, height);
+
+        canvas.toBlob(blob => {
+          if (!blob) return resolve(file);
+          if (blob.size <= maxBytes) {
+            const name = file.name.replace(/\.[^.]+$/, '') + '.jpg';
+            return resolve(new File([blob], name, { type: 'image/jpeg', lastModified: Date.now() }));
+          }
+
+          const s = Math.min(1440 / Math.max(width, height), 0.75);
+          const w2 = Math.round(width * s);
+          const h2 = Math.round(height * s);
+          const c2 = document.createElement('canvas');
+          c2.width = w2;
+          c2.height = h2;
+          const ctx2 = c2.getContext('2d');
+          if (!ctx2) return resolve(file);
+          ctx2.drawImage(img, 0, 0, w2, h2);
+
+          c2.toBlob(b2 => {
+            if (!b2) return resolve(file);
+            const name = file.name.replace(/\.[^.]+$/, '') + '.jpg';
+            resolve(new File([b2], name, { type: 'image/jpeg', lastModified: Date.now() }));
+          }, 'image/jpeg', 0.75);
+        }, 'image/jpeg', 0.82);
+      } catch (err) {
+        console.warn('Image optimization skipped:', err);
+        resolve(file);
+      }
+    };
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      resolve(file);
+    };
+    img.src = url;
+  });
+}
+
 /** Browser File → attachment record. The original bytes go to IndexedDB (lib/blobs); the record only references them. */
-export async function toAttachment(file, kind) {
+export async function toAttachment(origFile, kind) {
+  const file = await optimizeImageIfNeeded(origFile);
+  if (file.size > 1_850_000) {
+    throw new Error(`“${file.name}” (${(file.size / 1048576).toFixed(1)} MB) exceeds the 1.8 MB storage limit. Choose a smaller file or enable Cloudflare R2.`);
+  }
   const k = kind || (file.type.startsWith('image/') || /\.(heic|heif)$/i.test(file.name) ? 'image' : 'file');
   const id = uid('a');
   try { await putBlob(id, file); }

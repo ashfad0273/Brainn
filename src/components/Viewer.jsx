@@ -12,12 +12,22 @@ export function useDownload() {
 
 /** Full-size viewer: original pixels at 100%, wheel/buttons zoom, drag to pan, Esc closes. */
 export function Lightbox({ a, onClose }) {
-  const { url, failed } = useAttachmentUrl(a);
+  const { url, failed, retry } = useAttachmentUrl(a);
+  const [retried, setRetried] = useState(false);
   const dl = useDownload();
   const [z, setZ] = useState(1), [pos, setPos] = useState({ x: 0, y: 0 }), [bad, setBad] = useState(false);
   const drag = useRef(null);
   const zoom = f => setZ(v => Math.min(16, Math.max(0.05, +(v * f).toFixed(3))));
   const reset = () => { setZ(1); setPos({ x: 0, y: 0 }); };
+
+  const handleImgError = () => {
+    if (!retried) {
+      setRetried(true);
+      retry();
+    } else {
+      setBad(true);
+    }
+  };
 
   useEffect(() => {
     const k = e => { if (e.key === 'Escape') onClose(); else if (e.key === '+' || e.key === '=') zoom(1.25); else if (e.key === '-') zoom(0.8); else if (e.key === '0') reset(); };
@@ -50,7 +60,7 @@ export function Lightbox({ a, onClose }) {
             <button onClick={() => dl(a)} className="px-3 py-2 rounded-lg bg-white text-neutral-900 inline-flex items-center gap-2"><Download size={14} />Download original</button>
           </div>
         ) : url && (
-          <img src={url} alt={a.name} draggable={false} onError={() => setBad(true)}
+          <img src={url} alt={a.name} draggable={false} onError={handleImgError}
             style={{ maxWidth: 'none', maxHeight: 'none', transform: `translate(${pos.x}px, ${pos.y}px) scale(${z})`, imageRendering: z > 2 ? 'pixelated' : 'auto' }} />
         )}
       </div>
@@ -59,16 +69,27 @@ export function Lightbox({ a, onClose }) {
 
 /** Preview image that opens the Lightbox when clicked. Falls back to a download tile if it can't render. */
 export function ImageThumb({ a, className, imgClass }) {
-  const { url, failed } = useAttachmentUrl(a);
+  const { url, failed, retry } = useAttachmentUrl(a);
+  const [retried, setRetried] = useState(false);
   const [open, setOpen] = useState(false), [bad, setBad] = useState(false);
   const dl = useDownload();
+
+  const handleImgError = () => {
+    if (!retried) {
+      setRetried(true);
+      retry();
+    } else {
+      setBad(true);
+    }
+  };
+
   if (failed || bad) {
     return <button onClick={() => dl(a)} className={'text-xs text-neutral-300 underline ' + (className || '')} title="Preview not supported in this browser — download the original">{a.name} — can’t preview, download original</button>;
   }
   return (
     <>
       <button type="button" onClick={e => { e.stopPropagation(); setOpen(true); }} title="View full size" className={className}>
-        {url && <img src={url} alt={a.name} onError={() => setBad(true)} className={imgClass} />}
+        {url && <img src={url} alt={a.name} onError={handleImgError} className={imgClass} />}
       </button>
       {open && <Lightbox a={a} onClose={() => setOpen(false)} />}
     </>

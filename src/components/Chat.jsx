@@ -306,11 +306,35 @@ export default function Chat({ focus }) {
   const [q, setQ] = useState('');
   const [searching, setSearching] = useState(false);
   const [drag, setDrag] = useState(false);
+  const dragCounter = useRef(0);
   const [record, setRecord] = useState(null);
   const [hl, setHl] = useState(null);
   const { toast } = useStore();
   const end = useRef();
   const owner = role === 'owner';
+
+  useEffect(() => {
+    const cancelDrag = () => {
+      dragCounter.current = 0;
+      setDrag(false);
+    };
+    const onWindowDragLeave = e => {
+      if (!e.relatedTarget && (e.clientX <= 0 || e.clientY <= 0 || e.clientX >= window.innerWidth || e.clientY >= window.innerHeight)) {
+        cancelDrag();
+      }
+    };
+    const onKeyDown = e => { if (e.key === 'Escape') cancelDrag(); };
+    window.addEventListener('drop', cancelDrag);
+    window.addEventListener('dragend', cancelDrag);
+    window.addEventListener('dragleave', onWindowDragLeave);
+    window.addEventListener('keydown', onKeyDown);
+    return () => {
+      window.removeEventListener('drop', cancelDrag);
+      window.removeEventListener('dragend', cancelDrag);
+      window.removeEventListener('dragleave', onWindowDragLeave);
+      window.removeEventListener('keydown', onKeyDown);
+    };
+  }, []);
 
   useEffect(() => { end.current?.scrollIntoView({ block: 'end' }); }, [p.messages.length]);
   useEffect(() => {
@@ -357,9 +381,37 @@ export default function Chat({ focus }) {
 
   return (
     <div className="flex-1 min-w-0 flex flex-col relative chat-bg"
-      onDragOver={e => { if (e.dataTransfer.types.includes('Files')) { e.preventDefault(); setDrag(true); } }}
-      onDragLeave={e => { if (e.currentTarget === e.target) setDrag(false); }}
-      onDrop={async e => { e.preventDefault(); setDrag(false); const res = await Promise.allSettled([...e.dataTransfer.files].map(f => toAttachment(f))); res.filter(r => r.status === 'rejected').forEach(r => toast(r.reason.message, 'error')); setFiles(f => [...f, ...res.filter(r => r.status === 'fulfilled').map(r => r.value)]); }}>
+      onDragEnter={e => {
+        if (e.dataTransfer.types.includes('Files')) {
+          e.preventDefault();
+          dragCounter.current++;
+          setDrag(true);
+        }
+      }}
+      onDragOver={e => {
+        if (e.dataTransfer.types.includes('Files')) {
+          e.preventDefault();
+          e.dataTransfer.dropEffect = 'copy';
+        }
+      }}
+      onDragLeave={e => {
+        if (e.dataTransfer.types.includes('Files')) {
+          e.preventDefault();
+          dragCounter.current--;
+          if (dragCounter.current <= 0) {
+            dragCounter.current = 0;
+            setDrag(false);
+          }
+        }
+      }}
+      onDrop={async e => {
+        e.preventDefault();
+        dragCounter.current = 0;
+        setDrag(false);
+        const res = await Promise.allSettled([...e.dataTransfer.files].map(f => toAttachment(f)));
+        res.filter(r => r.status === 'rejected').forEach(r => toast(r.reason.message, 'error'));
+        setFiles(f => [...f, ...res.filter(r => r.status === 'fulfilled').map(r => r.value)]);
+      }}>
       {drag && <div className="absolute inset-3 z-10 rounded-2xl border-2 border-dashed border-sky-400/70 bg-sky-500/10 grid place-items-center text-sky-200 pointer-events-none">Drop files to attach</div>}
 
       <div className={cx('items-center gap-2 px-3 md:px-8 pt-2 md:pt-3', searching ? 'flex' : 'hidden md:flex')}>

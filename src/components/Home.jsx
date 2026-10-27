@@ -6,6 +6,7 @@ import SettingsModal from './Settings';
 import SearchModal from './Search';
 import { newProject, updateMeta, secretValues, maskText, liveItems, liveView, activeMembers, primaryClient } from '../lib/model';
 import { putBlob, isQuotaError } from '../lib/blobs';
+import { optimizeImageIfNeeded } from '../lib/files';
 import { ProjectAvatar, ProjectCover } from './ProjectArt';
 import { PROJECT_COLORS, isActive } from '../lib/meta';
 import { aiOn, aiName } from '../lib/brain';
@@ -17,9 +18,10 @@ const TAB_FOR_TYPE = { task: 'tasks', requirement: 'requirements', decision: 'de
 function ImagePick({ label, value, onChange, wide }) {
   const { toast } = useStore();
   const ref = useRef();
-  const pick = async file => {
-    if (!file) return;
-    if (!file.type.startsWith('image/')) return toast('Choose an image file', 'error');
+  const pick = async origFile => {
+    if (!origFile) return;
+    if (!origFile.type.startsWith('image/')) return toast('Choose an image file', 'error');
+    const file = await optimizeImageIfNeeded(origFile);
     const id = uid('img_');
     try { await putBlob(id, file); } catch (e) { return toast(isQuotaError(e) ? 'Browser storage is full — image not saved' : 'Could not store the image: ' + e.message, 'error'); }
     onChange({ id, stored: true, name: file.name, mime: file.type, size: file.size });

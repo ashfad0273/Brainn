@@ -38,7 +38,14 @@ export async function putBlob(id, file) {
     method: 'PUT',
     headers: { Authorization: r.auth, 'X-Attachment-Mime': mime, 'X-Attachment-Enc': key && !r.member ? '1' : '0' },
     body: r.member && key ? file : upload,
-  }).then(res => { if (!res.ok) throw new Error(`upload failed (${res.status})`); });
+  }).then(async res => {
+    if (!res.ok) {
+      if (res.status === 413) throw new Error('File exceeds database storage limit (~1.8 MB). Enable Cloudflare R2 for larger files.');
+      let errText = '';
+      try { const j = await res.json(); errText = j.error; } catch {}
+      throw new Error(errText || `upload failed (${res.status})`);
+    }
+  });
   // a member's message is only visible to the owner through the server, so its file must be there first
   if (r.member) await sent;
   else sent.catch(e => console.warn('blob upload', id, e));
@@ -61,8 +68,14 @@ async function fetchRemote(id) {
 }
 
 /** → Blob, or null if no stored copy exists. Throws if the stored copy is encrypted and the workspace is locked. */
-export async function getBlob(id) {
-  const r = (await kv.get(K(id))) || (await fetchRemote(id));
+export async function getBlob(id, expectedSize) {
+  let r = await kv.get(K(id));
+  if (r && !r.enc && expectedSize && r.blob && Math.abs(r.blob.size - expectedSize) > 0) {
+    // Corrupted or size mismatch — drop local cache and refetch from remote
+    await kv.del(K(id));
+    r = null;
+  }
+  if (!r) r = await fetchRemote(id);
   if (!r) return null;
   if (!r.enc) return r.blob;
   if (!key) throw new Error(member ? 'This file is encrypted in the owner\'s workspace' : 'Workspace is locked');
@@ -88,9 +101,10 @@ export async function reencryptAll(oldKey) {
 export const hasFile = a => !!(a && (a.dataUrl || a.stored));
 
 /** Resolves to { url, revoke }. Legacy data URLs pass through untouched. */
-export async function openUrl(a) {
+export async function openUrl(a, forceFresh = false) {
   if (a.dataUrl) return { url: a.dataUrl, revoke() {} };
-  const b = await getBlob(a.id);
+  if (forceFresh) await kv.del(K(a.id));
+  const b = await getBlob(a.id, a.size);
   if (!b) throw new Error('No stored copy of ' + a.name);
   const url = URL.createObjectURL(b);
   return { url, revoke: () => URL.revokeObjectURL(url) };
@@ -99,14 +113,17 @@ export async function openUrl(a) {
 /** Object URL for an attachment, created on demand and revoked on unmount. */
 export function useAttachmentUrl(a, enabled = true) {
   const [st, setSt] = useState({ url: null, failed: false });
+  const [rev, setRev] = useState(0);
+  const retry = () => setRev(v => v + 1);
+
   useEffect(() => {
     if (!enabled || !hasFile(a)) { setSt({ url: null, failed: false }); return; }
     let dead = false, h = null;
-    openUrl(a).then(r => { if (dead) r.revoke(); else { h = r; setSt({ url: r.url, failed: false }); } })
+    openUrl(a, rev > 0).then(r => { if (dead) r.revoke(); else { h = r; setSt({ url: r.url, failed: false }); } })
       .catch(() => !dead && setSt({ url: null, failed: true }));
     return () => { dead = true; h?.revoke(); };
-  }, [a.id, a.dataUrl, a.stored, enabled]); // eslint-disable-line react-hooks/exhaustive-deps
-  return st;
+  }, [a?.id, a?.dataUrl, a?.stored, enabled, rev]); // eslint-disable-line react-hooks/exhaustive-deps
+  return { ...st, retry };
 }
 
 export async function downloadAttachment(a) {
