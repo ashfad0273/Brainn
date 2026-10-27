@@ -1,10 +1,13 @@
 import { useMemo, useRef, useState } from 'react';
 import {
   Search, Upload, Folder, FolderPlus, LayoutGrid, List as ListIcon, Download, ExternalLink, MessageSquareQuote,
-  Pencil, Trash2, FolderInput, FileText, Image as ImageIcon, Mic, Film, Link2, Files, ArrowLeft, MoreHorizontal,
+  Pencil, Trash2, FolderInput, FileText, Image as ImageIcon, Mic, Film, Link2, Files, MoreHorizontal,
 } from '@/lib/icons';
 import { useStore } from '../store';
-import { Sidebar } from './Home';
+import BrainShell from './Shell';
+import { PageTopbar } from '@ume/ui/components/shell/PageTopbar';
+import { FilterBar, FilterClear, FilterSection } from '@ume/ui/components/patterns/FilterBar';
+import { ChoiceMenu, ChoiceList } from '@ume/ui/components/patterns/ChoiceMenu';
 import SettingsModal from './Settings';
 import { Button, Empty, Input, Modal, Field, Select, Menu, MenuItem } from './ui';
 import { ImageThumb, Lightbox, useDownload } from './Viewer';
@@ -97,29 +100,42 @@ export default function FileManager() {
     return <div className={cx('grid place-items-center bg-teal-soft text-teal', cls)}><I size={cls.includes('h-28') ? 28 : 16} /></div>;
   };
 
+  // Filters: which project and which kind of file, as Ume choice menus; on a phone they fold into the Filters sheet.
+  const projectOptions = projects.map(p => ({ value: p.id, label: `${p.name} · ${all.filter(f => f.p.id === p.id).length}`, swatch: p.color }));
+  const kindOptions = KINDS.slice(1).map(([k, l]) => ({ value: k, label: l }));
+  const pickProject = v => { setPid(v ?? 'all'); setFolder(null); };
+  const pickKind = v => setKind(v ?? 'all');
+  const filtersOn = (pid !== 'all') + (kind !== 'all');
+  const clearFilters = () => { pickProject(null); setKind('all'); };
+
   return (
-    <div className="h-full flex">
-      <Sidebar active="files" onSettings={t => setSettings(t)} />
-      <main className="flex-1 min-w-0 flex flex-col">
-        <div className="shrink-0 border-b border-border px-4 md:px-8 py-4 space-y-3">
-          <div className="flex flex-wrap items-center gap-2">
-            <a href="#/" className="md:hidden p-1.5 rounded-lg hover:bg-field-hover text-muted-foreground"><ArrowLeft size={18} /></a>
-            <h1 className="text-2xl font-medium tracking-tight flex-1">Files</h1>
-            <div className="flex items-center gap-2 bg-card ring-1 ring-border rounded-xl px-3 focus-within:ring-ring w-full sm:w-64 order-last sm:order-none">
-              <Search size={15} className="text-muted-foreground" /><input value={q} onChange={e => setQ(e.target.value)} placeholder="Search files" className="bg-transparent outline-none py-2 text-sm w-full" />
-            </div>
+    <BrainShell onSettings={t => setSettings(t)}>
+      <PageTopbar
+        title="Files"
+        subtitle="Every file and link shared in your projects, in one place."
+        keepActionsOnPhone
+        actions={<>
             <Button variant="ghost" size="icon" onClick={() => setGrid(g => { try { localStorage.setItem('pb-files-view', g ? 'list' : 'grid'); } catch { /* private mode */ } return !g; })} title={grid ? 'List view' : 'Grid view'}>{grid ? <ListIcon size={17} /> : <LayoutGrid size={17} />}</Button>
             <input ref={fileRef} type="file" multiple hidden onChange={e => { upload(e.target.files); e.target.value = ''; }} />
             <Button variant="primary" onClick={() => (project ? fileRef.current.click() : toast('Pick a project to upload into', 'error'))} title={project ? `Upload to ${project.name}${folder ? ' / ' + folder : ''}` : 'Pick a project first'}><Upload size={15} />Upload</Button>
-          </div>
-          <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5">
-            <button onClick={() => { setPid('all'); setFolder(null); }} className={cx('shrink-0 px-3 py-1.5 rounded-lg text-sm', pid === 'all' ? 'bg-field-hover text-foreground' : 'text-muted-foreground hover:text-foreground')}>All projects</button>
-            {projects.map(p => (
-              <button key={p.id} onClick={() => { setPid(p.id); setFolder(null); }} className={cx('shrink-0 flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-sm', pid === p.id ? 'bg-field-hover text-foreground' : 'text-muted-foreground hover:text-foreground')}>
-                <ProjectAvatar p={p} className="w-5 h-5" rounded="rounded-md" text="text-xs" />{p.name}<span className="text-xs text-text-tertiary">{all.filter(f => f.p.id === p.id).length}</span>
-              </button>
-            ))}
-          </div>
+        </>}
+      >
+        <div className="flex flex-wrap items-center gap-2">
+          <FilterBar
+            count={filtersOn}
+            onClear={clearFilters}
+            sheet={<>
+              <FilterSection icon={Folder} title="Project" id="files-project"><ChoiceList aria-labelledby="files-project" options={projectOptions} all="All projects" value={pid === 'all' ? null : pid} onChange={pickProject} /></FilterSection>
+              <FilterSection icon={Files} title="Type" id="files-kind"><ChoiceList aria-labelledby="files-kind" options={kindOptions} all="All types" value={kind === 'all' ? null : kind} onChange={pickKind} /></FilterSection>
+            </>}
+          >
+            <ChoiceMenu title="Project" options={projectOptions} all="All projects" value={pid === 'all' ? null : pid} onChange={pickProject} />
+            <ChoiceMenu title="Type" options={kindOptions} all="All types" value={kind === 'all' ? null : kind} onChange={pickKind} />
+            {filtersOn > 0 && <FilterClear onClick={clearFilters} />}
+          </FilterBar>
+          <span className="text-label-mono text-muted-foreground">{list.length} item{list.length === 1 ? '' : 's'}{size ? ` · ${fmtSize(size)}` : ''}</span>
+          <Input className="ms-auto w-full sm:w-64" leadingIcon={Search} value={q} onChange={e => setQ(e.target.value)} placeholder="Search files" aria-label="Search files" />
+        </div>
           {project && (
             <div className="flex items-center gap-1.5 flex-wrap">
               <button onClick={() => setFolder(null)} className={cx('flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs ring-1 ring-inset', folder === null ? 'bg-primary-soft ring-blue-ring text-primary' : 'ring-border text-muted-foreground hover:text-foreground')}><Folder size={12} />Everything</button>
@@ -128,15 +144,9 @@ export default function FileManager() {
               {canEdit && <button onClick={() => setModal({ kind: 'folder', value: '' })} className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs text-muted-foreground hover:text-foreground"><FolderPlus size={12} />New folder</button>}
             </div>
           )}
-          <div className="flex items-center gap-1 flex-wrap">
-            {KINDS.map(([k, l, I]) => (
-              <button key={k} onClick={() => setKind(k)} className={cx('flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs', kind === k ? 'bg-card text-text-figure shadow-button' : 'text-muted-foreground hover:text-foreground')}><I size={12} />{l}</button>
-            ))}
-            <span className="ml-auto text-xs text-muted-foreground">{list.length} item{list.length === 1 ? '' : 's'}{size ? ` · ${fmtSize(size)}` : ''}</span>
-          </div>
-        </div>
+      </PageTopbar>
 
-        <div className="flex-1 overflow-auto px-4 md:px-8 py-5"
+      <div className="px-4 py-6 sm:px-6"
           onDragOver={e => { if (project && e.dataTransfer.types.includes('Files')) e.preventDefault(); }}
           onDrop={e => { if (!project) return; e.preventDefault(); upload(e.dataTransfer.files); }}>
           {!list.length && <Empty icon={Files} title={all.length ? 'Nothing matches' : 'No files yet'} text={all.length ? 'Try another project, folder or type.' : 'Files and links shared in any project chat appear here. Pick a project and upload to add some.'} />}
@@ -174,8 +184,7 @@ export default function FileManager() {
               ))}
             </div>
           )}
-        </div>
-      </main>
+      </div>
 
       {lightbox && <Lightbox a={lightbox} onClose={() => setLightbox(null)} />}
       {settings && <SettingsModal initialTab={settings} onClose={() => setSettings(null)} />}
@@ -214,6 +223,6 @@ export default function FileManager() {
         <Modal title={`Delete “${modal.f.it.title}”?`} sub="It disappears from the files, the chat links and the AI’s context. Like every record, it stays in the project’s history (Timeline → raw JSON)." onClose={() => setModal(null)}
           footer={<><Button variant="ghost" onClick={() => setModal(null)}>Keep it</Button><Button variant="danger" onClick={() => { mutP(modal.f.p, q => deleteItem(q, 'owner', modal.f.it.id, 'Deleted from the file manager')); toast('Deleted — kept in the history'); setModal(null); }}><Trash2 size={14} />Delete</Button></>} />
       )}
-    </div>
+    </BrainShell>
   );
 }

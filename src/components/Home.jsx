@@ -1,18 +1,23 @@
 import { useRef, useState } from 'react';
-import { Plus, Search, Settings as SettingsIcon, FolderOpen, Layers, MessageSquare, ListTodo, Sparkles, Archive, Lock, Brain, ImagePlus, X, Users, Files, LogOut, CalendarClock } from '@/lib/icons';
+import { Plus, Search, Layers, MessageSquare, ListTodo, Sparkles, Archive, ImagePlus, X, Users, CalendarClock } from '@/lib/icons';
 import { useStore } from '../store';
 import { Button, Modal, Field, Input, Textarea, Select, Empty } from './ui';
+import BrainShell from './Shell';
+import { PageTopbar } from '@ume/ui/components/shell/PageTopbar';
+import { FilterBar, FilterClear, FilterSection } from '@ume/ui/components/patterns/FilterBar';
+import { ChoiceMenu, ChoiceList } from '@ume/ui/components/patterns/ChoiceMenu';
 import SettingsModal from './Settings';
 import SearchModal from './Search';
 import { newProject, updateMeta, secretValues, maskText, liveItems, liveView, activeMembers, primaryClient, projectProgress, timeLeftLabel, myMember, canReview } from '../lib/model';
 import { StatusPill, ProgressBar, timeTone } from './Overview';
-import { useAuth } from './Auth';
 import { putBlob, isQuotaError } from '../lib/blobs';
 import { optimizeImageIfNeeded } from '../lib/files';
 import { ProjectAvatar, ProjectCover } from './ProjectArt';
 import { PROJECT_COLORS, PROJECT_STATUS, isActive } from '../lib/meta';
-import { aiOn, aiName } from '../lib/brain';
 import { cx, fmtRel, uid, now, todayISO } from '../lib/util';
+
+// Brainn tone → Ume hue, for the status swatches.
+const STATUS_HUE = { sky: 'sky', amber: 'amber', emerald: 'green', neutral: null };
 
 const TAB_FOR_TYPE = { task: 'tasks', requirement: 'requirements', decision: 'decisions', sensitive: 'vault', file: 'files', question: 'memory', risk: 'memory' };
 
@@ -134,55 +139,9 @@ function ProjectCard({ p: record, i }) {
   );
 }
 
-/** Left navigation shared by Home and the file manager. */
-export function Sidebar({ active, space, setSpace, onNewSpace, onSettings }) {
-  const { state, encrypted, lock, mode } = useStore();
-  const auth = useAuth();
-  const member = mode === 'member';
-  const org = state.settings.org || {};
-  const gem = aiOn(state.settings);
-  const go = id => { if (setSpace) setSpace(id); location.hash = '#/'; };
-  return (
-    <aside className="w-60 shrink-0 border-r border-border bg-card hidden md:flex flex-col">
-      <div className="p-4 flex items-center gap-2.5">
-        {org.logo
-          ? <img src={org.logo} alt="" className="w-9 h-9 rounded-xl object-cover ring-1 ring-border" />
-          : <div className="w-9 h-9 rounded-xl grid place-items-center text-btn-primary-fg" style={{ background: org.color || '#fff' }}><Brain size={19} /></div>}
-        <div className="min-w-0"><div className="font-medium truncate leading-tight">{org.name || state.settings.workspaceName}</div><div className="text-xs text-muted-foreground truncate">{auth?.user ? auth.user.name || auth.user.email : 'Project Brain'}</div></div>
-      </div>
-      <nav className="px-2 space-y-0.5 flex-1 overflow-auto">
-        <a href="#/files" className={cx('w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition', active === 'files' ? 'bg-field-hover text-foreground' : 'text-muted-foreground hover:bg-field-hover hover:text-foreground')}>
-          <Files size={15} /><span className="flex-1">Files</span>
-        </a>
-        <div className="px-3 text-label-mono text-muted-foreground pt-3 pb-1">{member ? 'Projects' : 'Spaces'}</div>
-        {[{ id: 'all', name: 'All projects' }, ...(member ? [] : state.spaces)].map(s => {
-          const n = state.projects.filter(p => !p.archived && (s.id === 'all' || p.spaceId === s.id)).length;
-          return (
-            <button key={s.id} onClick={() => go(s.id)} className={cx('w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm text-left transition', active === 'projects' && space === s.id ? 'bg-field-hover text-foreground' : 'text-muted-foreground hover:bg-field-hover hover:text-foreground')}>
-              {s.id === 'all' ? <Layers size={15} /> : <FolderOpen size={15} />}<span className="flex-1 truncate">{s.name}</span><span className="text-xs text-text-tertiary">{n}</span>
-            </button>
-          );
-        })}
-        {!member && onNewSpace && <button onClick={onNewSpace} className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm text-muted-foreground hover:bg-field-hover hover:text-foreground"><Plus size={15} />New space</button>}
-      </nav>
-      <div className="p-2 border-t border-border space-y-0.5">
-        {!member && (
-          <button onClick={() => onSettings('ai')} className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm text-foreground hover:bg-field-hover">
-            <Sparkles size={15} /><span className="truncate">AI · {aiName(state.settings)}</span><span className={cx('ml-auto w-2 h-2 rounded-full', gem ? 'bg-green' : 'bg-grey-400')} />
-          </button>
-        )}
-        <button onClick={() => onSettings(member ? 'profile' : 'org')} className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm text-foreground hover:bg-field-hover"><SettingsIcon size={15} />Settings</button>
-        {encrypted && <button onClick={lock} className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm text-foreground hover:bg-field-hover"><Lock size={15} />Lock workspace</button>}
-        {auth && <button onClick={auth.signOut} className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm text-muted-foreground hover:bg-field-hover"><LogOut size={15} />Sign out</button>}
-      </div>
-    </aside>
-  );
-}
-
-export default function Home() {
+export default function Home({ space = 'all' }) {
   const { state, update, mode } = useStore();
   const member = mode === 'member';
-  const [space, setSpace] = useState('all');
   const [view, setView] = useState('active');
   const [status, setStatus] = useState('all');
   const [q, setQ] = useState('');
@@ -203,40 +162,48 @@ export default function Home() {
     if (!newSpace.trim()) return;
     const s = { id: uid('sp_'), name: newSpace.trim(), createdAt: now(), updatedAt: now() };
     update(st => ({ ...st, spaces: [...st.spaces, s] }));
-    setSpace(s.id); setNewSpace(''); setModal(null);
+    location.hash = `#/s/${s.id}`; setNewSpace(''); setModal(null);
   };
 
+  // Filters: which projects (active or archived) and their status, as Ume choice menus;
+  // on a phone they fold into the Filters sheet.
+  const views = [{ value: 'active', label: 'Active' }, { value: 'archived', label: archivedCount ? `Archived · ${archivedCount}` : 'Archived' }];
+  const statuses = Object.entries(PROJECT_STATUS).map(([k, v]) => ({ value: k, label: v.label, hue: STATUS_HUE[v.tone], swatch: STATUS_HUE[v.tone] ? undefined : 'var(--grey-400)' }));
+  const pickStatus = v => setStatus(v ?? 'all');
+  const filtersOn = (view !== 'active') + (status !== 'all');
+  const clearFilters = () => { setView('active'); setStatus('all'); };
+
   return (
-    <div className="h-full flex">
-      <Sidebar active="projects" space={space} setSpace={setSpace} onNewSpace={() => setModal('space')} onSettings={openSettings} />
-
-      <main className="flex-1 overflow-auto">
-        <div className="max-w-6xl mx-auto px-5 md:px-8 py-8 md:py-12">
-          <div className="flex flex-wrap items-end gap-4">
-            <div className="flex-1 min-w-[240px]">
-              <h1 className="text-3xl md:text-4xl font-medium tracking-tight">{space === 'all' ? (member ? 'Your projects' : 'Your projects') : state.spaces.find(s => s.id === space)?.name}</h1>
-              <p className="text-muted-foreground mt-1.5">{member ? `Projects ${state.settings.ownerName} shared with you.` : 'Every client conversation, task, requirement and decision — remembered, linked, never lost.'}</p>
-            </div>
-            <div className="flex gap-2 w-full sm:w-auto">
-              <div className="flex-1 sm:w-56 flex items-center gap-2 bg-card ring-1 ring-border rounded-xl px-3 focus-within:ring-ring">
-                <Search size={15} className="text-muted-foreground" /><input value={q} onChange={e => setQ(e.target.value)} placeholder="Filter projects" className="bg-transparent outline-none py-2 text-sm w-full" />
-              </div>
-              <Button onClick={() => setModal('search')} title="Search inside every project"><Search size={15} /><span className="hidden lg:inline">Search everything</span></Button>
-              <Button variant="ghost" size="icon" className="md:hidden" onClick={() => { location.hash = '#/files'; }} title="Files"><Files size={17} /></Button>
-              <Button variant="ghost" size="icon" className="md:hidden" onClick={() => openSettings(member ? 'profile' : 'org')}><SettingsIcon size={17} /></Button>
-            </div>
+    <BrainShell onSettings={openSettings} onNewSpace={() => setModal('space')} onNewProject={() => setModal('project')}>
+      <PageTopbar
+        title={space === 'all' ? 'Your projects' : state.spaces.find(s => s.id === space)?.name}
+        subtitle={member ? `Projects ${state.settings.ownerName} shared with you.` : 'Every client conversation, task, requirement and decision — remembered, linked, never lost.'}
+        actions={<>
+          <Button onClick={() => setModal('search')} title="Search inside every project"><Search />Search everything</Button>
+          {!member && <Button variant="primary" onClick={() => setModal('project')}><Plus />New project</Button>}
+        </>}
+      >
+        <div className="flex flex-wrap items-center gap-2">
+          <FilterBar
+            count={filtersOn}
+            onClear={clearFilters}
+            sheet={<>
+              <FilterSection icon={Layers} title="Showing" id="home-view"><ChoiceList aria-labelledby="home-view" options={views} value={view} onChange={setView} /></FilterSection>
+              <FilterSection icon={ListTodo} title="Status" id="home-status"><ChoiceList aria-labelledby="home-status" options={statuses} all="Any status" value={status === 'all' ? null : status} onChange={pickStatus} /></FilterSection>
+            </>}
+          >
+            <ChoiceMenu title="Showing" options={views} value={view} onChange={setView} />
+            <ChoiceMenu title="Status" options={statuses} all="Any status" value={status === 'all' ? null : status} onChange={pickStatus} />
+            {filtersOn > 0 && <FilterClear onClick={clearFilters} />}
+          </FilterBar>
+          <div className="ms-auto flex w-full gap-2 sm:w-auto">
+            <Input className="sm:w-56" leadingIcon={Search} value={q} onChange={e => setQ(e.target.value)} placeholder="Filter projects" aria-label="Filter projects" />
+            <Button className="lg:hidden" variant="ghost" size="icon" onClick={() => setModal('search')} title="Search inside every project" aria-label="Search everything"><Search /></Button>
           </div>
+        </div>
+      </PageTopbar>
 
-          <div className="flex flex-wrap items-center gap-1 mt-8 mb-5">
-            {[['active', 'Active'], ['archived', `Archived${archivedCount ? ` · ${archivedCount}` : ''}`]].map(([k, l]) => (
-              <button key={k} onClick={() => setView(k)} className={cx('px-3 py-1.5 rounded-lg text-sm', view === k ? 'bg-field-hover text-foreground' : 'text-muted-foreground hover:text-foreground')}>{k === 'archived' && <Archive size={13} className="inline mr-1.5 -mt-0.5" />}{l}</button>
-            ))}
-            <div className="w-px h-5 bg-field-hover mx-2" />
-            {[['all', 'Any status'], ...Object.entries(PROJECT_STATUS).map(([k, v]) => [k, v.label])].map(([k, l]) => (
-              <button key={k} onClick={() => setStatus(k)} className={cx('px-2.5 py-1 rounded-lg text-xs', status === k ? 'bg-field-hover text-foreground' : 'text-muted-foreground hover:text-foreground')}>{l}</button>
-            ))}
-          </div>
-
+      <div className="px-4 py-6 sm:px-6">
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
             {list.map((p, i) => <ProjectCard key={p.id} p={p} i={i} />)}
             {view === 'active' && !member && (
@@ -247,8 +214,7 @@ export default function Home() {
           </div>
           {member && !list.length && view === 'active' && <Empty icon={Layers} title="No projects yet" text={`When ${state.settings.ownerName} gives you access to a project, it shows up here.`} />}
           {view === 'archived' && !list.length && <Empty icon={Archive} title="No archived projects" text="Archive a finished project from its ⋯ menu. Its full history stays searchable." />}
-        </div>
-      </main>
+      </div>
 
       {modal === 'project' && <ProjectFormModal spaceId={space === 'all' ? undefined : space} onClose={() => setModal(null)} />}
       {modal === 'settings' && <SettingsModal initialTab={settingsTab} onClose={() => setModal(null)} />}
@@ -261,6 +227,6 @@ export default function Home() {
           <form onSubmit={addSpace} className="flex gap-2"><Input autoFocus value={newSpace} onChange={e => setNewSpace(e.target.value)} placeholder="e.g. Retainer clients" /><Button type="submit" variant="primary">Create</Button></form>
         </Modal>
       )}
-    </div>
+    </BrainShell>
   );
 }

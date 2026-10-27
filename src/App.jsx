@@ -6,6 +6,7 @@ import ProjectPage from './components/ProjectShell';
 import FileManager from './components/FileManager';
 import Unlock from './components/Unlock';
 import Analyzer from './components/Analyzer';
+import { ErrorPage } from '@ume/ui/components/session/ErrorPage';
 
 function useHash() {
   const [h, setH] = useState(location.hash);
@@ -26,9 +27,10 @@ const Splash = ({ text }) => (
 export default function App() {
   const { phase, state } = useStore();
   const h = useHash();
-  // #/  ·  #/files  ·  #/p/:id/:tab[/m|i/:ref]  ·  #/join/:token (retired PIN links)
+  // #/  ·  #/s/:space  ·  #/files  ·  #/p/:id/:tab[/m|i/:ref]  ·  #/join/:token (retired PIN links)
   const join = h.match(/^#\/join\/([\w-]+)/);
   const files = h.startsWith('#/files');
+  const sm = h.match(/^#\/s\/([\w-]+)/);
   const pm = h.match(/^#\/p\/([\w-]+)(?:\/(\w+))?(?:\/(m|i)\/([\w-]+))?/);
 
   let body;
@@ -38,9 +40,12 @@ export default function App() {
   else if (join) body = <Splash text="PIN invite links were replaced by email invitations. Ask the project owner to invite you by email." />;
   else {
     const p = pm && state.projects.find(x => x.id === pm[1]);
+    const space = sm && state.spaces.some(x => x.id === sm[1]) ? sm[1] : 'all';
     body = (
       <>
-        {p ? <ProjectPage key={p.id} p={p} tab={pm[2] || 'chat'} deep={pm[3] ? { kind: pm[3], ref: pm[4] } : null} /> : files ? <FileManager /> : <Home />}
+        {p ? <ProjectPage key={p.id} p={p} tab={pm[2] || 'chat'} deep={pm[3] ? { kind: pm[3], ref: pm[4] } : null} />
+          : pm ? <ErrorPage kind="not-found" frame="screen" onBack={() => history.back()} home={{ label: 'Go to projects', onClick: () => { location.hash = '#/'; } }} />
+          : files ? <FileManager /> : <Home space={space} />}
         <Analyzer />
       </>
     );
