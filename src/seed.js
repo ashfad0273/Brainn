@@ -14,7 +14,7 @@ export function buildSeed() {
   ];
 
   /* ---- Nova Café ---- */
-  const p = withClock(at(5, 9, 50), () => newProject({ name: 'Nova Café Website', client: 'Sara Ahmed', description: 'Marketing site for a neighbourhood café: menu, location and story.', color: '#f59e0b', spaceId: 'sp_web' }));
+  const p = withClock(at(5, 9, 50), () => newProject({ id: 'p1jftgiae4', name: 'Nova Café Website', client: 'Sara Ahmed', description: 'Marketing site for a neighbourhood café: menu, location and story.', color: '#f59e0b', spaceId: 'sp_web' }));
   const msg = (t, from, text, extra = {}) => withClock(t, () => addMessage(p, { from, text, ...extra }));
   const rec = (t, m, data) => withClock(t + 60000, () => addItem(p, 'owner', { ...data, sourceMsg: m.id, via: 'rules' }));
 
@@ -47,7 +47,7 @@ export function buildSeed() {
   msg(at(0, 9, 20), 'client', 'actually make the logo bigger again, the 20% smaller version looks too tiny on mobile');
 
   /* ---- Orbit Fitness ---- */
-  const q = withClock(at(3, 9, 0), () => newProject({ name: 'Orbit Fitness App', client: 'Daniel Cruz', description: 'Workout tracking app — onboarding and paywall screens.', color: '#0ea5e9', spaceId: 'sp_apps' }));
+  const q = withClock(at(3, 9, 0), () => newProject({ id: 'ph35pwtae5', name: 'Orbit Fitness App', client: 'Daniel Cruz', description: 'Workout tracking app — onboarding and paywall screens.', color: '#0ea5e9', spaceId: 'sp_apps' }));
   const qm1 = withClock(at(3, 10, 5), () => addMessage(q, { from: 'client', text: 'We need onboarding screens by next Monday. iOS first, android later.' }));
   const qm2 = withClock(at(3, 10, 20), () => addMessage(q, { from: 'owner', text: 'Perfect, starting today. Any reference apps you like?' }));
   withClock(at(3, 10, 21), () => {

@@ -10,7 +10,7 @@
 // (deleted: true) that hides it everywhere and wins when tabs merge; its trail stays in the JSON.
 
 import { uid, now, norm, secureDigits, overlap, hashId } from './util';
-import { mergeProject, union, newer, byKey } from './merge';
+import { mergeProject, dedupeProjects, union, newer, byKey } from './merge';
 import { TYPES, SENSITIVE_CATS, REPLACED_STATUS, SOLVED_STATUS, isActive, DEFAULT_PERMS, MEMBER_ROLES } from './meta';
 
 export const defaultSettings = () => ({
@@ -24,10 +24,10 @@ export function log(p, actor, action, ref = null, data = null) {
   p.log.push({ id: uid('e'), ts: now(), actor, action, ref, data });
 }
 
-export function newProject({ name, client = '', description = '', color = '#0ea5e9', spaceId = null, cover = null, avatar = null }) {
+export function newProject({ id, name, client = '', description = '', color = '#0ea5e9', spaceId = null, cover = null, avatar = null }) {
   const t = now();
   const p = {
-    id: uid('p'), name, client, description, color, spaceId, cover, avatar, archived: false, createdAt: t, metaAt: t,
+    id: id || uid('p'), name, client, description, color, spaceId, cover, avatar, archived: false, createdAt: t, metaAt: t,
     members: [], messages: [], items: [], suggestions: [], summaries: [], asks: [], log: [],
   };
   log(p, 'owner', 'project.create', null, { name });
@@ -492,14 +492,18 @@ export function normalizeProject(p) {
 }
 export function normalizeState(s) {
   s = s || {};
-  return { version: 1, ...s, settings: { ...defaultSettings(), ...(s.settings || {}) }, spaces: s.spaces || [], projects: (s.projects || []).map(normalizeProject) };
+  const projs = dedupeProjects((s.projects || []).map(normalizeProject));
+  return { version: 1, ...s, settings: { ...defaultSettings(), ...(s.settings || {}) }, spaces: s.spaces || [], projects: projs };
 }
 
-export { mergeProject };
+export { mergeProject, dedupeProjects };
 export function mergeState(a, b) {
   a = normalizeState(a); b = normalizeState(b);
   const settings = (b.settings.settingsAt || 0) > (a.settings.settingsAt || 0) ? b.settings : a.settings;
-  const pm = new Map(a.projects.map(p => [p.id, p]));
-  for (const p of b.projects) pm.set(p.id, pm.has(p.id) ? mergeProject(pm.get(p.id), p) : p);
-  return { ...a, settings, spaces: union(a.spaces, b.spaces, newer, 'createdAt'), projects: [...pm.values()].sort(byKey('createdAt')) };
+  const pm = new Map();
+  for (const p of [...a.projects, ...b.projects]) {
+    pm.set(p.id, pm.has(p.id) ? mergeProject(pm.get(p.id), p) : p);
+  }
+  const deduped = dedupeProjects([...pm.values()]);
+  return { ...a, settings, spaces: union(a.spaces, b.spaces, newer, 'createdAt'), projects: deduped.sort(byKey('createdAt')) };
 }

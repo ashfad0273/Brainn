@@ -46,3 +46,22 @@ export function mergeProject(a, b) {
   out.log = union(a.log, b.log, first, 'ts');
   return out;
 }
+
+/** Merge projects that share the same name+client (case-insensitive). Keeps one canonical record. */
+export function dedupeProjects(projects) {
+  const byKey = new Map();
+  for (const p of (projects || [])) {
+    if (!p) continue;
+    const k = (p.name || '').toLowerCase().trim() + '|' + (p.client || '').toLowerCase().trim();
+    if (byKey.has(k)) {
+      const existing = byKey.get(k);
+      const merged = mergeProject(existing, p);
+      merged.id = existing.id;
+      byKey.set(k, merged);
+    } else {
+      byKey.set(k, p);
+    }
+  }
+  return [...byKey.values()];
+}
+

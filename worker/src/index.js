@@ -18,7 +18,7 @@
 // Guards: allow-listed browser origins, owner bearer token, member PIN checked here (never sent to the
 // browser) with a lockout after repeated misses, request size caps, allow-listed models.
 
-import { mergeProject, withoutVault } from '../../src/lib/merge.js';
+import { mergeProject, dedupeProjects, withoutVault } from '../../src/lib/merge.js';
 
 const enc = new TextEncoder();
 const list = s => (s || '').split(',').map(x => x.trim()).filter(Boolean);
@@ -96,6 +96,13 @@ function memberIndex(env, p) {
  * pushing while a member posts) retry instead of one silently dropping the other's changes.
  */
 async function saveMerged(env, incoming) {
+  if (incoming?.name) {
+    const existing = await env.DB.prepare('SELECT id FROM projects WHERE lower(trim(name)) = lower(trim(?)) AND lower(trim(client)) = lower(trim(?)) LIMIT 1')
+      .bind(incoming.name || '', incoming.client || '').first();
+    if (existing && existing.id !== incoming.id) {
+      incoming = { ...incoming, id: existing.id };
+    }
+  }
   for (let attempt = 0; attempt < 5; attempt++) {
     const cur = await loadProject(env, incoming.id);
     const p = withoutVault(cur ? mergeProject(cur.p, incoming) : incoming);
@@ -233,6 +240,31 @@ async function handleJoin(req, env, cors, path) {
     return reply({ ok: true, message, project: memberCopy(saved, me) }, 200, cors);
   }
 
+  if (action === 'draft') {
+    const key = `draft_${p.id}_${me.id}`;
+    if (req.method === 'GET') {
+      const r = await env.DB.prepare('SELECT value FROM settings WHERE key = ?').bind(key).first();
+      let draft = null;
+      if (r?.value) { try { draft = JSON.parse(r.value); } catch { draft = { text: r.value }; } }
+      return reply({ ok: true, draft }, 200, cors);
+    }
+    if (req.method === 'POST') {
+      const body = await readBody(req, 200000, 'json');
+      if (!body || (!body.text?.trim() && !body.html?.trim())) {
+        await env.DB.prepare('DELETE FROM settings WHERE key = ?').bind(key).run();
+        return reply({ ok: true, cleared: true }, 200, cors);
+      }
+      const val = JSON.stringify({ text: String(body.text || ''), html: String(body.html || ''), replyTo: body.replyTo || null, ts: Number(body.ts) || Date.now() });
+      await env.DB.prepare(`INSERT INTO settings (key, value, updated_at) VALUES (?1, ?2, ?3)
+        ON CONFLICT(key) DO UPDATE SET value = ?2, updated_at = ?3`).bind(key, val, Date.now()).run();
+      return reply({ ok: true, saved: true }, 200, cors);
+    }
+    if (req.method === 'DELETE') {
+      await env.DB.prepare('DELETE FROM settings WHERE key = ?').bind(key).run();
+      return reply({ ok: true, cleared: true }, 200, cors);
+    }
+  }
+
   if (action === 'blobs' && blobId) {
     if (req.method === 'GET') {
       if (!visibleBlobs(memberCopy(p, me)).has(blobId)) throw new HttpError(404, 'blob not found');
@@ -295,7 +327,8 @@ async function handleSync(req, env, cors) {
       env.DB.prepare('SELECT * FROM spaces'),
       env.DB.prepare('SELECT * FROM settings'),
     ]);
-    const projects = projRows.results.map(r => { try { return JSON.parse(r.data); } catch { return null; } }).filter(Boolean);
+    const rawProjects = projRows.results.map(r => { try { return JSON.parse(r.data); } catch { return null; } }).filter(Boolean);
+    const projects = dedupeProjects(rawProjects);
     const spaces = spaceRows.results.map(s => ({ id: s.id, name: s.name, createdAt: s.created_at, updatedAt: s.updated_at }));
     const settings = {};
     for (const s of settingsRows.results) { try { settings[s.key] = JSON.parse(s.value); } catch { settings[s.key] = s.value; } }
@@ -324,6 +357,47 @@ async function handleSync(req, env, cors) {
     if (statements.length) await env.DB.batch(statements);
     return reply({ ok: true, syncedProjects: projects.length, serverTime: now }, 200, cors);
   }
+  throw new HttpError(405, 'method not allowed');
+}
+
+/* ---------------- cross-device draft sync ---------------- */
+
+async function handleDraft(req, env, cors, path) {
+  const projectId = path.slice('/v1/draft/'.length);
+  if (!projectId) throw new HttpError(400, 'projectId required');
+  const key = `draft_${projectId}`;
+
+  if (req.method === 'GET') {
+    const r = await env.DB.prepare('SELECT value FROM settings WHERE key = ?').bind(key).first();
+    let draft = null;
+    if (r?.value) {
+      try { draft = JSON.parse(r.value); } catch { draft = { text: r.value }; }
+    }
+    return reply({ ok: true, draft }, 200, cors);
+  }
+
+  if (req.method === 'POST') {
+    const body = await readBody(req, 200000, 'json');
+    if (!body || (!body.text?.trim() && !body.html?.trim())) {
+      await env.DB.prepare('DELETE FROM settings WHERE key = ?').bind(key).run();
+      return reply({ ok: true, cleared: true }, 200, cors);
+    }
+    const val = JSON.stringify({
+      text: String(body.text || ''),
+      html: String(body.html || ''),
+      replyTo: body.replyTo || null,
+      ts: Number(body.ts) || Date.now(),
+    });
+    await env.DB.prepare(`INSERT INTO settings (key, value, updated_at) VALUES (?1, ?2, ?3)
+      ON CONFLICT(key) DO UPDATE SET value = ?2, updated_at = ?3`).bind(key, val, Date.now()).run();
+    return reply({ ok: true, saved: true }, 200, cors);
+  }
+
+  if (req.method === 'DELETE') {
+    await env.DB.prepare('DELETE FROM settings WHERE key = ?').bind(key).run();
+    return reply({ ok: true, cleared: true }, 200, cors);
+  }
+
   throw new HttpError(405, 'method not allowed');
 }
 
@@ -382,6 +456,7 @@ export default {
       if (path === '/v1/health') return reply({ status: 'ok', time: Date.now() }, 200, cors);
       if (path === '/v1/generate') return await handleGenerate(req, env, cors);
       if (path === '/v1/sync') return await handleSync(req, env, cors);
+      if (path.startsWith('/v1/draft/')) return await handleDraft(req, env, cors, path);
       if (path.startsWith('/v1/blobs/')) {
         const id = decodeURIComponent(path.slice('/v1/blobs/'.length));
         if (!/^[\w-]+$/.test(id)) throw new HttpError(400, 'bad blob id');

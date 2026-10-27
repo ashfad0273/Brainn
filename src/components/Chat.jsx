@@ -5,6 +5,7 @@ import {
   Link as LinkIcon, ListOrdered, List, Quote, Code, Terminal, Smile, AtSign, Loader2
 } from 'lucide-react';
 import { useStore } from '../store';
+import * as kv from '../lib/kv';
 import { useP, Button, Menu, MenuItem, Badge, Empty } from './ui';
 import { ItemFormModal } from './Items';
 import ReadFileModal from './ReadFile';
@@ -25,7 +26,7 @@ const toneOf = id => parseInt(hashId(id || 'client').slice(0, 4), 36) % AVATAR.l
 
 function formatInline(text) {
   if (!text) return null;
-  const TOKEN_RE = /(```[\s\S]*?```|`[^`\n]+`|\*\*[^*\n]+\*\*|~~[^~\n]+~~|~[^~\n]+~|(?:\b|^)_[^_\n]+_(?:\b|$)|(?:\b|^)\*[^*\n]+\*(?:\b|$)|\[[^\]]+\]\(https?:\/\/[^\s)]+\)|\bhttps?:\/\/[^\s<>"']+|\bwww\.[^\s<>"']+)/g;
+  const TOKEN_RE = /(```[\s\S]*?```|`[^`\n]+`|\*\*[^*\n]+\*\*|~~[^~\n]+~~|~[^~\n]+~|(?:\b|^)_[^_\n]+_(?:\b|$)|(?:\b|^)\*[^*\n]+\*(?:\b|$)|\[[^\]]+\]\(https?:\/\/[^\s)]+\)|\b[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}\b|(?:\B|^)@[a-zA-Z0-9_.-]+|\bhttps?:\/\/[^\s<>"']+|\bwww\.[^\s<>"']+)/g;
   const parts = [];
   let lastIndex = 0;
   let match;
@@ -33,7 +34,12 @@ function formatInline(text) {
     if (match.index > lastIndex) {
       parts.push(text.slice(lastIndex, match.index));
     }
-    const token = match[0];
+    let token = match[0];
+    let trailing = '';
+    if (/[.,!?;:]$/.test(token) && !token.endsWith('`') && !token.endsWith('*') && !token.endsWith('~') && !token.endsWith(')')) {
+      trailing = token.slice(-1);
+      token = token.slice(0, -1);
+    }
     if (token.startsWith('```') && token.endsWith('```')) {
       const inner = token.slice(3, -3).replace(/^\w+\n/, '');
       parts.push(<pre key={match.index} className="my-1.5 p-2 rounded-lg bg-black/40 font-mono text-[13px] overflow-x-auto text-sky-200">{inner}</pre>);
@@ -53,18 +59,60 @@ function formatInline(text) {
       } else {
         parts.push(token);
       }
+    } else if (/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(token)) {
+      parts.push(<a key={match.index} href={`mailto:${token}`} className="inline-flex items-center text-emerald-300 underline decoration-emerald-400/50 underline-offset-2 hover:text-emerald-200 font-medium">{token}</a>);
+    } else if (token.startsWith('@') && token.length > 1) {
+      parts.push(<span key={match.index} className="inline-flex items-center font-semibold text-sky-300 bg-sky-500/15 px-1 py-0.5 rounded text-[0.92em]">@{token.slice(1)}</span>);
     } else if (URL_RE.test(token)) {
       const href = token.startsWith('http') ? token : 'https://' + token;
       parts.push(<a key={match.index} href={href} target="_blank" rel="noreferrer" className="underline decoration-white/40 underline-offset-2 hover:decoration-white break-all">{token}</a>);
     } else {
       parts.push(token);
     }
-    lastIndex = match.index + token.length;
+    if (trailing) parts.push(trailing);
+    lastIndex = match.index + match[0].length;
   }
   if (lastIndex < text.length) {
     parts.push(text.slice(lastIndex));
   }
   return parts.length ? parts : text;
+}
+
+function htmlToMarkdown(html) {
+  if (!html) return '';
+  let s = html;
+  s = s.replace(/<div><br\s*\/?>\s*<\/div>/gi, '\n');
+  s = s.replace(/<br\s*\/?>/gi, '\n');
+  s = s.replace(/<\/div><div>/gi, '\n');
+  s = s.replace(/<div>/gi, '\n').replace(/<\/div>/gi, '');
+  s = s.replace(/<p>/gi, '\n').replace(/<\/p>/gi, '\n');
+  s = s.replace(/<strong[^>]*>([\s\S]*?)<\/strong>/gi, '**$1**');
+  s = s.replace(/<b[^>]*>([\s\S]*?)<\/b>/gi, '**$1**');
+  s = s.replace(/<em[^>]*>([\s\S]*?)<\/em>/gi, '*$1*');
+  s = s.replace(/<i[^>]*>([\s\S]*?)<\/i>/gi, '*$1*');
+  s = s.replace(/<del[^>]*>([\s\S]*?)<\/del>/gi, '~~$1~~');
+  s = s.replace(/<s[^>]*>([\s\S]*?)<\/s>/gi, '~~$1~~');
+  s = s.replace(/<strike[^>]*>([\s\S]*?)<\/strike>/gi, '~~$1~~');
+  s = s.replace(/<code[^>]*>([\s\S]*?)<\/code>/gi, '`$1`');
+  s = s.replace(/<pre[^>]*>([\s\S]*?)<\/pre>/gi, '```\n$1\n```');
+  s = s.replace(/<a[^>]*href="([^"]*)"[^>]*>([\s\S]*?)<\/a>/gi, '[$2]($1)');
+  s = s.replace(/<span[^>]*class="[^"]*mention[^"]*"[^>]*>([\s\S]*?)<\/span>/gi, '$1');
+  s = s.replace(/<[^>]+>/g, '');
+  s = s.replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>');
+  return s.trim();
+}
+
+function markdownToHtml(md) {
+  if (!md) return '';
+  let s = md.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  s = s.replace(/```([\s\S]*?)```/g, '<pre class="my-1.5 p-2 rounded-lg bg-black/40 font-mono text-[13px] text-sky-200">$1</pre>');
+  s = s.replace(/\*\*([^*\n]+)\*\*/g, '<strong class="font-semibold text-white">$1</strong>');
+  s = s.replace(/~~([^~\n]+)~~/g, '<del class="opacity-75">$1</del>');
+  s = s.replace(/(?:^|\s)\*([^*\n]+)\*(?:\s|$)/g, ' <em class="italic">$1</em> ');
+  s = s.replace(/`([^`\n]+)`/g, '<code class="px-1.5 py-0.5 rounded bg-black/40 font-mono text-[0.88em] text-sky-300">$1</code>');
+  s = s.replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, '<a href="$2" class="underline decoration-sky-400 text-sky-300">$1</a>');
+  s = s.replace(/\n/g, '<br>');
+  return s;
 }
 
 function Linkified({ text }) {
@@ -302,83 +350,207 @@ function Composer({ onSend, files, setFiles, replyTo, setReplyTo }) {
   const [showFormat, setShowFormat] = useState(false);
   const [showEmoji, setShowEmoji] = useState(false);
   const [showMention, setShowMention] = useState(false);
+  const [mentionQuery, setMentionQuery] = useState('');
   const [showAi, setShowAi] = useState(false);
   const [aiCustom, setAiCustom] = useState('');
   const [aiLoading, setAiLoading] = useState(false);
   const [selectedText, setSelectedText] = useState('');
-  const [selectionRange, setSelectionRange] = useState({ start: 0, end: 0 });
   const [showRephraseMenu, setShowRephraseMenu] = useState(false);
 
-  const fileRef = useRef(), ta = useRef();
+  const fileRef = useRef(), editorRef = useRef(), syncTimer = useRef(null);
   const { rec, start, stop, cancel } = useRecorder(onSend);
 
-  useEffect(() => {
-    const el = ta.current;
-    if (!el) return;
-    el.style.height = 'auto';
-    el.style.height = Math.min(el.scrollHeight, 180) + 'px';
-  }, [text]);
+  // Sync editor innerHTML to text state and persist draft
+  const syncContent = () => {
+    const html = editorRef.current?.innerHTML || '';
+    const md = htmlToMarkdown(html);
+    setText(md);
 
-  const insertTextAtCursor = insert => {
-    const el = ta.current;
-    if (!el) { setText(t => t + insert); return; }
-    const start = el.selectionStart;
-    const end = el.selectionEnd;
-    const val = el.value;
-    const next = val.substring(0, start) + insert + val.substring(end);
-    setText(next);
-    setTimeout(() => {
-      el.focus();
-      el.setSelectionRange(start + insert.length, start + insert.length);
-    }, 0);
-  };
-
-  const wrapSelection = (prefix, suffix = prefix, placeholder = 'text') => {
-    const el = ta.current;
-    if (!el) return;
-    const start = el.selectionStart;
-    const end = el.selectionEnd;
-    const val = el.value;
-    const sel = val.substring(start, end) || placeholder;
-    const next = val.substring(0, start) + prefix + sel + suffix + val.substring(end);
-    setText(next);
-    setTimeout(() => {
-      el.focus();
-      el.setSelectionRange(start + prefix.length, start + prefix.length + sel.length);
-    }, 0);
-  };
-
-  const prefixLines = pfx => {
-    const el = ta.current;
-    if (!el) return;
-    const start = el.selectionStart;
-    const end = el.selectionEnd;
-    const val = el.value;
-    const lineStart = val.lastIndexOf('\n', start - 1) + 1;
-    const lineEnd = val.indexOf('\n', end);
-    const actualEnd = lineEnd === -1 ? val.length : lineEnd;
-    const lines = val.substring(lineStart, actualEnd).split('\n');
-    const prefixed = lines.map((l, i) => (typeof pfx === 'function' ? pfx(i) : pfx) + l).join('\n');
-    const next = val.substring(0, lineStart) + prefixed + val.substring(actualEnd);
-    setText(next);
-    setTimeout(() => {
-      el.focus();
-      el.setSelectionRange(lineStart, lineStart + prefixed.length);
-    }, 0);
-  };
-
-  const handleSelect = () => {
-    const el = ta.current;
-    if (!el) return;
-    const start = el.selectionStart;
-    const end = el.selectionEnd;
-    if (end > start) {
-      setSelectedText(el.value.substring(start, end));
-      setSelectionRange({ start, end });
-    } else {
-      setSelectedText('');
-      setShowRephraseMenu(false);
+    // AI shortcut trigger
+    if (md === '/' || md.startsWith('/')) {
+      setShowAi(true);
     }
+
+    // Mention trigger detection from cursor position
+    const sel = window.getSelection();
+    if (sel && sel.rangeCount > 0) {
+      const range = sel.getRangeAt(0);
+      const textNode = range.startContainer;
+      if (textNode && textNode.nodeType === Node.TEXT_NODE) {
+        const textBefore = textNode.textContent.slice(0, range.startOffset);
+        const atMatch = textBefore.match(/@([a-zA-Z0-9_\s]{0,24})$/);
+        if (atMatch) {
+          setMentionQuery(atMatch[1].trim().toLowerCase());
+          setShowMention(true);
+          setShowEmoji(false);
+          setShowAi(false);
+        } else {
+          setShowMention(false);
+          setMentionQuery('');
+        }
+      } else {
+        setShowMention(false);
+        setMentionQuery('');
+      }
+    }
+
+    // 1. Instant local persistence (guaranteed survive instant electricity outage)
+    const t = Date.now();
+    try {
+      if (md.trim()) {
+        const draftObj = { html, text: md, replyTo, ts: t };
+        localStorage.setItem(`brain_draft_${p.id}`, JSON.stringify(draftObj));
+        kv.set(`draft:${p.id}`, draftObj).catch(() => {});
+      } else {
+        localStorage.removeItem(`brain_draft_${p.id}`);
+        kv.del(`draft:${p.id}`).catch(() => {});
+      }
+    } catch {}
+
+    // 2. Debounced cross-device sync to Cloudflare Worker
+    if (syncTimer.current) clearTimeout(syncTimer.current);
+    syncTimer.current = setTimeout(() => {
+      const { workerUrl, workerToken } = state.settings || {};
+      if (workerUrl && workerToken) {
+        fetch(workerUrl.replace(/\/+$/, '') + `/v1/draft/${p.id}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${workerToken.trim()}` },
+          body: JSON.stringify({ html, text: md, replyTo, ts: t }),
+        }).catch(() => {});
+      }
+    }, 800);
+  };
+
+  // Restore draft on mount or project change
+  useEffect(() => {
+    if (!editorRef.current) return;
+    editorRef.current.innerHTML = '';
+    setText('');
+    let loadedLocal = false;
+    let localTs = 0;
+
+    // 1. Check local instant storage
+    try {
+      const raw = localStorage.getItem(`brain_draft_${p.id}`);
+      if (raw) {
+        const d = JSON.parse(raw);
+        if (d?.html || d?.text) {
+          editorRef.current.innerHTML = d.html || markdownToHtml(d.text);
+          setText(d.text || htmlToMarkdown(d.html));
+          if (d.replyTo && setReplyTo) setReplyTo(d.replyTo);
+          loadedLocal = true;
+          localTs = Number(d.ts) || 0;
+        }
+      }
+    } catch {}
+
+    // 2. Fetch remote draft from worker (for cross-device phone/PC syncing)
+    const { workerUrl, workerToken } = state.settings || {};
+    if (workerUrl && workerToken) {
+      fetch(workerUrl.replace(/\/+$/, '') + `/v1/draft/${p.id}`, {
+        headers: { Authorization: `Bearer ${workerToken.trim()}` },
+      })
+        .then(r => r.json())
+        .then(res => {
+          const d = res?.draft;
+          if (d && (d.html || d.text)) {
+            const remoteTs = Number(d.ts) || 0;
+            if (!loadedLocal || remoteTs > localTs) {
+              if (editorRef.current) {
+                editorRef.current.innerHTML = d.html || markdownToHtml(d.text);
+                setText(d.text || htmlToMarkdown(d.html));
+                if (d.replyTo && setReplyTo) setReplyTo(d.replyTo);
+              }
+            }
+          }
+        })
+        .catch(() => {});
+    }
+  }, [p.id]);
+
+  const handleSelectionChange = () => {
+    const sel = window.getSelection();
+    if (sel && sel.rangeCount > 0 && !sel.isCollapsed) {
+      const str = sel.toString();
+      if (str.trim().length > 1) {
+        setSelectedText(str);
+        return;
+      }
+    }
+    setSelectedText('');
+    setShowRephraseMenu(false);
+  };
+
+  const formatDoc = (cmd, val = null) => {
+    editorRef.current?.focus();
+    document.execCommand(cmd, false, val);
+    syncContent();
+  };
+
+  const formatLink = () => {
+    editorRef.current?.focus();
+    const url = prompt('Enter link URL (https://...):');
+    if (url) {
+      const full = url.startsWith('http') ? url : 'https://' + url;
+      document.execCommand('createLink', false, full);
+      syncContent();
+    }
+  };
+
+  const formatCode = isBlock => {
+    editorRef.current?.focus();
+    const sel = window.getSelection();
+    if (!sel || !sel.rangeCount) return;
+    const range = sel.getRangeAt(0);
+    const textContent = range.toString() || (isBlock ? 'code block' : 'code');
+    const el = document.createElement(isBlock ? 'pre' : 'code');
+    el.className = isBlock
+      ? 'my-1.5 p-2 rounded-lg bg-black/50 font-mono text-[13px] text-sky-200 block'
+      : 'px-1.5 py-0.5 rounded bg-black/40 font-mono text-[0.88em] text-sky-300';
+    el.textContent = textContent;
+    range.deleteContents();
+    range.insertNode(el);
+    syncContent();
+  };
+
+  const insertEmoji = em => {
+    editorRef.current?.focus();
+    document.execCommand('insertText', false, em);
+    setShowEmoji(false);
+    syncContent();
+  };
+
+  const insertMention = name => {
+    editorRef.current?.focus();
+    const sel = window.getSelection();
+    if (sel && sel.rangeCount > 0) {
+      const range = sel.getRangeAt(0);
+      const textNode = range.startContainer;
+      if (textNode && textNode.nodeType === Node.TEXT_NODE) {
+        const textBefore = textNode.textContent.slice(0, range.startOffset);
+        const atIdx = textBefore.lastIndexOf('@');
+        if (atIdx >= 0) {
+          const before = textNode.textContent.slice(0, atIdx);
+          const after = textNode.textContent.slice(range.startOffset);
+          textNode.textContent = before + `@${name} ` + after;
+          const newOffset = atIdx + name.length + 2;
+          const newRange = document.createRange();
+          newRange.setStart(textNode, Math.min(newOffset, textNode.textContent.length));
+          newRange.collapse(true);
+          sel.removeAllRanges();
+          sel.addRange(newRange);
+        } else {
+          document.execCommand('insertText', false, `@${name} `);
+        }
+      } else {
+        document.execCommand('insertText', false, `@${name} `);
+      }
+    } else {
+      document.execCommand('insertText', false, `@${name} `);
+    }
+    setShowMention(false);
+    setMentionQuery('');
+    syncContent();
   };
 
   const handleRephrase = async style => {
@@ -395,18 +567,12 @@ function Composer({ onSend, files, setFiles, replyTo, setReplyTo }) {
       const res = await generateText(state.settings, prompt);
       if (!res) throw new Error('Empty response');
 
-      const el = ta.current;
-      const start = selectionRange.start;
-      const end = selectionRange.end;
-      const next = text.substring(0, start) + res + text.substring(end);
-      setText(next);
+      editorRef.current?.focus();
+      document.execCommand('insertText', false, res);
+      syncContent();
       setSelectedText('');
       setShowRephraseMenu(false);
       toast('Rephrased with AI');
-      setTimeout(() => {
-        el?.focus();
-        el?.setSelectionRange(start, start + res.length);
-      }, 0);
     } catch (err) {
       toast('AI rephrase failed: ' + (err.message || 'Check Settings → AI'), 'error');
     } finally {
@@ -429,11 +595,13 @@ Write a natural, concise, ready-to-send chat message. Do NOT include greetings l
 
       const drafted = await generateText(state.settings, prompt);
       if (!drafted) throw new Error('Empty response');
-      setText(drafted);
+      if (editorRef.current) {
+        editorRef.current.innerHTML = markdownToHtml(drafted);
+        syncContent();
+      }
       setShowAi(false);
       setAiCustom('');
       toast('Drafted with AI');
-      setTimeout(() => ta.current?.focus(), 0);
     } catch (err) {
       toast('AI drafting failed: ' + (err.message || 'Check Settings → AI'), 'error');
     } finally {
@@ -442,14 +610,30 @@ Write a natural, concise, ready-to-send chat message. Do NOT include greetings l
   };
 
   const submit = () => {
-    if (!text.trim() && !files.length) return;
-    onSend({ text: text.trim(), attachments: files, replyTo });
-    setText(''); setFiles([]);
+    const html = editorRef.current?.innerHTML || '';
+    const md = htmlToMarkdown(html);
+    if (!md.trim() && !files.length) return;
+    onSend({ text: md.trim(), attachments: files, replyTo });
+    if (editorRef.current) editorRef.current.innerHTML = '';
+    setText('');
+    setFiles([]);
     if (setReplyTo) setReplyTo(null);
     setSelectedText('');
     setShowAi(false);
     setShowEmoji(false);
     setShowMention(false);
+    // Clear draft locally and on Worker
+    try {
+      localStorage.removeItem(`brain_draft_${p.id}`);
+      kv.del(`draft:${p.id}`).catch(() => {});
+      const { workerUrl, workerToken } = state.settings || {};
+      if (workerUrl && workerToken) {
+        fetch(workerUrl.replace(/\/+$/, '') + `/v1/draft/${p.id}`, {
+          method: 'DELETE',
+          headers: { Authorization: `Bearer ${workerToken.trim()}` },
+        }).catch(() => {});
+      }
+    } catch {}
   };
 
   const add = async list => {
@@ -459,6 +643,9 @@ Write a natural, concise, ready-to-send chat message. Do NOT include greetings l
   };
 
   const members = activeMembers(p);
+  const qLower = mentionQuery.toLowerCase();
+  const filteredMembers = members.filter(m => (m.name || '').toLowerCase().includes(qLower));
+  const showOwner = (names.owner || 'Owner').toLowerCase().includes(qLower);
 
   return (
     <div className="px-1.5 md:px-8 pt-1.5 md:pt-2 pb-[max(.375rem,env(safe-area-inset-bottom))] md:pb-4 relative">
@@ -534,7 +721,7 @@ Write a natural, concise, ready-to-send chat message. Do NOT include greetings l
           </div>
           <div className="grid grid-cols-7 gap-1 max-h-48 overflow-y-auto pr-1">
             {EMOJIS.map(em => (
-              <button key={em} type="button" onClick={() => { insertTextAtCursor(em); setShowEmoji(false); }}
+              <button key={em} type="button" onClick={() => insertEmoji(em)}
                 className="w-8 h-8 rounded-lg hover:bg-white/10 text-base grid place-items-center transition">
                 {em}
               </button>
@@ -546,20 +733,28 @@ Write a natural, concise, ready-to-send chat message. Do NOT include greetings l
       {/* Mention Member Popover */}
       {showMention && !rec && (
         <div className="absolute left-10 md:left-24 bottom-full mb-2 z-20 bg-[#1e1e1e] ring-1 ring-white/15 rounded-2xl p-2 shadow-2xl anim-up w-56">
-          <div className="px-2 py-1 text-[11px] font-medium text-neutral-500 uppercase tracking-wider">Mention Someone</div>
-          <div className="space-y-0.5">
-            <button type="button" onClick={() => { insertTextAtCursor(`@${names.owner} `); setShowMention(false); }}
-              className="w-full text-left px-2.5 py-1.5 rounded-lg hover:bg-white/10 text-xs text-neutral-200 flex items-center justify-between">
-              <span>{names.owner}</span>
-              <span className="text-[10px] text-neutral-500">Owner</span>
-            </button>
-            {members.map(m => (
-              <button key={m.id} type="button" onClick={() => { insertTextAtCursor(`@${m.name} `); setShowMention(false); }}
+          <div className="px-2 py-1 text-[11px] font-medium text-neutral-500 uppercase tracking-wider flex items-center justify-between">
+            <span>Mention Someone</span>
+            {mentionQuery && <span className="text-sky-400 text-[10px]">@{mentionQuery}</span>}
+          </div>
+          <div className="space-y-0.5 max-h-48 overflow-y-auto">
+            {showOwner && (
+              <button type="button" onClick={() => insertMention(names.owner)}
                 className="w-full text-left px-2.5 py-1.5 rounded-lg hover:bg-white/10 text-xs text-neutral-200 flex items-center justify-between">
-                <span>{m.name}</span>
+                <span className="font-medium text-sky-300">@{names.owner}</span>
+                <span className="text-[10px] text-neutral-500">Owner</span>
+              </button>
+            )}
+            {filteredMembers.map(m => (
+              <button key={m.id} type="button" onClick={() => insertMention(m.name)}
+                className="w-full text-left px-2.5 py-1.5 rounded-lg hover:bg-white/10 text-xs text-neutral-200 flex items-center justify-between">
+                <span>@{m.name}</span>
                 <span className="text-[10px] text-neutral-500">{memberRole(m)}</span>
               </button>
             ))}
+            {!showOwner && !filteredMembers.length && (
+              <div className="px-2 py-2 text-xs text-neutral-500 text-center">No member matches "@{mentionQuery}"</div>
+            )}
           </div>
         </div>
       )}
@@ -581,17 +776,17 @@ Write a natural, concise, ready-to-send chat message. Do NOT include greetings l
         {/* Top Slack Formatting Bar (Aa toggle) */}
         {showFormat && !rec && (
           <div className="flex items-center gap-0.5 px-2 py-1 border-b border-white/5 bg-[#171717] overflow-x-auto">
-            <button type="button" onClick={() => wrapSelection('**', '**', 'bold text')} title="Bold (Ctrl+B)" className="p-1.5 rounded hover:bg-white/10 text-neutral-400 hover:text-white"><Bold size={14} /></button>
-            <button type="button" onClick={() => wrapSelection('*', '*', 'italic text')} title="Italic (Ctrl+I)" className="p-1.5 rounded hover:bg-white/10 text-neutral-400 hover:text-white"><Italic size={14} /></button>
-            <button type="button" onClick={() => wrapSelection('~~', '~~', 'strikethrough')} title="Strikethrough" className="p-1.5 rounded hover:bg-white/10 text-neutral-400 hover:text-white"><Strikethrough size={14} /></button>
+            <button type="button" onClick={() => formatDoc('bold')} title="Bold (Ctrl+B)" className="p-1.5 rounded hover:bg-white/10 text-neutral-400 hover:text-white"><Bold size={14} /></button>
+            <button type="button" onClick={() => formatDoc('italic')} title="Italic (Ctrl+I)" className="p-1.5 rounded hover:bg-white/10 text-neutral-400 hover:text-white"><Italic size={14} /></button>
+            <button type="button" onClick={() => formatDoc('strikeThrough')} title="Strikethrough" className="p-1.5 rounded hover:bg-white/10 text-neutral-400 hover:text-white"><Strikethrough size={14} /></button>
             <div className="h-4 w-px bg-white/10 mx-1" />
-            <button type="button" onClick={() => wrapSelection('[', '](https://...)', 'link text')} title="Link" className="p-1.5 rounded hover:bg-white/10 text-neutral-400 hover:text-white"><LinkIcon size={14} /></button>
-            <button type="button" onClick={() => prefixLines(i => `${i + 1}. `)} title="Numbered list" className="p-1.5 rounded hover:bg-white/10 text-neutral-400 hover:text-white"><ListOrdered size={14} /></button>
-            <button type="button" onClick={() => prefixLines('- ')} title="Bullet list" className="p-1.5 rounded hover:bg-white/10 text-neutral-400 hover:text-white"><List size={14} /></button>
-            <button type="button" onClick={() => prefixLines('> ')} title="Blockquote" className="p-1.5 rounded hover:bg-white/10 text-neutral-400 hover:text-white"><Quote size={14} /></button>
+            <button type="button" onClick={formatLink} title="Link (Ctrl+K)" className="p-1.5 rounded hover:bg-white/10 text-neutral-400 hover:text-white"><LinkIcon size={14} /></button>
+            <button type="button" onClick={() => formatDoc('insertOrderedList')} title="Numbered list" className="p-1.5 rounded hover:bg-white/10 text-neutral-400 hover:text-white"><ListOrdered size={14} /></button>
+            <button type="button" onClick={() => formatDoc('insertUnorderedList')} title="Bullet list" className="p-1.5 rounded hover:bg-white/10 text-neutral-400 hover:text-white"><List size={14} /></button>
+            <button type="button" onClick={() => formatDoc('formatBlock', 'blockquote')} title="Blockquote" className="p-1.5 rounded hover:bg-white/10 text-neutral-400 hover:text-white"><Quote size={14} /></button>
             <div className="h-4 w-px bg-white/10 mx-1" />
-            <button type="button" onClick={() => wrapSelection('`', '`', 'code')} title="Inline code" className="p-1.5 rounded hover:bg-white/10 text-neutral-400 hover:text-white"><Code size={14} /></button>
-            <button type="button" onClick={() => wrapSelection('```\n', '\n```', 'code block')} title="Code block" className="p-1.5 rounded hover:bg-white/10 text-neutral-400 hover:text-white"><Terminal size={14} /></button>
+            <button type="button" onClick={() => formatCode(false)} title="Inline code" className="p-1.5 rounded hover:bg-white/10 text-neutral-400 hover:text-white"><Code size={14} /></button>
+            <button type="button" onClick={() => formatCode(true)} title="Code block" className="p-1.5 rounded hover:bg-white/10 text-neutral-400 hover:text-white"><Terminal size={14} /></button>
           </div>
         )}
 
@@ -604,24 +799,34 @@ Write a natural, concise, ready-to-send chat message. Do NOT include greetings l
               <span className="text-sm text-neutral-400 truncate">{rec.transcript || (rec.live ? 'Listening… transcript appears here' : 'Recording… (no live transcript in this browser)')}</span>
             </div>
           ) : (
-            <textarea ref={ta} rows={1} value={text}
-              onChange={e => {
-                const val = e.target.value;
-                setText(val);
-                if (val === '/' || val.startsWith('/')) setShowAi(true);
-              }}
-              onSelect={handleSelect}
-              onKeyUp={handleSelect}
-              onMouseUp={handleSelect}
+            <div
+              ref={editorRef}
+              contentEditable
+              suppressContentEditableWarning
+              role="textbox"
+              tabIndex={0}
+              onInput={syncContent}
+              onSelect={handleSelectionChange}
+              onKeyUp={e => { handleSelectionChange(); syncContent(); }}
+              onMouseUp={handleSelectionChange}
               onKeyDown={e => {
-                if ((e.metaKey || e.ctrlKey) && e.key === 'b') { e.preventDefault(); wrapSelection('**', '**', 'bold text'); }
-                else if ((e.metaKey || e.ctrlKey) && e.key === 'i') { e.preventDefault(); wrapSelection('*', '*', 'italic text'); }
-                else if ((e.metaKey || e.ctrlKey) && e.key === 'k') { e.preventDefault(); wrapSelection('[', '](https://...)', 'link text'); }
-                else if (e.key === 'Enter' && !e.shiftKey && !matchMedia('(pointer: coarse)').matches) { e.preventDefault(); submit(); }
+                if ((e.metaKey || e.ctrlKey) && e.key === 'b') { e.preventDefault(); formatDoc('bold'); }
+                else if ((e.metaKey || e.ctrlKey) && e.key === 'i') { e.preventDefault(); formatDoc('italic'); }
+                else if ((e.metaKey || e.ctrlKey) && e.key === 'k') { e.preventDefault(); formatLink(); }
+                else if (e.key === 'Enter' && !e.shiftKey && !matchMedia('(pointer: coarse)').matches) {
+                  e.preventDefault();
+                  submit();
+                }
               }}
-              onPaste={e => { if (e.clipboardData.files.length) { e.preventDefault(); add(e.clipboardData.files); } }}
-              placeholder={aiLoading ? 'AI is drafting message…' : 'Message (type / for AI writing assistant)'}
-              className="w-full bg-transparent outline-none resize-none py-1 px-1.5 text-[15px] placeholder:text-neutral-500 max-h-44" />
+              onPaste={e => {
+                if (e.clipboardData.files.length) {
+                  e.preventDefault();
+                  add(e.clipboardData.files);
+                }
+              }}
+              data-placeholder={aiLoading ? 'AI is drafting message…' : 'Message (type / for AI writing, @ to mention someone)'}
+              className="w-full bg-transparent outline-none py-1.5 px-2 text-[15px] text-white min-h-[42px] max-h-48 overflow-y-auto leading-relaxed empty:before:content-[attr(data-placeholder)] empty:before:text-neutral-500 empty:before:pointer-events-none focus:outline-none [&_strong]:font-semibold [&_strong]:text-white [&_em]:italic [&_em]:text-neutral-200 [&_del]:line-through [&_del]:opacity-75 [&_code]:px-1.5 [&_code]:py-0.5 [&_code]:rounded [&_code]:bg-black/40 [&_code]:font-mono [&_code]:text-[0.88em] [&_code]:text-sky-300 [&_a]:underline [&_a]:text-sky-300 [&_pre]:p-2 [&_pre]:rounded-lg [&_pre]:bg-black/50 [&_pre]:font-mono [&_pre]:text-[13px] [&_pre]:text-sky-200 [&_blockquote]:border-l-2 [&_blockquote]:border-sky-400 [&_blockquote]:pl-2 [&_blockquote]:italic [&_blockquote]:text-neutral-300"
+            />
           )}
         </div>
 
@@ -638,7 +843,7 @@ Write a natural, concise, ready-to-send chat message. Do NOT include greetings l
               className={cx('p-1.5 rounded-lg transition', showEmoji ? 'bg-amber-500/20 text-amber-300' : 'text-neutral-400 hover:text-white hover:bg-white/10')}>
               <Smile size={17} />
             </button>
-            <button type="button" onClick={() => { setShowMention(v => !v); setShowEmoji(false); setShowAi(false); }} title="Mention someone"
+            <button type="button" onClick={() => { setShowMention(v => !v); setShowEmoji(false); setShowAi(false); setMentionQuery(''); }} title="Mention someone"
               className={cx('p-1.5 rounded-lg transition', showMention ? 'bg-sky-500/20 text-sky-300' : 'text-neutral-400 hover:text-white hover:bg-white/10')}>
               <AtSign size={17} />
             </button>
