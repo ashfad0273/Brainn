@@ -1,0 +1,132 @@
+import { cva, type VariantProps } from "class-variance-authority";
+import type React from "react";
+import { cn } from "../../lib/utils";
+
+const emptyMediaVariants = cva(
+  "flex shrink-0 items-center justify-center [&_svg]:pointer-events-none [&_svg]:shrink-0",
+  {
+    defaultVariants: {
+      variant: "default",
+    },
+    variants: {
+      variant: {
+        default: "bg-transparent",
+        icon: "relative flex size-10 shrink-0 items-center justify-center rounded-xl border border-border bg-card not-dark:bg-clip-padding text-foreground [&_svg:not([class*='size-'])]:size-4.5",
+      },
+    },
+  },
+);
+
+export function Empty({
+  className,
+  ...props
+}: React.ComponentProps<"div">): React.ReactElement {
+  return (
+    <div
+      className={cn(
+        "flex min-w-0 flex-1 flex-col items-center justify-center gap-6 text-balance px-6 py-12 text-center md:py-20",
+        className,
+      )}
+      data-slot="empty"
+      {...props}
+    />
+  );
+}
+
+export function EmptyHeader({
+  className,
+  ...props
+}: React.ComponentProps<"div">): React.ReactElement {
+  return (
+    <div
+      className={cn(
+        "flex max-w-sm flex-col items-center gap-2 text-center",
+        className,
+      )}
+      data-slot="empty-header"
+      {...props}
+    />
+  );
+}
+
+export function EmptyMedia({
+  className,
+  variant = "default",
+  children,
+  ...props
+}: React.ComponentProps<"div"> &
+  VariantProps<typeof emptyMediaVariants>): React.ReactElement {
+  return (
+    <div
+      className={cn("relative mb-2", className)}
+      data-slot="empty-media"
+      data-variant={variant}
+      {...props}
+    >
+      {variant === "icon" && (
+        <>
+          <div
+            aria-hidden="true"
+            className={cn(
+              emptyMediaVariants({ variant }),
+              "pointer-events-none absolute bottom-px origin-bottom-left -translate-x-0.5 -rotate-10 scale-84 opacity-40 shadow-none",
+            )}
+          />
+          <div
+            aria-hidden="true"
+            className={cn(
+              emptyMediaVariants({ variant }),
+              "pointer-events-none absolute bottom-px origin-bottom-right translate-x-0.5 rotate-10 scale-84 opacity-40 shadow-none",
+            )}
+          />
+        </>
+      )}
+      <div className={cn(emptyMediaVariants({ variant }))}>{children}</div>
+    </div>
+  );
+}
+
+export function EmptyTitle({
+  className,
+  ...props
+}: React.ComponentProps<"div">): React.ReactElement {
+  return (
+    <div
+      className={cn("font-heading font-medium text-lg text-foreground", className)}
+      data-slot="empty-title"
+      {...props}
+    />
+  );
+}
+
+export function EmptyDescription({
+  className,
+  ...props
+}: React.ComponentProps<"p">): React.ReactElement {
+  return (
+    <div
+      className={cn(
+        "text-muted-foreground text-sm [&>a:hover]:text-primary [&>a]:underline [&>a]:underline-offset-4 [[data-slot=empty-title]+&]:mt-1",
+        className,
+      )}
+      data-slot="empty-description"
+      {...props}
+    />
+  );
+}
+
+export function EmptyContent({
+  className,
+  ...props
+}: React.ComponentProps<"div">): React.ReactElement {
+  return (
+    <div
+      className={cn(
+        "flex w-full min-w-0 max-w-sm flex-col items-center gap-4 text-balance text-sm",
+        className,
+      )}
+      data-slot="empty-content"
+      {...props}
+    />
+  );
+}

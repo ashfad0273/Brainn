@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useState } from 'react';
-import { Brain, Loader2, MailCheck } from 'lucide-react';
+import { Brain, Loader2, MailCheck } from '@/lib/icons';
 import { StoreProvider } from '../store';
 import { Button, Field, Input } from './ui';
 import { api, hasServer, getSession, setSession, clearSession, browserTz } from '../lib/api';
@@ -14,8 +14,8 @@ const inviteToken = () => (location.hash.match(/^#\/invite\/([\w-]+)/) || [])[1]
 function Logo({ org, size = 'lg' }) {
   const s = size === 'lg' ? 'w-14 h-14' : 'w-9 h-9';
   return org?.logo
-    ? <img src={org.logo} alt="" className={`${s} rounded-2xl object-cover mx-auto ring-1 ring-white/10`} />
-    : <div className={`${s} rounded-2xl grid place-items-center mx-auto text-neutral-900`} style={{ background: org?.color || '#fff' }}><Brain size={size === 'lg' ? 26 : 18} /></div>;
+    ? <img src={org.logo} alt="" className={`${s} rounded-2xl object-cover mx-auto ring-1 ring-border`} />
+    : <div className={`${s} rounded-2xl grid place-items-center mx-auto text-btn-primary-fg`} style={{ background: org?.color || '#fff' }}><Brain size={size === 'lg' ? 26 : 18} /></div>;
 }
 
 function Screen({ org, title, sub, children }) {
@@ -23,8 +23,8 @@ function Screen({ org, title, sub, children }) {
     <div className="h-full overflow-auto grid place-items-center p-5">
       <div className="w-full max-w-sm anim-pop">
         <Logo org={org} />
-        <h1 className="text-2xl font-semibold text-center mt-5">{title}</h1>
-        {sub && <p className="text-sm text-neutral-500 text-center mt-1.5">{sub}</p>}
+        <h1 className="text-2xl font-medium text-center mt-5">{title}</h1>
+        {sub && <p className="text-sm text-muted-foreground text-center mt-1.5">{sub}</p>}
         <div className="mt-7 space-y-3">{children}</div>
       </div>
     </div>
@@ -33,7 +33,7 @@ function Screen({ org, title, sub, children }) {
 
 const Splash = ({ text }) => (
   <div className="h-full grid place-items-center text-center p-6">
-    <div><Loader2 size={30} className="mx-auto text-neutral-500 animate-spin" /><p className="text-sm text-neutral-500 mt-3">{text}</p></div>
+    <div><Loader2 size={30} className="mx-auto text-muted-foreground animate-spin" /><p className="text-sm text-muted-foreground mt-3">{text}</p></div>
   </div>
 );
 
@@ -50,7 +50,7 @@ function useForm(init) {
   return { d, set, err, busy, run };
 }
 
-const ErrorText = ({ text }) => (text ? <p className="text-sm text-rose-300 text-center">{text}</p> : null);
+const ErrorText = ({ text }) => (text ? <p className="text-sm text-destructive-foreground text-center">{text}</p> : null);
 
 function Login({ org, onIn }) {
   const f = useForm({ email: '', password: '' });
@@ -62,7 +62,7 @@ function Login({ org, onIn }) {
         <ErrorText text={f.err} />
         <Button type="submit" variant="primary" className="w-full justify-center" disabled={f.busy}>{f.busy ? <Loader2 size={15} className="animate-spin" /> : 'Sign in'}</Button>
       </form>
-      <p className="text-xs text-neutral-600 text-center">Forgot your password? Ask the workspace owner to send you a new invitation.</p>
+      <p className="text-xs text-text-tertiary text-center">Forgot your password? Ask the workspace owner to send you a new invitation.</p>
     </Screen>
   );
 }
@@ -105,7 +105,7 @@ function AcceptInvite({ token, onIn }) {
         onIn(r);
       })} className="space-y-3">
         <Field label="Email" hint="The address you were invited with — you’ll sign in with it.">
-          <div className="relative"><Input type="email" value={inv.email} readOnly autoComplete="username" className="pr-8 text-neutral-300" /><MailCheck size={15} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-emerald-400" /></div>
+          <div className="relative"><Input type="email" value={inv.email} readOnly autoComplete="username" className="pr-8 text-foreground" /><MailCheck size={15} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-pos" /></div>
         </Field>
         <Field label="Your name"><Input autoFocus value={f.d.name} onChange={f.set('name')} /></Field>
         <Field label="Password" hint="At least 8 characters. You’ll sign in with your email and this password."><Input type="password" autoComplete="new-password" value={f.d.password} onChange={f.set('password')} /></Field>

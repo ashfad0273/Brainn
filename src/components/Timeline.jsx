@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { History, Braces, Download } from 'lucide-react';
+import { History, Braces, Download } from '@/lib/icons';
 import { useP, Button, Modal, Toggle, Empty } from './ui';
 import { TYPES, STATUS, MEMBER_ROLES } from '../lib/meta';
 import { engineName } from '../lib/gemini';
@@ -54,7 +54,7 @@ function RawJson({ p, onClose }) {
     <Modal wide title="Project record (JSON)" sub="The single source of truth for this project. It only ever grows." onClose={onClose}
       footer={<><div className="flex-1"><Toggle checked={show} onChange={setShow} label="Show sensitive values" /></div>
         <Button onClick={() => download(`${p.name.replace(/\W+/g, '-').toLowerCase()}-record.json`, JSON.stringify(p, null, 2))}><Download size={14} />Download full record</Button></>}>
-      <pre className="text-xs leading-relaxed bg-black/40 rounded-xl p-4 overflow-auto max-h-[60vh] text-neutral-300">{text}</pre>
+      <pre className="text-xs leading-relaxed bg-modal-scrim rounded-xl p-4 overflow-auto max-h-[60vh] text-foreground">{text}</pre>
     </Modal>
   );
 }
@@ -71,11 +71,11 @@ export default function TimelineView() {
     <div className="flex-1 overflow-auto">
       <div className="max-w-3xl mx-auto px-4 md:px-8 py-6">
         <div className="flex flex-wrap items-center gap-2 mb-5">
-          <div className="flex bg-[#181818] ring-1 ring-white/[.06] rounded-xl p-0.5">
-            {FILTERS.map(([k, l]) => <button key={k} onClick={() => setF(k)} className={cx('px-3 py-1.5 rounded-lg text-sm', f === k ? 'bg-white/10 text-white' : 'text-neutral-400 hover:text-white')}>{l}</button>)}
+          <div className="flex bg-card ring-1 ring-border rounded-xl p-0.5">
+            {FILTERS.map(([k, l]) => <button key={k} onClick={() => setF(k)} className={cx('px-3 py-1.5 rounded-lg text-sm', f === k ? 'bg-field-hover text-foreground' : 'text-muted-foreground hover:text-foreground')}>{l}</button>)}
           </div>
           <div className="flex-1" />
-          <span className="text-xs text-neutral-500">{p.log.length} events</span>
+          <span className="text-xs text-muted-foreground">{p.log.length} events</span>
           <Button size="sm" onClick={() => setRaw(true)}><Braces size={14} />Raw JSON</Button>
         </div>
         {!events.length && <Empty icon={History} title="Nothing here yet" />}
@@ -87,11 +87,11 @@ export default function TimelineView() {
             const isMsg = e.action === 'message.add';
             return (
               <li key={e.id}>
-                {sep && <div className="text-[11px] uppercase tracking-wide text-neutral-500 pt-4 pb-1.5">{day}</div>}
-                <button onClick={() => (isMsg ? jumpTo(e.ref) : it ? openItem(it.id) : null)} className={cx('w-full text-left flex gap-3 px-3 py-2 rounded-xl', (isMsg || it) && 'hover:bg-white/[.04]')}>
-                  <span className="text-xs text-neutral-600 w-12 shrink-0 pt-0.5 tabular-nums">{fmtDateTime(e.ts).split(', ').pop()}</span>
-                  <span className={cx('w-1.5 h-1.5 rounded-full mt-2 shrink-0', e.actor === 'owner' ? 'bg-sky-400' : e.actor === 'system' ? 'bg-violet-400' : 'bg-orange-400')} />
-                  <span className="text-sm text-neutral-300">{describe(e, p, who(e.actor))}</span>
+                {sep && <div className="text-label-mono text-muted-foreground pt-4 pb-1.5">{day}</div>}
+                <button onClick={() => (isMsg ? jumpTo(e.ref) : it ? openItem(it.id) : null)} className={cx('w-full text-left flex gap-3 px-3 py-2 rounded-xl', (isMsg || it) && 'hover:bg-field-hover')}>
+                  <span className="text-xs text-text-tertiary w-12 shrink-0 pt-0.5 tabular-nums">{fmtDateTime(e.ts).split(', ').pop()}</span>
+                  <span className={cx('w-1.5 h-1.5 rounded-full mt-2 shrink-0', e.actor === 'owner' ? 'bg-primary' : e.actor === 'system' ? 'bg-violet' : 'bg-orange')} />
+                  <span className="text-sm text-foreground">{describe(e, p, who(e.actor))}</span>
                 </button>
               </li>
             );

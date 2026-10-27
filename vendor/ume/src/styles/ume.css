@@ -1,0 +1,1337 @@
+/* source(none) + an explicit @source: Tailwind v4 otherwise auto-scans the whole
+   project, so a class name written as prose in a markdown plan or a code comment
+   compiles into a real utility. That is how `bg-[--chart-2]` — quoted in
+   scripts/check-css.mjs purely as an example of a bug — kept emitting an invalid
+   `background-color: --chart-2` rule long after the last real use was fixed. */
+@import "tailwindcss" source(none);
+/* Ume's own components. An app adds its own folder after importing this
+   file: `@import "@ume/ui/styles.css"; @source "./";` */
+@source "../";
+/* IBM Plex: Plex Sans (variable, wght axis 100-700) for everything, Plex Mono
+   500 for the uppercase Label Mono style (`text-label-mono`) and 400 for code. Two
+   weights: Regular 400 and Medium 500, plus Semibold 600 (the variable font
+   carries it) only through --weight-semibold. Self-hosted — the CSP has
+   font-src 'self'. */
+@import "@fontsource-variable/ibm-plex-sans/wght.css";
+@import "@fontsource/ibm-plex-mono/400.css";
+@import "@fontsource/ibm-plex-mono/500.css";
+
+@custom-variant dark (&:is(.dark *));
+
+/* Motion scale — the CSS mirror of DURATION / EASE_OUT / EASE_DRAWER in
+   packages/ui/src/lib/ease.ts. Change a value in both places. `static` so every variable is
+   emitted even where only an inline style or a var() reads it.
+
+   - `duration-fast|base|slow|chart|ticker` utilities come from the
+     --transition-duration-* keys; inline styles read --duration-*.
+   - --ease-out replaces Tailwind's default ease-out, so the plain `ease-out`
+     utility is the app curve. `ease-drawer` is for edge panels only.
+   - The default transition (a bare `transition-colors` and friends) is the
+     `fast` hover/press timing on the app curve.
+
+   Budget: nothing in the UI runs longer than `slow` (280ms); chart reveals may
+   take `chart` (400ms). check-conventions `slow-duration` enforces it. */
+@theme static {
+    --duration-instant: 0ms;
+    --duration-fast: 120ms;
+    --duration-base: 180ms;
+    --duration-slow: 280ms;
+    --duration-chart: 400ms;
+    --duration-ticker: 350ms;
+    --transition-duration-instant: 0ms;
+    --transition-duration-fast: 120ms;
+    --transition-duration-base: 180ms;
+    --transition-duration-slow: 280ms;
+    --transition-duration-chart: 400ms;
+    --transition-duration-ticker: 350ms;
+    --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+    --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
+    --default-transition-duration: 120ms;
+    --default-transition-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@theme inline {
+    /* Loading pulse: a flat opacity loop by design, so it sits outside the
+       motion budget. Skeleton drops the class under reduced motion. */
+    --animate-skeleton: skeleton 1.6s ease-in-out infinite;
+    --animate-caret-blink: 1s ease-out infinite caret-blink;
+    /* Login rings: a coloured trail laps each ring once per 9s, scaled per
+       ring by --ring-speed. Dropped under reduced motion (AuthLayout). */
+    --animate-ring-travel: ring-travel calc(var(--ring-speed, 1) * 9s) linear infinite;
+    /* Toast feedback: one 200ms pulse (success) or shake (error). */
+    --animate-toast-success-odd: toast-success-odd 200ms cubic-bezier(0.16, 1, 0.3, 1);
+    --animate-toast-success-even: toast-success-even 200ms cubic-bezier(0.16, 1, 0.3, 1);
+    --animate-toast-error-odd: toast-error-odd 200ms cubic-bezier(0.16, 1, 0.3, 1);
+    --animate-toast-error-even: toast-error-even 200ms cubic-bezier(0.16, 1, 0.3, 1);
+    /* Type scale — the Figma text styles (docs/design-system/standard.md §2).
+       Body is 15px and 13px is the floor: nothing renders smaller, and
+       check-conventions `min-font-size` enforces it on classes, inline styles
+       and chart props alike. text-base equals text-sm on purpose so a stray
+       `text-base` can't jump a size; prefer text-sm. Each step carries its
+       Figma letter spacing, so headings and figures need no tracking-* class:
+       Label (xs, Plex Sans) 0 · Label Mono (text-label-mono) +1% · Body
+       (sm/base) -1% · Title (lg) -1.25% · Heading (xl) -1.5% · Page title
+       (2xl) and Figure (3xl, figure, 4xl, hero) -2.5%. */
+    --text-xs: 0.8125rem; /* 13px: the Figma "Label/*" style (Plex Sans 13/18): meta, helper text, the sync pill */
+    --text-xs--line-height: 1.125rem;
+    --text-xs--letter-spacing: 0;
+    --text-sm: 0.9375rem; /* 15px: body, inputs, buttons, cells, nav */
+    --text-sm--line-height: 1.375rem;
+    --text-sm--letter-spacing: -0.01em;
+    --text-base: 0.9375rem; /* 15px */
+    --text-base--line-height: 1.375rem;
+    --text-base--letter-spacing: -0.01em;
+    --text-lg: 1.0625rem; /* 17px: emphasised text, card titles */
+    --text-lg--line-height: 1.5rem;
+    --text-lg--letter-spacing: -0.0125em;
+    --text-xl: 1.25rem; /* 20px: section headings */
+    --text-xl--line-height: 1.75rem;
+    --text-xl--letter-spacing: -0.015em;
+    --text-2xl: 1.5rem; /* 24px: page titles */
+    --text-2xl--line-height: 1.875rem;
+    --text-2xl--letter-spacing: -0.025em;
+    --text-3xl: 1.875rem; /* 30px: large figures */
+    --text-3xl--line-height: 2.25rem;
+    --text-3xl--letter-spacing: -0.025em;
+    --text-figure: 1.875rem; /* 30px, the same step as 3xl */
+    --text-figure--line-height: 2.25rem;
+    --text-figure--letter-spacing: -0.025em;
+    --text-4xl: 2.25rem; /* 36px: key figures */
+    --text-4xl--line-height: 2.5rem;
+    --text-4xl--letter-spacing: -0.025em;
+    --text-hero: 2.75rem; /* 44px: the hero figure */
+    --text-hero--line-height: 3rem;
+    --text-hero--letter-spacing: -0.025em;
+    /* The 404 and error pages, a size up: Title Large (the page-title step
+       at weight 500), Body Large, and Display Mono for the 404 (pair it with
+       font-mono). */
+    --text-title-lg: 1.5rem; /* 24px */
+    --text-title-lg--line-height: 1.875rem;
+    --text-title-lg--letter-spacing: -0.025em;
+    --text-title-lg--font-weight: 500;
+    --text-body-lg: 1.0625rem; /* 17px: Body Large, 17/28 regular (error pages, the Summary sentence) */
+    --text-body-lg--line-height: 1.75rem;
+    --text-body-lg--letter-spacing: -0.01em;
+    /* Weights: only font-normal (400) and font-medium (500); check-conventions
+       `font-weight` enforces it. The one exception is --weight-semibold. */
+    --font-heading: "IBM Plex Sans Variable", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+    --font-sans: "IBM Plex Sans Variable", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+    --font-mono: "IBM Plex Mono", ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+    /* Grey scale for the rare case a semantic token doesn't fit:
+       bg-grey-50, border-grey-200, … Semantic tokens remain the API. */
+    --color-grey-25: var(--grey-25);
+    --color-grey-50: var(--grey-50);
+    --color-grey-100: var(--grey-100);
+    --color-grey-200: var(--grey-200);
+    --color-grey-300: var(--grey-300);
+    --color-grey-400: var(--grey-400);
+    --color-grey-500: var(--grey-500);
+    --color-grey-600: var(--grey-600);
+    --color-grey-700: var(--grey-700);
+    --color-grey-800: var(--grey-800);
+    --color-grey-900: var(--grey-900);
+    --color-grey-950: var(--grey-950);
+    --color-code-highlight: var(--code-highlight);
+    --code-foreground: var(--code-foreground);
+    --color-code: var(--code);
+    --color-chart-10: var(--chart-10);
+    --color-chart-9: var(--chart-9);
+    --color-chart-8: var(--chart-8);
+    --color-chart-7: var(--chart-7);
+    --color-chart-6: var(--chart-6);
+    --color-chart-5: var(--chart-5);
+    --color-chart-4: var(--chart-4);
+    --color-chart-3: var(--chart-3);
+    --color-chart-2: var(--chart-2);
+    --color-chart-1: var(--chart-1);
+    --color-pos: var(--pos);
+    --color-pos-soft: var(--pos-soft);
+    --color-neg: var(--neg);
+    --color-neg-soft: var(--neg-soft);
+    --color-pos-ink: var(--pos-ink);
+    --color-money-in: var(--money-in);
+    --color-neg-ink: var(--neg-ink);
+    --color-warn: var(--warn);
+    --color-warn-soft: var(--warn-soft);
+    --color-warn-ink: var(--warn-ink);
+    --color-primary-soft: var(--primary-soft);
+    --color-primary-ink: var(--primary-ink);
+    /* Hue family: bg-violet-soft, text-violet-ink, border-violet-ring, … */
+    --color-violet: var(--violet);
+    --color-violet-soft: var(--violet-soft);
+    --color-violet-ink: var(--violet-ink);
+    --color-violet-ring: var(--violet-ring);
+    --color-blue: var(--blue);
+    --color-blue-soft: var(--blue-soft);
+    --color-blue-ink: var(--blue-ink);
+    --color-blue-ring: var(--blue-ring);
+    --color-sky: var(--sky);
+    --color-sky-soft: var(--sky-soft);
+    --color-sky-ink: var(--sky-ink);
+    --color-sky-ring: var(--sky-ring);
+    --color-teal: var(--teal);
+    --color-teal-soft: var(--teal-soft);
+    --color-teal-ink: var(--teal-ink);
+    --color-teal-ring: var(--teal-ring);
+    --color-green: var(--green);
+    --color-green-soft: var(--green-soft);
+    --color-green-ink: var(--green-ink);
+    --color-green-ring: var(--green-ring);
+    --color-lime: var(--lime);
+    --color-lime-soft: var(--lime-soft);
+    --color-lime-ink: var(--lime-ink);
+    --color-lime-ring: var(--lime-ring);
+    --color-amber: var(--amber);
+    --color-amber-soft: var(--amber-soft);
+    --color-amber-ink: var(--amber-ink);
+    --color-amber-ring: var(--amber-ring);
+    --color-orange: var(--orange);
+    --color-orange-soft: var(--orange-soft);
+    --color-orange-ink: var(--orange-ink);
+    --color-orange-ring: var(--orange-ring);
+    --color-rose: var(--rose);
+    --color-rose-soft: var(--rose-soft);
+    --color-rose-ink: var(--rose-ink);
+    --color-rose-ring: var(--rose-ring);
+    --color-pink: var(--pink);
+    --color-pink-soft: var(--pink-soft);
+    --color-pink-ink: var(--pink-ink);
+    --color-pink-ring: var(--pink-ring);
+    --color-coral: var(--coral);
+    --color-secondary-foreground: var(--secondary-foreground);
+    --color-secondary: var(--secondary);
+    --color-ring: var(--ring);
+    --color-primary-foreground: var(--primary-foreground);
+    --color-primary: var(--primary);
+    --color-popover-foreground: var(--popover-foreground);
+    --color-popover: var(--popover);
+    --color-muted-foreground: var(--muted-foreground);
+    --color-muted: var(--muted);
+    --color-input: var(--input);
+    --color-foreground: var(--foreground);
+    --color-destructive: var(--destructive);
+    --color-card-foreground: var(--card-foreground);
+    --color-card: var(--card);
+    --color-border: var(--border);
+    --color-border-strong: var(--border-strong);
+    --color-background: var(--background);
+    --color-accent-foreground: var(--accent-foreground);
+    --color-accent: var(--accent);
+    --color-warning-foreground: var(--warning-foreground);
+    --color-warning: var(--warning);
+    --color-success-foreground: var(--success-foreground);
+    --color-success: var(--success);
+    --color-info-foreground: var(--info-foreground);
+    --color-info: var(--info);
+    --color-destructive-foreground: var(--destructive-foreground);
+    --color-destructive-on: var(--destructive-on);
+    /* Text, icon and sidebar tokens (the Figma code-syntax names). Utilities:
+       - text:    text-text-secondary · text-text-tertiary · text-text-disabled
+       - icons:   text-icon-default · text-icon-secondary (hover) ·
+                  text-icon-muted · text-icon-disabled · text-icon-primary ·
+                  text-icon-on-primary · text-icon-success ·
+                  text-icon-warning · text-icon-danger (and bg-icon-* for a
+                  status dot)
+       - sidebar: bg-sidebar · bg-sidebar-active · border-sidebar-border
+       The doubled "text-text-" is deliberate: the utility prefix plus the
+       token's Figma name, so code and Figma read the same. */
+    --color-text-secondary: var(--text-secondary);
+    --color-text-tertiary: var(--text-tertiary);
+    --color-text-disabled: var(--text-disabled);
+    --color-icon-default: var(--icon-default);
+    --color-icon-secondary: var(--icon-secondary);
+    --color-icon-muted: var(--icon-muted);
+    --color-icon-disabled: var(--icon-disabled);
+    --color-icon-primary: var(--icon-primary);
+    --color-icon-on-primary: var(--icon-on-primary);
+    --color-icon-success: var(--icon-success);
+    --color-icon-warning: var(--icon-warning);
+    --color-icon-danger: var(--icon-danger);
+    --color-sidebar: var(--sidebar);
+    --color-sidebar-active: var(--sidebar-active);
+    --color-sidebar-border: var(--sidebar-border);
+    /* Overview revamp (Figma frame 67:1205): the content canvas, the subtle
+       hairline, table zebra stripes, the period track, the figure colour,
+       chart line + area, and the dark primary / ghost button colours.
+       Utilities: bg-canvas · border-border-subtle · bg-row-stripe ·
+       bg-row-stripe-alt · bg-track · text-text-figure · stroke-chart-line ·
+       fill-chart-area · bg-btn-primary · text-btn-primary-fg ·
+       text-btn-ghost-fg. */
+    --color-canvas: var(--canvas);
+    --color-border-subtle: var(--border-subtle);
+    /* The /illustrations showcase (Figma 252:3870): its page and tiles.
+       Utilities: bg-showcase-page · bg-showcase-tile. */
+    --color-showcase-page: var(--showcase-page);
+    --color-showcase-tile: var(--showcase-tile);
+    --color-row-stripe: var(--row-stripe);
+    --color-row-stripe-alt: var(--row-stripe-alt);
+    --color-track: var(--track);
+    --color-text-figure: var(--text-figure);
+    --color-chart-line: var(--chart-line);
+    --color-chart-misc: var(--chart-misc);
+    --color-chart-area: var(--chart-area);
+    --color-chart-area-income: var(--chart-area-income);
+    --color-chart-area-expense: var(--chart-area-expense);
+    --color-chart-area-profit: var(--chart-area-profit);
+    --color-chart-area-due: var(--chart-area-due);
+    --color-noise-ink: var(--noise-ink);
+    --color-auth-canvas: var(--auth-canvas);
+    --color-auth-dot: var(--auth-dot);
+    --color-input-filled: var(--input-filled);
+    /* Quiet controls (Settings): the grey fill of a field, picker, secondary
+       button or segmented track at rest, and its hover inside a white
+       surface. Utilities: bg-field · bg-field-hover. */
+    --color-field: var(--field);
+    --color-field-hover: var(--field-hover);
+    --color-text-label: var(--text-label);
+    --color-btn-primary: var(--btn-primary-bg);
+    --color-btn-primary-fg: var(--btn-primary-fg);
+    --color-btn-ghost-fg: var(--btn-ghost-fg);
+    /* Shared primitives (Accounts + component sheet): the selected nav row's
+       per-page accent and fade, the modal scrim, the field error ring.
+       Utilities: text-nav-accent · bg-nav-accent · bg-modal-scrim ·
+       bg-modal-scrim-nested. */
+    --color-nav-accent: var(--nav-accent);
+    --color-nav-fade: var(--nav-fade);
+    --color-modal-scrim: var(--modal-scrim);
+    --color-modal-scrim-nested: var(--modal-scrim-nested);
+    --color-field-error: var(--field-error);
+    /* Filled fields: a 2px card gap, then a 1.5px ring (focus or error). The
+       calendar's hovered day is the same 1.5px line drawn inside. */
+    --shadow-field-focus: 0 0 0 2px var(--card), 0 0 0 3.5px var(--foreground);
+    --shadow-field-error: 0 0 0 2px var(--card), 0 0 0 3.5px var(--field-error);
+    --shadow-day-hover: inset 0 0 0 1.5px var(--foreground);
+    /* A typed DD/MM/YYYY date: a touch of tracking so the digits don't crowd. */
+    --tracking-date: 0.02em;
+    /* Hidden password dots, spaced so each one reads. */
+    --tracking-password: 0.12em;
+    /* Pickers and menus (the date range picker): the hover hairline on a
+       preset chip. Utility: hover:border-border-hover. */
+    --color-border-hover: var(--border-hover);
+    /* Radii: controls 12px (xl), cards and dialogs 20px (2xl), pills full.
+       Floating pickers and menus 16px (rounded-pop). */
+    --radius-pop: 1rem;
+    /* Concentric corners: a surface inside another takes the outer radius
+       minus the inset between their edges, border included (standard.md §3).
+       check-conventions `nested-radius` recomputes each pair.
+       - pop-row: a row in a menu, choice menu or select list, 16px popup −
+         (1px border + 6px padding) = 9px.
+       - toast-chip: the icon chip in a toast, 20px card − (1px border + 12px
+         padding) = 7px. */
+    --radius-pop-row: calc(var(--radius-pop) - 7px);
+    --radius-toast-chip: calc(var(--radius-2xl) - 13px);
+    --radius-sm: 0.375rem;
+    --radius-check: 0.25rem; /* 4px: the 12px square check in tables and filter menus */
+    --radius-md: 0.5rem;
+    --radius-lg: 0.625rem;
+    --radius-xl: 0.75rem;
+    --radius-2xl: 1.25rem;
+    --radius-3xl: 1.5rem; /* 24px: the modal card */
+    --radius-4xl: 2rem;
+    --radius-popover: 1rem; /* 16px: the date popover */
+    /* The big amount field of the Transfer and Add a transaction modals, and
+       the new-category panel, 14px. */
+    --radius-amount: 0.875rem;
+    /* Smooth layered shadows (Brumm/Comeau technique) — override Tailwind defaults
+       so shadow-sm/md/lg/xl carry the soft stacked look everywhere. */
+    --shadow-2xs: 0 1px 2px rgb(var(--shadow-rgb) / 0.04);
+    --shadow-xs: 0 1px 2px rgb(var(--shadow-rgb) / 0.05);
+    --shadow-sm: 0 1px 2px rgb(var(--shadow-rgb) / 0.04), 0 2px 4px -1px rgb(var(--shadow-rgb) / 0.05);
+    --shadow-md: 0 1px 2px rgb(var(--shadow-rgb) / 0.04), 0 3px 6px -2px rgb(var(--shadow-rgb) / 0.06), 0 8px 18px -6px rgb(var(--shadow-rgb) / 0.07);
+    --shadow-lg: 0 2px 4px rgb(var(--shadow-rgb) / 0.05), 0 8px 16px -6px rgb(var(--shadow-rgb) / 0.08), 0 22px 40px -14px rgb(var(--shadow-rgb) / 0.12);
+    /* In-flow card elevation: hairline + soft shadow (see --card-shadow). */
+    --shadow-card: var(--card-shadow);
+    /* Figma "Shadow/xs (button)": secondary buttons, selected ghost tabs. */
+    --shadow-button: var(--button-shadow);
+    /* Floating pickers and menus: the date range picker, on the Accounts
+       page the Transfer modal, its account lists and calendar, and the Add a
+       transaction form's Paid to list. */
+    --shadow-pop: var(--pop-shadow);
+    --shadow-xl: 0 4px 8px rgb(var(--shadow-rgb) / 0.06), 0 16px 32px -8px rgb(var(--shadow-rgb) / 0.12), 0 40px 64px -20px rgb(var(--shadow-rgb) / 0.16);
+  @keyframes skeleton {
+  0%, to {
+    opacity: 1;
+        }
+  50% {
+    opacity: 0.5;
+        }
+    }
+  @keyframes ring-travel {
+  from {
+    stroke-dashoffset: var(--ring-from, 0);
+        }
+  to {
+    stroke-dashoffset: var(--ring-to, -100);
+        }
+    }
+  @keyframes caret-blink {
+  0%, 70%, to {
+    opacity: 1;
+        }
+  20%, 50% {
+    opacity: 0;
+        }
+    }
+  @keyframes toast-success-odd {
+  0% {
+    scale: 1;
+        }
+  30% {
+    scale: 1.025;
+        }
+  60% {
+    scale: 0.99;
+        }
+  100% {
+    scale: 1;
+        }
+    }
+  @keyframes toast-error-odd {
+  0% {
+    translate: 0 0;
+        }
+  25% {
+    translate: -3px 0;
+        }
+  50% {
+    translate: 3px 0;
+        }
+  75% {
+    translate: -3px 0;
+        }
+  100% {
+    translate: 0 0;
+        }
+    }
+  @keyframes toast-success-even {
+  0% {
+    scale: 1;
+        }
+  30% {
+    scale: 1.025;
+        }
+  60% {
+    scale: 0.99;
+        }
+  100% {
+    scale: 1;
+        }
+    }
+  @keyframes toast-error-even {
+  0% {
+    translate: 0 0;
+        }
+  25% {
+    translate: -3px 0;
+        }
+  50% {
+    translate: 3px 0;
+        }
+  75% {
+    translate: -3px 0;
+        }
+  100% {
+    translate: 0 0;
+        }
+    }
+}
+
+/* Vibrant palette (docs/design-system/standard.md §1). A cool grey scale and
+   beUI blue, plus a family of ten vivid hues that every coloured thing in the app
+   draws from: icon chips, category colours, chart series, badges and money.
+
+   - Brand: --primary is beUI blue (nudged from #0285f7 to #0272e0 so white
+     labels clear 4.5:1) and --accent is beUI teal. There are no gradients
+     (check-conventions `no-gradient`): the hero figure and key CTAs use
+     solid --primary. The one approved exception is the desktop sidebar (its
+     selected-row fade and the Squidx logo star), allowlisted by file.
+   - Hue family: violet, blue, sky, teal, green, lime, amber, orange, rose,
+     pink. Each has four steps: `--{hue}` (the solid, for icons, bars, dots),
+     `--{hue}-soft` (a tinted surface), `--{hue}-ink` (text on the soft
+     surface, ≥4.5:1 in both themes) and `--{hue}-ring` (a border on soft).
+   - Money: --pos (green), --neg (rose), --warn (amber), each with -soft and
+     -ink. --pos / --neg alone are text colours that clear 4.5:1 on a card.
+   - Greys: --grey-25..950, one slightly cool scale (hue 281.3). Every
+     neutral token below is built on it; nothing else names a grey.
+   - Surfaces: a near-white page and white cards (light), grey-950 page and
+     grey-900 cards (dark), separated by a hairline plus a soft shadow rather
+     than grey-on-grey.
+
+   scripts/check-conventions.mjs (`contrast-floor`) resolves these values —
+   hex and oklch() alike — and fails the build if any ink-on-soft pair, money
+   pair or label pair drops under its floor. */
+:root {
+    /* The grey scale. Theme-independent: each theme picks its steps below. */
+    --grey-25: oklch(0.93 0.002 281.3);
+    --grey-50: oklch(0.864 0.004 281.3);
+    --grey-100: oklch(0.797 0.006 281.3);
+    --grey-200: oklch(0.73 0.008 281.3);
+    --grey-300: oklch(0.664 0.011 281.3);
+    --grey-400: oklch(0.597 0.013 281.3);
+    --grey-500: oklch(0.53 0.016 281.3);
+    --grey-600: oklch(0.45 0.016 281.3);
+    --grey-700: oklch(0.37 0.013 281.3);
+    --grey-800: oklch(0.29 0.01 281.3);
+    --grey-900: oklch(0.21 0.007 281.3);
+    --grey-950: oklch(0.13 0.005 281.3);
+
+    /* Pure-neutral greys from the Figma sidebar, named by their HSL lightness
+       (neutral-52 is hsl(0 0% 52%)). Theme-independent primitives like the
+       grey scale: the semantic text / icon / sidebar tokens below pick their
+       steps per theme. */
+    --neutral-11: hsl(0 0% 11%);
+    --neutral-22: hsl(0 0% 22%);
+    --neutral-32: hsl(0 0% 32%);
+    --neutral-42: hsl(0 0% 42%);
+    --neutral-52: hsl(0 0% 52%);
+    --neutral-62: hsl(0 0% 62%);
+    --neutral-72: hsl(0 0% 72%);
+    --neutral-82: hsl(0 0% 82%);
+    --neutral-92: hsl(0 0% 92%);
+    --green-success: #01b468;
+    /* The Squidx logo star's top and bottom stops (SquidxLogo). */
+    --logo-star-top: #ffffff;
+    --logo-star-bottom: #454545;
+
+    /* A page a breath darker than white, so white cards lift off it. */
+    --background: color-mix(in oklch, white 65%, var(--grey-25));
+    /* The designer's text colour, #1c1c1c. */
+    --foreground: var(--neutral-11);
+    --card: #ffffff;
+    --card-foreground: var(--grey-950);
+    --popover: #ffffff;
+    --popover-foreground: var(--grey-950);
+    --primary: #0272e0;
+    --primary-foreground: #ffffff;
+    --primary-soft: oklch(0.95 0.035 257);
+    --primary-ink: oklch(0.48 0.17 257);
+    --secondary: var(--muted);
+    --secondary-foreground: var(--grey-950);
+    --muted: color-mix(in oklch, white 40%, var(--grey-25));
+    /* grey-500 clears 4.5:1 on card, page and muted (checked). */
+    --muted-foreground: var(--grey-500);
+    --accent: oklch(0.72 0.13 196);
+    --accent-foreground: var(--grey-950);
+    --border: color-mix(in oklch, var(--grey-100) 45%, transparent);
+    --border-strong: var(--grey-200);
+    --input: var(--grey-200);
+    --ring: #0272e0;
+
+    /* Hue family. */
+    --violet: oklch(0.6 0.22 293);
+    --violet-soft: oklch(0.95 0.045 293);
+    --violet-ink: oklch(0.48 0.15 293);
+    --violet-ring: oklch(0.87 0.08 293);
+    --blue: oklch(0.6 0.2 257);
+    --blue-soft: oklch(0.95 0.045 257);
+    --blue-ink: oklch(0.48 0.15 257);
+    --blue-ring: oklch(0.87 0.08 257);
+    --sky: oklch(0.66 0.15 232);
+    --sky-soft: oklch(0.95 0.045 232);
+    --sky-ink: oklch(0.48 0.15 232);
+    --sky-ring: oklch(0.87 0.08 232);
+    --teal: oklch(0.66 0.12 190);
+    --teal-soft: oklch(0.95 0.045 190);
+    --teal-ink: oklch(0.48 0.15 190);
+    --teal-ring: oklch(0.87 0.08 190);
+    --green: oklch(0.64 0.17 155);
+    --green-soft: oklch(0.95 0.045 155);
+    --green-ink: oklch(0.48 0.15 155);
+    --green-ring: oklch(0.87 0.08 155);
+    --lime: oklch(0.7 0.19 128);
+    --lime-soft: oklch(0.95 0.045 128);
+    --lime-ink: oklch(0.48 0.13 128);
+    --lime-ring: oklch(0.87 0.08 128);
+    --amber: oklch(0.75 0.17 75);
+    --amber-soft: oklch(0.95 0.045 75);
+    --amber-ink: oklch(0.5 0.12 75);
+    --amber-ring: oklch(0.87 0.08 75);
+    --orange: oklch(0.66 0.2 48);
+    --orange-soft: oklch(0.95 0.045 48);
+    --orange-ink: oklch(0.48 0.15 48);
+    --orange-ring: oklch(0.87 0.08 48);
+    --rose: oklch(0.64 0.2 15);
+    --rose-soft: oklch(0.95 0.045 15);
+    --rose-ink: oklch(0.48 0.15 15);
+    --rose-ring: oklch(0.87 0.08 15);
+    --pink: oklch(0.64 0.2 350);
+    --pink-soft: oklch(0.95 0.045 350);
+    --pink-ink: oklch(0.48 0.15 350);
+    --pink-ring: oklch(0.87 0.08 350);
+
+    /* Money and status. */
+    --pos: oklch(0.52 0.15 155);
+    --pos-soft: var(--green-soft);
+    --pos-ink: var(--green-ink);
+    --neg: oklch(0.53 0.2 18);
+    --neg-soft: var(--rose-soft);
+    --neg-ink: var(--rose-ink);
+    /* Money in reads in the deeper violet ink (readable on white, like --neg);
+       money out stays --neg. */
+    --money-in: var(--violet-ink);
+    /* The Transfer swatch in the Category filter: app green into app lime. */
+    /* allow-no-gradient: approved Transactions preview */
+    --transfer-swatch: linear-gradient(135deg, var(--green), var(--cash-swatch-3));
+    /* People's stat keys: "New this year" in a fresh pink sheen, and the top
+       clients' share in the Overview's cash blend. */
+    /* allow-no-gradient: approved People stats */
+    --new-swatch: linear-gradient(135deg, var(--cash-swatch-2), var(--pink));
+    /* allow-no-gradient: approved People stats */
+    --cash-swatch: linear-gradient(135deg, var(--cash-swatch-1), var(--cash-swatch-2) 50%, var(--cash-swatch-3));
+    --warn: oklch(0.55 0.13 65);
+    --warn-soft: var(--amber-soft);
+    --warn-ink: var(--amber-ink);
+
+    /* Older names, kept as aliases so unmigrated screens still build. */
+    --destructive: oklch(0.56 0.21 20);
+    --destructive-foreground: oklch(0.53 0.2 18);
+    --destructive-on: #ffffff;
+    --info: var(--primary);
+    --info-foreground: var(--blue-ink);
+    --success: var(--pos);
+    --success-foreground: var(--pos);
+    --warning: var(--warn);
+    --warning-foreground: var(--warn);
+    --coral: var(--orange);
+
+    /* Series: --chart-1..10 are the hue family. Category colours
+       (src/lib/categoryColor.ts) pin onto these numbers, so the order
+       matters; rose sits last because a series should not read as --neg. */
+    --chart-1: var(--blue);
+    --chart-2: var(--orange);
+    --chart-3: var(--teal);
+    --chart-4: var(--violet);
+    --chart-5: var(--green);
+    --chart-6: var(--sky);
+    --chart-7: var(--pink);
+    --chart-8: var(--lime);
+    --chart-9: var(--amber);
+    --chart-10: var(--rose);
+    --chart-grid: color-mix(in oklch, var(--grey-100) 40%, transparent);
+    --chart-axis: var(--grey-500);
+    --area-from: color-mix(in oklab, var(--green) 24%, transparent);
+    --area-to: color-mix(in oklab, var(--green) 0%, transparent);
+
+    /* Text, icon and sidebar tokens: the Figma code-syntax names. */
+    --text-secondary: var(--neutral-52);
+    --text-tertiary: var(--neutral-62);
+    --text-disabled: var(--neutral-72);
+    --icon-default: var(--neutral-11);
+    --icon-secondary: var(--neutral-52); /* hover */
+    --icon-muted: var(--neutral-62);
+    --icon-disabled: var(--neutral-82);
+    --icon-primary: var(--primary);
+    --icon-on-primary: #ffffff;
+    --icon-success: var(--green-success);
+    --icon-warning: var(--amber);
+    --icon-danger: var(--rose);
+    /* #f7f6f7, a breath off the designed #f6f6f6. */
+    --sidebar: var(--background);
+    --sidebar-active: var(--neutral-92);
+    --sidebar-border: var(--neutral-92);
+    /* The selected nav row's 1px line and icon (--nav-accent) and the fade
+       behind it (--nav-fade). Black on every page except where a page sets
+       data-nav-accent (below): Accounts is the chart blue, Transactions
+       the chart violet. */
+    --nav-accent: var(--icon-default);
+    --nav-fade: var(--sidebar-active);
+    --nav-accent-blue: var(--chart-1);
+    --nav-fade-blue: color-mix(in srgb, var(--nav-accent-blue) 10%, var(--sidebar));
+    --nav-accent-violet: var(--chart-4);
+    --nav-fade-violet: color-mix(in srgb, var(--nav-accent-violet) 10%, var(--sidebar));
+    --nav-accent-amber: var(--amber);
+    --nav-fade-amber: color-mix(in srgb, var(--nav-accent-amber) 10%, var(--sidebar));
+    --nav-accent-rose: var(--rose);
+    --nav-fade-rose: color-mix(in srgb, var(--nav-accent-rose) 10%, var(--sidebar));
+    --nav-accent-green: var(--green);
+    --nav-fade-green: color-mix(in srgb, var(--nav-accent-green) 10%, var(--sidebar));
+
+    /* Shared primitives (Accounts design + component sheet). */
+    --modal-scrim: color-mix(in srgb, var(--foreground) 28%, transparent);
+    /* A second, lighter scrim under a modal opened from a modal (Discard
+       changes?). */
+    --modal-scrim-nested: color-mix(in srgb, var(--foreground) 18%, transparent);
+    --field-error: var(--rose);
+    /* Thin scrollbars (thin-scrollbar): the text colour at 20%, 35% on hover,
+       on a 5% track. */
+    --scrollbar-thumb: color-mix(in srgb, var(--foreground) 20%, transparent);
+    --scrollbar-thumb-hover: color-mix(in srgb, var(--foreground) 35%, transparent);
+    --scrollbar-track: color-mix(in srgb, var(--foreground) 5%, transparent);
+    /* The one semibold (`font-(--weight-semibold)`): the money figures in a
+       transaction panel's similar stats, and the figures in the month pills
+       on Transactions and Projects. Nothing else uses 600. */
+    --weight-semibold: 600;
+
+    /* Overview revamp tokens (Figma Color collection, Light). */
+    --canvas: #f9f9f9;
+    --border-subtle: #e6e6e6;
+    /* The illustrations showcase: a white page, tiles a breath off it
+       (#fcfcfc, halfway to the canvas the figures' plates use). */
+    --showcase-page: #ffffff;
+    --showcase-tile: color-mix(in oklch, var(--canvas) 50%, var(--card));
+    --row-stripe: #f5f5f5;
+    --row-stripe-alt: #f8f8f8;
+    --track: #dcdcdc;
+    --text-figure: #000000;
+    --chart-line: #1a1a1a;
+    --chart-misc: oklch(0.79 0.11 10); /* Figma #F89EAE: the donut's Misc slice */
+    --chart-area: #fafafa;
+    /* The trend area per view: a faint wash of the view's colour. */
+    --chart-area-income: color-mix(in oklab, var(--violet) 7%, var(--chart-area));
+    --chart-area-expense: color-mix(in oklab, var(--rose) 7%, var(--chart-area));
+    --chart-area-profit: color-mix(in oklab, var(--amber) 9%, var(--chart-area));
+    --chart-area-due: color-mix(in oklab, var(--orange) 7%, var(--chart-area));
+    /* The Figma noise effect on chart fills, drawn by an SVG filter
+       (ChartNoise): 12% on the trend area and the income funnel; 30% with
+       overlay blending on the donut (Figma Noise, size 0.91, density 100%). */
+    --noise-ink: rgb(0 0 0 / 0.12);
+    /* The inset edge on images, video and avatars (image-outline): 10%, a
+       shape rather than a frame. Under 5% it vanishes on a pale photo, over
+       20% it reads as a border. */
+    --image-outline: rgb(0 0 0 / 0.1);
+    --noise-ink-strong: rgb(0 0 0 / 0.3);
+    /* Signed-out pages (Figma Login, 68:3334): the dotted canvas, the
+       filled sign-in fields and their mono label. */
+    --auth-canvas: #f6f6f6;
+    --auth-dot: #e8e8e8;
+    --input-filled: #f5f5f5;
+    /* Quiet controls: the track grey at part strength, a shade darker than
+       the page and than a white card, so it reads on both, in both themes. */
+    --field: color-mix(in srgb, var(--track) 55%, transparent);
+    --field-hover: color-mix(in srgb, var(--track) 85%, transparent);
+    --text-label: var(--neutral-32);
+    --btn-primary-bg: var(--neutral-11);
+    --btn-primary-fg: #ffffff;
+    --btn-ghost-fg: var(--neutral-42);
+    /* Pickers and menus: the hover hairline on a chip and the pop shadow. */
+    --border-hover: var(--neutral-72);
+    --pop-shadow: 0 1px 2px rgb(20 24 40 / 0.04), 0 12px 32px -6px rgb(20 24 40 / 0.14);
+    /* A choice menu scrolls once it is taller than this. */
+    --menu-max-h: min(480px, 70vh);
+    /* The three stops of the "Cash on hand" swatch (an approved gradient). */
+    --cash-swatch-1: #b496f6;
+    --cash-swatch-2: #f89eae;
+    --cash-swatch-3: #e5f879;
+    /* Accounts page: the money that sits in no account (the Unassigned row
+       and tile), and how strong a highlighted row's glow from the left is:
+       the account colour at 7%, 4% for the bright amber. */
+    --account-unassigned: var(--neutral-72);
+    --row-glow: 7%;
+    --row-glow-soft: 4%;
+
+    --code: var(--muted);
+    --code-foreground: var(--foreground);
+    --code-highlight: --alpha(var(--color-black) / 4%);
+    --radius: 0.75rem;
+
+    /* Elevation: in-flow cards carry a hairline and this soft two-layer
+       shadow; floating surfaces use the shadow-lg/xl scale. */
+    --shadow-rgb: 20 24 40;
+    --card-shadow: 0 1px 2px rgb(20 24 40 / 0.04), 0 6px 16px -8px rgb(20 24 40 / 0.08);
+    --button-shadow: 0 1px 2px rgb(var(--shadow-rgb) / 0.02), 0 2px 4px -1px rgb(var(--shadow-rgb) / 0.04);
+    --card-hi: 0 1px 0 rgb(255 255 255 / 0.6);
+    --glass-bg: rgb(255 255 255 / 0.9);
+    --glass-border: var(--border);
+}
+
+.dark {
+    --background: var(--grey-950);
+    --foreground: var(--grey-25);
+    --card: var(--grey-900);
+    --card-foreground: var(--grey-25);
+    --popover: var(--grey-900);
+    --popover-foreground: var(--grey-25);
+    --primary: #0272e0;
+    --primary-foreground: #ffffff;
+    --primary-soft: oklch(0.3 0.07 257);
+    --primary-ink: oklch(0.86 0.09 257);
+    --secondary: var(--muted);
+    --secondary-foreground: var(--grey-25);
+    --muted: color-mix(in oklch, var(--grey-900) 50%, var(--grey-800));
+    /* grey-300, not 400: 400 falls under 4.5:1 on the card. */
+    --muted-foreground: var(--grey-300);
+    --accent: oklch(0.8 0.14 196);
+    --accent-foreground: var(--grey-950);
+    --border: var(--grey-800);
+    --border-strong: var(--grey-700);
+    --input: var(--grey-700);
+    --ring: #3b9dff;
+
+    /* Hue family. */
+    --violet: oklch(0.72 0.18 293);
+    --violet-soft: oklch(0.29 0.065 293);
+    --violet-ink: oklch(0.87 0.11 293);
+    --violet-ring: oklch(0.42 0.1 293);
+    --blue: oklch(0.72 0.18 257);
+    --blue-soft: oklch(0.29 0.065 257);
+    --blue-ink: oklch(0.87 0.11 257);
+    --blue-ring: oklch(0.42 0.1 257);
+    --sky: oklch(0.76 0.14 232);
+    --sky-soft: oklch(0.29 0.065 232);
+    --sky-ink: oklch(0.87 0.11 232);
+    --sky-ring: oklch(0.42 0.1 232);
+    --teal: oklch(0.76 0.13 190);
+    --teal-soft: oklch(0.29 0.065 190);
+    --teal-ink: oklch(0.87 0.11 190);
+    --teal-ring: oklch(0.42 0.1 190);
+    --green: oklch(0.74 0.18 155);
+    --green-soft: oklch(0.29 0.065 155);
+    --green-ink: oklch(0.87 0.11 155);
+    --green-ring: oklch(0.42 0.1 155);
+    --lime: oklch(0.8 0.19 128);
+    --lime-soft: oklch(0.29 0.065 128);
+    --lime-ink: oklch(0.87 0.11 128);
+    --lime-ring: oklch(0.42 0.1 128);
+    --amber: oklch(0.8 0.16 75);
+    --amber-soft: oklch(0.29 0.065 75);
+    --amber-ink: oklch(0.87 0.11 75);
+    --amber-ring: oklch(0.42 0.1 75);
+    --orange: oklch(0.72 0.18 48);
+    --orange-soft: oklch(0.29 0.065 48);
+    --orange-ink: oklch(0.87 0.11 48);
+    --orange-ring: oklch(0.42 0.1 48);
+    --rose: oklch(0.72 0.18 15);
+    --rose-soft: oklch(0.29 0.065 15);
+    --rose-ink: oklch(0.87 0.11 15);
+    --rose-ring: oklch(0.42 0.1 15);
+    --pink: oklch(0.72 0.18 350);
+    --pink-soft: oklch(0.29 0.065 350);
+    --pink-ink: oklch(0.87 0.11 350);
+    --pink-ring: oklch(0.42 0.1 350);
+
+    --pos: oklch(0.78 0.17 155);
+    --pos-soft: var(--green-soft);
+    --pos-ink: var(--green-ink);
+    --neg: oklch(0.72 0.17 18);
+    --neg-soft: var(--rose-soft);
+    --neg-ink: var(--rose-ink);
+    --money-in: var(--violet-ink);
+    --warn: oklch(0.84 0.16 80);
+    --warn-soft: var(--amber-soft);
+    --warn-ink: var(--amber-ink);
+
+    --destructive: oklch(0.57 0.2 22);
+    --destructive-foreground: oklch(0.72 0.17 18);
+    --destructive-on: #ffffff;
+    --info: #3b9dff;
+    --info-foreground: var(--blue-ink);
+    --success: var(--pos);
+    --success-foreground: var(--pos);
+    --warning: var(--warn);
+    --warning-foreground: var(--warn);
+    --coral: var(--orange);
+
+    --chart-1: var(--blue);
+    --chart-2: var(--orange);
+    --chart-3: var(--teal);
+    --chart-4: var(--violet);
+    --chart-5: var(--green);
+    --chart-6: var(--sky);
+    --chart-7: var(--pink);
+    --chart-8: var(--lime);
+    --chart-9: var(--amber);
+    --chart-10: var(--rose);
+    --chart-grid: color-mix(in oklch, var(--grey-800) 70%, transparent);
+    --chart-axis: var(--grey-300);
+    --area-from: color-mix(in oklab, var(--green) 28%, transparent);
+    --area-to: color-mix(in oklab, var(--green) 0%, transparent);
+
+    --text-secondary: var(--neutral-62);
+    --text-tertiary: var(--neutral-52);
+    --text-disabled: var(--neutral-32);
+    --icon-default: var(--neutral-92);
+    --icon-secondary: var(--neutral-72); /* hover */
+    --icon-muted: var(--neutral-52);
+    --icon-disabled: var(--neutral-32);
+    /* Figma color/icon/primary (Dark) is the lighter ring blue. */
+    --icon-primary: var(--ring);
+    --icon-on-primary: #ffffff;
+    --icon-success: var(--green-success);
+    /* --amber and --rose are already the lighter dark-theme steps here. */
+    --icon-warning: var(--amber);
+    --icon-danger: var(--rose);
+    --sidebar: var(--muted);
+    --sidebar-active: var(--grey-800);
+    --sidebar-border: var(--grey-800);
+
+    /* Overview revamp tokens (Figma Color collection, Dark). */
+    --canvas: #0f0f11;
+    --border-subtle: #26262a;
+    --showcase-page: var(--background);
+    --showcase-tile: color-mix(in oklch, var(--card) 45%, var(--background));
+    --row-stripe: #151518;
+    --row-stripe-alt: #121214;
+    --track: #333338;
+    --text-figure: #f4f4f5;
+    --chart-line: #ededed;
+    --chart-misc: oklch(0.62 0.11 10); /* Figma #F89EAE: the donut's Misc slice */
+    --chart-area: #18181b;
+    --chart-area-income: color-mix(in oklab, var(--violet) 12%, var(--chart-area));
+    --chart-area-expense: color-mix(in oklab, var(--rose) 12%, var(--chart-area));
+    --chart-area-profit: color-mix(in oklab, var(--amber) 12%, var(--chart-area));
+    --chart-area-due: color-mix(in oklab, var(--orange) 12%, var(--chart-area));
+    --noise-ink: rgb(255 255 255 / 0.06);
+    --image-outline: rgb(255 255 255 / 0.1);
+    --noise-ink-strong: rgb(0 0 0 / 0.3);
+    --auth-canvas: var(--canvas);
+    --auth-dot: var(--border-subtle);
+    --input-filled: var(--row-stripe);
+    --field: color-mix(in srgb, var(--track) 55%, transparent);
+    --field-hover: color-mix(in srgb, var(--track) 85%, transparent);
+    --text-label: var(--neutral-72);
+    --btn-primary-bg: #ededed;
+    --btn-primary-fg: #111111;
+    --btn-ghost-fg: #8f8f8f;
+    --border-hover: var(--neutral-72);
+    --pop-shadow: 0 1px 2px rgb(0 0 0 / 0.3), 0 16px 40px -8px rgb(0 0 0 / 0.6);
+    --cash-swatch-1: #b496f6;
+    --cash-swatch-2: #f89eae;
+    --cash-swatch-3: #e5f879;
+
+    --code: var(--muted);
+    --code-foreground: var(--foreground);
+    --code-highlight: --alpha(var(--color-white) / 4%);
+
+    --shadow-rgb: 0 0 0;
+    --button-shadow: 0 1px 2px rgb(var(--shadow-rgb) / 0.2);
+    --card-shadow: 0 1px 0 rgb(255 255 255 / 0.03) inset, 0 1px 2px rgb(0 0 0 / 0.3), 0 8px 20px -10px rgb(0 0 0 / 0.5);
+    --card-hi: 0 1px 0 rgb(255 255 255 / 0.04);
+    --glass-bg: color-mix(in oklch, var(--grey-900) 90%, transparent);
+    --glass-border: var(--border);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+    }
+  /* Per-device "reduce motion" preference (Settings) — same effect as the
+     old app's class on <html>. Delays go too: a zero-length transition that
+     still waits out a 300ms delay (scrollbar fade, staggered entrances) is
+     just a stall. */
+  .reduce-motion *, .reduce-motion *::before, .reduce-motion *::after {
+    animation-duration: 0.01ms !important;
+    animation-delay: 0s !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    transition-delay: 0s !important;
+    }
+  /* The OS-level preference used to reach only Motion's JS springs, via
+     useAppReducedMotion(). Every CSS-driven animation — Base UI dialog scale,
+     sheet and drawer slides, toasts, popovers, active:scale press — still ran
+     for someone who had asked the system to stop. */
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      animation-delay: 0s !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      transition-delay: 0s !important;
+      scroll-behavior: auto !important;
+        }
+    }
+  /* Body text is 15px (text-sm), so unclassed copy matches the scale instead
+     of the browser's 16px. Unitless line-height (22/15) so it scales with any
+     size set below it. */
+  body {
+    @apply bg-background text-foreground;
+    font-size: var(--text-sm);
+    line-height: 1.4667;
+    }
+  code, kbd, samp, pre {
+    font-family: var(--font-mono);
+    }
+  html {
+    /* antialiased: without it macOS renders every weight heavier than drawn,
+       which read as near-Bold on the 44px hero figure. */
+    @apply font-sans antialiased;
+    /* The canvas behind the page: painted on the root itself so an
+       overscroll or a short page never shows the browser's white, and from
+       the same token as the app so it follows the theme. The platform's
+       bounce stays (no overscroll-behavior here). */
+    @apply bg-background;
+    /* Tabular figures everywhere. Plex Sans only ships tabular digits, so
+       this changes nothing on screen; it keeps columns, timers and figures
+       steady in the fallback font (while Plex loads) and in any later
+       face. check-conventions `tabular-default` keeps this rule. */
+    font-variant-numeric: tabular-nums;
+    }
+  /* Images and video don't know what is behind them: a 1px line drawn over
+     their outermost pixels gives a pale photo a shape without taking space
+     (a border would). :where() keeps it overridable. */
+  :where(img, video) {
+    outline: 1px solid var(--image-outline);
+    outline-offset: -1px;
+    }
+  /* A quote's opening mark is mostly air: hang it so the first letter lines
+     up with the text below. Safari has hanging-punctuation; elsewhere a
+     negative indent does the same for a known opening mark. */
+  blockquote {
+    hanging-punctuation: first;
+    }
+  @supports not (hanging-punctuation: first) {
+    blockquote {
+      text-indent: -0.42em;
+      }
+    }
+  /* Large monitors: a 4K screen at 100-150% scaling reports 2500-3840 CSS px,
+     where 16px text and hairline details shrink to specks. Every size in the
+     app is in rem, so nudging the root scales type, spacing, controls and the
+     page width together. */
+  @media (min-width: 2400px) {
+    html {
+      font-size: 112.5%;
+      }
+    }
+  @media (min-width: 3200px) {
+    html {
+      font-size: 137.5%;
+      }
+    }
+}
+
+/* beUI glass surfaces for floating UI (popovers, menus, dialogs, toasts).
+   :where() gives the rule zero specificity: it is plain CSS emitted after
+   Tailwind's utilities, so without it its `border` shorthand would beat
+   edge-zeroing classes like `border-b-0` on sheets and bottom dialogs. */
+@layer utilities {
+  :where(.glass) {
+    background: var(--glass-bg);
+    backdrop-filter: blur(20px) saturate(160%);
+    border: 1px solid var(--glass-border);
+    box-shadow:
+      0 1px 0 0 rgb(255 255 255 / 0.06) inset,
+      0 24px 60px -24px rgb(0 0 0 / 0.45);
+    }
+}
+
+/* The inset image edge as a utility, for anything drawn as an image that
+   isn't an <img>: InitialsAvatar, a CSS background photo. */
+@utility image-outline {
+  outline: 1px solid var(--image-outline);
+  outline-offset: -1px;
+}
+
+/* Scroll fades: the edge that has more to scroll dissolves into the
+   surface, so a list never looks like it ends. Only the side with content
+   behind it fades: at the top there is no fade above the first row.
+
+   These masks are the one exception to no-gradient (check-conventions):
+   a mask only sets how visible content is and paints no colour, so its
+   stops are only transparent and black, and it lives here and nowhere else.
+
+   scroll-area-fade is for the ScrollArea viewport. Base UI writes how far
+   the content runs past each edge into --scroll-area-overflow-*, so each
+   fade grows from 0 to --fade-size as you move away from its edge, in every
+   browser. It sits on the viewport, not the root, so the scrollbar beside
+   it doesn't fade. */
+@utility scroll-area-fade {
+  --fade-size: 2.5rem;
+  --fade-y-start: min(var(--scroll-area-overflow-y-start, 0px), var(--fade-size));
+  --fade-y-end: min(var(--scroll-area-overflow-y-end, 0px), var(--fade-size));
+  --fade-x-start: min(var(--scroll-area-overflow-x-start, 0px), var(--fade-size));
+  --fade-x-end: min(var(--scroll-area-overflow-x-end, 0px), var(--fade-size));
+  mask-image: linear-gradient(to bottom, transparent, black var(--fade-y-start), black calc(100% - var(--fade-y-end)), transparent), linear-gradient(to right, transparent, black var(--fade-x-start), black calc(100% - var(--fade-x-end)), transparent);
+  mask-composite: intersect;
+}
+
+/* scroll-fade-y / scroll-fade-x are for a plain overflow container (a row
+   of chips or tabs): a scroll-driven animation moves the two fade sizes.
+   The start fade grows over the first 3rem of scroll, the end fade shrinks
+   over the last 3rem. Where scroll timelines aren't supported nothing
+   fades, rather than fading the first and last items for good. The mask
+   covers the container's own scrollbar, so hide it (scrollbar-none) or put
+   the class on an inner wrapper. */
+@property --fade-start {
+  syntax: "<length>";
+  inherits: false;
+  initial-value: 0px;
+}
+@property --fade-end {
+  syntax: "<length>";
+  inherits: false;
+  initial-value: 0px;
+}
+@keyframes scroll-fade-start {
+  from { --fade-start: 0px; }
+  to { --fade-start: 2.5rem; }
+}
+@keyframes scroll-fade-end {
+  from { --fade-end: 2.5rem; }
+  to { --fade-end: 0px; }
+}
+@utility scroll-fade-y {
+  @supports (animation-timeline: scroll()) {
+    mask-image: linear-gradient(to bottom, transparent, black var(--fade-start), black calc(100% - var(--fade-end)), transparent);
+    animation: scroll-fade-start 1ms linear both, scroll-fade-end 1ms linear both;
+    animation-range: 0 3rem, calc(100% - 3rem) 100%;
+    animation-timeline: scroll(self y);
+  }
+}
+@utility scroll-fade-x {
+  @supports (animation-timeline: scroll()) {
+    mask-image: linear-gradient(to right, transparent, black var(--fade-start), black calc(100% - var(--fade-end)), transparent);
+    animation: scroll-fade-start 1ms linear both, scroll-fade-end 1ms linear both;
+    animation-range: 0 3rem, calc(100% - 3rem) 100%;
+    animation-timeline: scroll(self x);
+  }
+}
+
+/* Focus ring for the one key call to action on a screen (Button
+   variant="brand"): a solid 2px --primary ring with a 2px gap. */
+@utility focus-ring-brand {
+  &:focus-visible {
+    outline: 2px solid var(--primary);
+    outline-offset: 2px;
+  }
+}
+
+/* The Figma "Label Mono" text style: IBM Plex Mono Medium, 13/18, +1%,
+   uppercase. (The Figma "Label" style is Plex Sans 13/18: plain `text-xs`.)
+   For badges, tabs, segmented controls, avatar initials, bottom-tab labels,
+   stat card deltas and footers, list row meta, card heading subtitles and
+   short captions. It sets the weight itself, so pair it with no font-*
+   class. Never for user data or prose (names, emails, notes, helper and
+   error text, toasts): those stay `text-xs` in Plex Sans (Label). tailwind-merge
+   treats it as a font size (src/lib/utils.ts), so a later text-sm wins. */
+@utility text-label-mono {
+  font-family: var(--font-mono);
+  font-weight: 500;
+  font-size: var(--text-xs);
+  line-height: var(--text-xs--line-height);
+  letter-spacing: 0.01em;
+  text-transform: uppercase;
+  /* Preflight resets text-transform on buttons; a sort button inside a
+     label-styled table header should still read as the label. */
+  & :where(button) {
+    text-transform: inherit;
+  }
+}
+
+/* The Figma "Label Large" text style: IBM Plex Sans Medium 15/16, -0.75%.
+   Button md/lg labels, the filter pills and the chart tabs. Sets its own
+   weight; pair it with no font-* class. */
+@utility text-label-lg {
+  font-family: var(--font-sans);
+  font-weight: 500;
+  font-size: var(--text-sm);
+  line-height: 1rem;
+  letter-spacing: -0.0075em;
+}
+
+/* The Figma "Label Mono Large" text style: IBM Plex Mono Medium 15/20, +1%,
+   uppercase. Table column headers use Label Mono (13px) instead. */
+@utility text-label-mono-lg {
+  font-family: var(--font-mono);
+  font-weight: 500;
+  font-size: var(--text-sm);
+  line-height: 1.25rem;
+  letter-spacing: 0.01em;
+  text-transform: uppercase;
+  & :where(button) {
+    text-transform: inherit;
+  }
+}
+
+/* The count dot inside a filter pill ("Category 2"): Plex Mono Medium 10/14,
+   sized to sit beside the pill's chevron. The one place under the 13px floor,
+   approved in the Transactions preview. */
+@utility text-pill-count {
+  font-family: var(--font-mono);
+  font-weight: 500;
+  /* allow-min-font-size: approved count dot */
+  font-size: 10px;
+  line-height: 14px;
+}
+
+/* Forms sheet (Add a transaction). `--c` is the colour in play, set on the
+   element: the type's hue on the Expense / Income switch, a category's own
+   colour on its chip, the picked colour on a swatch.
+
+   tint-selected: a selected option in its colour, as a 6% wash, a border at
+   70% and a 0.5px inner edge at 70%. */
+@utility tint-selected {
+  border-color: color-mix(in srgb, var(--c) 70%, transparent);
+  background-color: color-mix(in srgb, var(--c) 6%, var(--card));
+  box-shadow: inset 0 0 0 0.5px color-mix(in srgb, var(--c) 70%, transparent);
+}
+
+/* The picked colour swatch: a 2px card gap, ringed in its own colour (the
+   field focus ring's shape). */
+@utility swatch-ring {
+  box-shadow: 0 0 0 2px var(--card), 0 0 0 3.5px var(--c);
+}
+
+/* Per-page nav accent: a nav row carrying data-nav-accent (via NAV's
+   `accent`) swaps the black line, icon and grey fade for a chart colour and
+   its 10% tint: Accounts blue, Transactions violet, Projects green,
+   People amber, Subscriptions rose. Every other page keeps
+   the :root defaults. */
+@layer base {
+  [data-nav-accent="blue"] {
+    --nav-accent: var(--nav-accent-blue);
+    --nav-fade: var(--nav-fade-blue);
+  }
+  [data-nav-accent="violet"] {
+    --nav-accent: var(--nav-accent-violet);
+    --nav-fade: var(--nav-fade-violet);
+  }
+  [data-nav-accent="amber"] {
+    --nav-accent: var(--nav-accent-amber);
+    --nav-fade: var(--nav-fade-amber);
+  }
+  [data-nav-accent="rose"] {
+    --nav-accent: var(--nav-accent-rose);
+    --nav-fade: var(--nav-fade-rose);
+  }
+  [data-nav-accent="green"] {
+    --nav-accent: var(--nav-accent-green);
+    --nav-fade: var(--nav-fade-green);
+  }
+}
+
+/* Thin, always-visible scrollbar for overflow containers (tables, tile
+   rows): the ScrollArea look (6px, rounded, text colour at 20%, 35% on
+   hover) on a faint track inset 16px from each end, so people can see
+   there's more to scroll. Chromium and Safari take the ::-webkit-scrollbar
+   rules; Firefox gets its thin native bar in the same colour. Not named
+   `scrollbar-thin`: that is Tailwind's own utility, and its unconditional
+   scrollbar-width makes Chromium ignore the ::-webkit-scrollbar rules. */
+@utility thin-scrollbar {
+  &::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  &::-webkit-scrollbar-track {
+    background: var(--scrollbar-track);
+    border-radius: 9999px;
+  }
+  &::-webkit-scrollbar-track:horizontal {
+    margin-inline: 16px;
+  }
+  &::-webkit-scrollbar-track:vertical {
+    margin-block: 16px;
+  }
+  &::-webkit-scrollbar-thumb {
+    background: var(--scrollbar-thumb);
+    border-radius: 9999px;
+  }
+  &::-webkit-scrollbar-thumb:hover {
+    background: var(--scrollbar-thumb-hover);
+  }
+  @supports not selector(::-webkit-scrollbar) {
+    scrollbar-width: thin;
+    scrollbar-color: var(--scrollbar-thumb) transparent;
+  }
+}
+
+/* Pairs with thin-scrollbar on the ledger tables: the bar stays hidden until
+   the pointer is over the table or it is scrolling (data-scrolling, set by
+   src/lib/scrolling.ts and cleared 800ms after the last scroll). */
+@utility autohide-scrollbar {
+  &:not(:hover, [data-scrolling])::-webkit-scrollbar-thumb,
+  &:not(:hover, [data-scrolling])::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  @supports not selector(::-webkit-scrollbar) {
+    &:not(:hover, [data-scrolling]) {
+      scrollbar-color: transparent transparent;
+    }
+  }
+}
+
+/* While a table column is being resized (useResizableColumns), the whole
+   page shows the resize cursor and nothing gets text-selected. */
+@layer base {
+  .col-resizing,
+  .col-resizing * {
+    cursor: col-resize !important;
+    user-select: none !important;
+  }
+}
+
+/* Hairline illustrations (the error pages, src/components/illustrations).
+   Plates fill with the canvas they sit on; the figures' colour touches are
+   classes mapped to the hue family: c-<hue> colours a stroke, c-<hue> tint
+   fills a plate with the soft tone, dot c-<hue> fills a dot. Violet is the
+   brand, rose broken, amber waiting, green ok; the rest are identity.
+   Unlayered on purpose: the engine injects its sheet unlayered, and a
+   layered rule would lose to it whatever its specificity. */
+[data-hairline] {
+  --hairline-plate: var(--canvas);
+}
+[data-hairline] svg .c-violet { stroke: var(--violet); }
+[data-hairline] svg .c-sky { stroke: var(--sky); }
+[data-hairline] svg .c-teal { stroke: var(--teal); }
+[data-hairline] svg .c-green { stroke: var(--green); }
+[data-hairline] svg .c-amber { stroke: var(--amber); }
+[data-hairline] svg .c-orange { stroke: var(--orange); }
+[data-hairline] svg .c-rose { stroke: var(--rose); }
+[data-hairline] svg .c-violet.tint { fill: var(--violet-soft); }
+[data-hairline] svg .c-sky.tint { fill: var(--sky-soft); }
+[data-hairline] svg .c-teal.tint { fill: var(--teal-soft); }
+[data-hairline] svg .c-green.tint { fill: var(--green-soft); }
+[data-hairline] svg .c-amber.tint { fill: var(--amber-soft); }
+[data-hairline] svg .c-orange.tint { fill: var(--orange-soft); }
+[data-hairline] svg .c-rose.tint { fill: var(--rose-soft); }
+[data-hairline] svg .dot.c-violet { fill: var(--violet); stroke: none; }
+[data-hairline] svg .dot.c-green { fill: var(--green); stroke: none; }
+[data-hairline] svg .dot.c-amber { fill: var(--amber); stroke: none; }
+[data-hairline] svg .dot.c-rose { fill: var(--rose); stroke: none; }
+
+/* The /illustrations showcase (src/routes/Illustrations.tsx, Figma 252:3870):
+   a wall of soft tiles with the figures in the middle columns, empty tiles
+   bleeding off both sides and a last row cut by the bottom of the page.
+   Columns are sized so the figure columns sit whole with part of the next
+   tile showing at each side: three figure columns from 72rem (seven in all),
+   two from sm (four in all), and one stacked column on a phone, with no
+   empty tiles. The page clips the overflow, so it never scrolls sideways. */
+@layer components {
+  .showcase-wall {
+    --wall-gap: 1.5rem;
+    --wall-cut: 2rem;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    justify-content: center;
+    gap: 1rem;
+    padding: 1.5rem 1rem 2.5rem;
+  }
+  .showcase-empty {
+    display: none;
+  }
+  @media (width >= 40rem) {
+    .showcase-wall {
+      gap: var(--wall-gap);
+      grid-template-columns: repeat(4, calc((100% - 3 * var(--wall-gap)) / 2.5));
+      grid-template-rows: repeat(3, auto) minmax(8rem, 1fr);
+      /* Taller than the page by the cut, so the last row runs off the bottom. */
+      min-height: calc(100svh + var(--wall-cut));
+      margin-bottom: calc(-1 * var(--wall-cut));
+      padding: 2.5rem 0 0;
+    }
+    .showcase-empty {
+      display: block;
+    }
+    .showcase-empty[data-wide] {
+      display: none;
+    }
+    .showcase-wall > [data-figure="drawer"] { grid-area: 1 / 2; }
+    .showcase-wall > [data-figure="server"] { grid-area: 1 / 3; }
+    .showcase-wall > [data-figure="sheets"] { grid-area: 2 / 2; }
+    .showcase-wall > [data-figure="inline"] { grid-area: 2 / 3; }
+    .showcase-wall > [data-figure="canvas"] { grid-area: 3 / 2; }
+  }
+  @media (width >= 72rem) {
+    .showcase-wall {
+      grid-template-columns: repeat(7, clamp(17.5rem, (100% - 4 * var(--wall-gap)) / 4.2, 27rem));
+      grid-template-rows: auto auto minmax(8rem, 1fr);
+    }
+    .showcase-empty[data-wide] {
+      display: block;
+    }
+    .showcase-wall > [data-figure="drawer"] { grid-area: 1 / 3; }
+    .showcase-wall > [data-figure="server"] { grid-area: 1 / 4; }
+    .showcase-wall > [data-figure="sheets"] { grid-area: 1 / 5; }
+    .showcase-wall > [data-figure="inline"] { grid-area: 2 / 3; }
+    .showcase-wall > [data-figure="canvas"] { grid-area: 2 / 4; }
+  }
+}

@@ -1,0 +1,88 @@
+name: Ume sync
+
+# Ume, the Squidx design system (withsaber/ume), lives here as a read-only
+# copy in vendor/ume (scripts/ume.mjs). When ume's packages/ui changes on its
+# main, ume's notify-apps workflow starts this one. It copies the new Ume in,
+# runs the app's build (and its smoke test, if it has one), and only then
+# pushes the copy to main. If anything fails, main keeps the previous Ume and
+# GitHub emails you about the failed run.
+#
+# UME_TOKEN is the fine-grained token described in ume's
+# .github/workflows/notify-apps.yml. It must cover this repo.
+#
+# A push made with the built-in token starts no other workflow, so this one
+# starts CI itself when the app has a ci.yml with a workflow_dispatch trigger.
+
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: Ume commit or branch to copy
+        required: false
+        default: main
+  # A daily catch-up, in case a notification from ume was missed.
+  schedule:
+    - cron: "17 3 * * *"
+
+permissions:
+  contents: write
+  actions: write
+
+concurrency:
+  group: ume-sync
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Copy the new Ume
+        id: sync
+        env:
+          GH_TOKEN: ${{ secrets.UME_TOKEN }}
+          REF: ${{ inputs.ref || 'main' }}
+        run: |
+          node scripts/ume.mjs sync --ref "$REF"
+          if [ -z "$(git status --porcelain -- vendor/ume)" ]; then
+            echo "Ume is already up to date."
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          commit=$(node -p 'require("./vendor/ume/UME_SOURCE.json").commit')
+          echo "changed=true" >> "$GITHUB_OUTPUT"
+          echo "short=${commit::7}" >> "$GITHUB_OUTPUT"
+          gh api "repos/withsaber/ume/commits/$commit" -q '.commit.message' | head -1 > "$RUNNER_TEMP/ume-subject"
+
+      - name: Build with every check
+        if: steps.sync.outputs.changed == 'true'
+        run: npm run build
+
+      - name: Smoke test, if the app has one
+        if: steps.sync.outputs.changed == 'true' && hashFiles('scripts/smoke/**') != ''
+        run: |
+          npx playwright-core install --with-deps chromium
+          npm run smoke
+
+      - name: Ship it
+        if: steps.sync.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SHORT: ${{ steps.sync.outputs.short }}
+        run: |
+          git config user.name 'Ume sync bot'
+          git config user.email 'noreply@github.com'
+          git add vendor/ume
+          git commit -q -m "Update Ume to $SHORT" -m "Ume: $(cat "$RUNNER_TEMP/ume-subject")"
+          git pull -q --rebase origin main
+          git push -q origin HEAD:main
+          if [ -f .github/workflows/ci.yml ]; then gh workflow run ci.yml --ref main || true; fi

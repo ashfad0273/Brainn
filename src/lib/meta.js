@@ -1,4 +1,4 @@
-import { ListTodo, ListChecks, GitBranch, KeyRound, CircleHelp, TriangleAlert, Paperclip } from 'lucide-react';
+import { ListTodo, ListChecks, GitBranch, KeyRound, CircleHelp, TriangleAlert, Paperclip } from '@/lib/icons';
 
 // Every structured record has a type. Records are never deleted: "closing" one means
 // moving it to a non-active status, and the whole trail stays in item.history.
@@ -13,16 +13,17 @@ export const TYPES = {
 };
 export const TYPE_ORDER = ['task', 'requirement', 'decision', 'sensitive', 'question', 'risk', 'file'];
 
-// Static class strings so Tailwind keeps them.
+// Static class strings so Tailwind keeps them. Tones are Brainn's names;
+// the colours are Ume's hue family (soft surface, ink text, ring hairline).
 export const COLOR = {
-  emerald: { badge: 'bg-emerald-500/10 text-emerald-300 ring-emerald-500/25', text: 'text-emerald-300', soft: 'bg-emerald-500/10', dot: 'bg-emerald-400' },
-  sky: { badge: 'bg-sky-500/10 text-sky-300 ring-sky-500/25', text: 'text-sky-300', soft: 'bg-sky-500/10', dot: 'bg-sky-400' },
-  violet: { badge: 'bg-violet-500/10 text-violet-300 ring-violet-500/25', text: 'text-violet-300', soft: 'bg-violet-500/10', dot: 'bg-violet-400' },
-  rose: { badge: 'bg-rose-500/10 text-rose-300 ring-rose-500/25', text: 'text-rose-300', soft: 'bg-rose-500/10', dot: 'bg-rose-400' },
-  amber: { badge: 'bg-amber-500/10 text-amber-300 ring-amber-500/25', text: 'text-amber-300', soft: 'bg-amber-500/10', dot: 'bg-amber-400' },
-  orange: { badge: 'bg-orange-500/10 text-orange-300 ring-orange-500/25', text: 'text-orange-300', soft: 'bg-orange-500/10', dot: 'bg-orange-400' },
-  cyan: { badge: 'bg-cyan-500/10 text-cyan-300 ring-cyan-500/25', text: 'text-cyan-300', soft: 'bg-cyan-500/10', dot: 'bg-cyan-400' },
-  neutral: { badge: 'bg-white/5 text-neutral-400 ring-white/10', text: 'text-neutral-400', soft: 'bg-white/5', dot: 'bg-neutral-500' },
+  emerald: { badge: 'bg-green-soft text-green-ink ring-green-ring', text: 'text-green', soft: 'bg-green-soft', dot: 'bg-green' },
+  sky: { badge: 'bg-sky-soft text-sky-ink ring-sky-ring', text: 'text-sky', soft: 'bg-sky-soft', dot: 'bg-sky' },
+  violet: { badge: 'bg-violet-soft text-violet-ink ring-violet-ring', text: 'text-violet', soft: 'bg-violet-soft', dot: 'bg-violet' },
+  rose: { badge: 'bg-rose-soft text-rose-ink ring-rose-ring', text: 'text-rose', soft: 'bg-rose-soft', dot: 'bg-rose' },
+  amber: { badge: 'bg-amber-soft text-amber-ink ring-amber-ring', text: 'text-amber', soft: 'bg-amber-soft', dot: 'bg-amber' },
+  orange: { badge: 'bg-orange-soft text-orange-ink ring-orange-ring', text: 'text-orange', soft: 'bg-orange-soft', dot: 'bg-orange' },
+  cyan: { badge: 'bg-teal-soft text-teal-ink ring-teal-ring', text: 'text-teal', soft: 'bg-teal-soft', dot: 'bg-teal' },
+  neutral: { badge: 'bg-field text-muted-foreground ring-border', text: 'text-muted-foreground', soft: 'bg-field', dot: 'bg-grey-400' },
 };
 
 export const STATUS = {
@@ -56,9 +57,9 @@ export const MEMBER_ROLES = {
 export const INVITE_LABELS = ['client', 'designer', 'developer', 'video', 'motion', 'graphics', 'brand'];
 
 export const PROJECT_STATUS = {
-  in_progress: { label: 'In progress', tone: 'sky', dot: 'bg-sky-400' },
-  on_hold: { label: 'On hold', tone: 'amber', dot: 'bg-amber-400' },
-  completed: { label: 'Completed', tone: 'emerald', dot: 'bg-emerald-400' },
-  cancelled: { label: 'Cancelled', tone: 'neutral', dot: 'bg-neutral-500' },
+  in_progress: { label: 'In progress', tone: 'sky', dot: 'bg-sky' },
+  on_hold: { label: 'On hold', tone: 'amber', dot: 'bg-amber' },
+  completed: { label: 'Completed', tone: 'emerald', dot: 'bg-green' },
+  cancelled: { label: 'Cancelled', tone: 'neutral', dot: 'bg-grey-400' },
 };
 export const memberRole = m => (m.role === 'other' ? m.designation?.trim() || 'Member' : MEMBER_ROLES[m.role] || 'Member');

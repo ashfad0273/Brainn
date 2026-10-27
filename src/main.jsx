@@ -1,8 +1,14 @@
 import { Component } from 'react';
 import { createRoot } from 'react-dom/client';
+import { Button } from '@ume/ui/components/ui/button';
 import App from './App';
 import AuthGate from './components/Auth';
+import { MotionProvider } from '@ume/ui/components/patterns/MotionProvider';
+import { ToastProvider } from '@ume/ui/components/ui/toast';
+import { installScrollingFlag } from '@ume/ui/lib/scrolling';
 import './index.css';
+
+installScrollingFlag();
 
 class ErrorBoundary extends Component {
   state = { error: null };
@@ -12,10 +18,10 @@ class ErrorBoundary extends Component {
     return (
       <div className="h-full grid place-items-center p-6 text-center">
         <div className="max-w-md">
-          <h1 className="text-xl font-semibold">Something went wrong on this screen</h1>
-          <p className="text-sm text-neutral-500 mt-2">Your workspace is saved and nothing was lost. Reload to continue.</p>
-          <pre className="text-xs text-rose-300/80 mt-4 whitespace-pre-wrap">{String(this.state.error?.message || this.state.error)}</pre>
-          <button onClick={() => { location.hash = '#/'; location.reload(); }} className="mt-5 px-4 py-2 rounded-lg bg-white text-neutral-900 text-sm font-medium">Reload</button>
+          <h1 className="font-heading font-medium text-xl text-balance">Something went wrong on this screen</h1>
+          <p className="mx-auto mt-2 max-w-[40ch] text-balance text-sm text-muted-foreground">Your workspace is saved and nothing was lost. Reload to continue.</p>
+          <pre className="mt-4 whitespace-pre-wrap text-xs text-destructive-foreground">{String(this.state.error?.message || this.state.error)}</pre>
+          <Button className="mt-5" onClick={() => { location.hash = '#/'; location.reload(); }}>Reload</Button>
         </div>
       </div>
     );
@@ -23,9 +29,13 @@ class ErrorBoundary extends Component {
 }
 
 createRoot(document.getElementById('root')).render(
-  <ErrorBoundary>
-    <AuthGate>
-      <App />
-    </AuthGate>
-  </ErrorBoundary>,
+  <MotionProvider>
+    <ToastProvider>
+      <ErrorBoundary>
+        <AuthGate>
+          <App />
+        </AuthGate>
+      </ErrorBoundary>
+    </ToastProvider>
+  </MotionProvider>,
 );

@@ -1,12 +1,11 @@
 import { useEffect, useState } from 'react';
-import { Brain } from 'lucide-react';
+import { Brain } from '@/lib/icons';
 import { useStore } from './store';
 import Home from './components/Home';
 import ProjectPage from './components/ProjectShell';
 import FileManager from './components/FileManager';
 import Unlock from './components/Unlock';
 import Analyzer from './components/Analyzer';
-import Toasts from './components/Toasts';
 
 function useHash() {
   const [h, setH] = useState(location.hash);
@@ -20,7 +19,7 @@ function useHash() {
 
 const Splash = ({ text }) => (
   <div className="h-full grid place-items-center text-center p-6">
-    <div><Brain size={34} className="mx-auto text-neutral-500 animate-pulse" /><p className="text-sm text-neutral-500 mt-3 max-w-sm">{text}</p></div>
+    <div><Brain size={34} className="mx-auto text-icon-muted animate-pulse" /><p className="mx-auto mt-3 max-w-[40ch] text-balance text-sm text-muted-foreground">{text}</p></div>
   </div>
 );
 
@@ -46,5 +45,5 @@ export default function App() {
       </>
     );
   }
-  return <>{body}<Toasts /></>;
+  return body;
 }

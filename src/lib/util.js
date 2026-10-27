@@ -10,7 +10,8 @@ export function withClock(t, fn) {
 }
 
 export const uid = (p = '') => p + Math.random().toString(36).slice(2, 8) + Date.now().toString(36).slice(-3);
-export const cx = (...a) => a.filter(Boolean).join(' ');
+// Ume's cn: joins classes and lets a later one win a conflict (`hidden` over `inline-flex`).
+export { cn as cx } from '@ume/ui/lib/utils';
 export const cap = s => (s ? s[0].toUpperCase() + s.slice(1) : s);
 export const clone = o => structuredClone(o);
 export const norm = s => (s || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();

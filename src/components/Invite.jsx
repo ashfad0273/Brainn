@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Copy, UserPlus, ChevronDown, Ban, MailCheck, Link2, KeyRound } from 'lucide-react';
+import { Copy, UserPlus, ChevronDown, Ban, MailCheck, Link2, KeyRound } from '@/lib/icons';
 import { useStore } from '../store';
 import { Modal, Field, Input, Select, Button, Toggle, Badge } from './ui';
 import { addMember, updateMember, revokeMember } from '../lib/model';
@@ -22,16 +22,16 @@ export async function invitePerson({ email, name, label }) {
 export function InviteResult({ r }) {
   const { toast } = useStore();
   if (!r) return null;
-  if (r.existing) return <div className="text-xs text-emerald-300 flex items-center gap-1.5"><MailCheck size={14} />{r.user.email} already has an account — they’ll see this project next time they open the app.</div>;
+  if (r.existing) return <div className="text-xs text-pos flex items-center gap-1.5"><MailCheck size={14} />{r.user.email} already has an account — they’ll see this project next time they open the app.</div>;
   const copy = async t => toast((await copyText(t)) ? 'Copied' : 'Copy blocked by the browser');
   return (
-    <div className="space-y-2 rounded-xl bg-black/20 p-3">
-      <div className="text-xs flex items-start gap-1.5 text-sky-200">
+    <div className="space-y-2 rounded-xl bg-field p-3">
+      <div className="text-xs flex items-start gap-1.5 text-primary">
         <Link2 size={14} className="shrink-0" />
         {r.emailed ? `Invitation emailed to ${r.user.email}.` : `Not emailed — ${r.emailError || 'email sending isn’t set up'} Copy the link and send it to ${r.user.email}.`}
       </div>
-      <div className="flex gap-2"><Input readOnly value={r.link} className="text-xs text-neutral-400" /><Button variant="accent" onClick={() => copy(r.link)}><Copy size={14} />Copy</Button></div>
-      <div className="text-[11px] text-neutral-500">The link works for 7 days. They set their own password, then sign in with their email.</div>
+      <div className="flex gap-2"><Input readOnly value={r.link} className="text-xs text-muted-foreground" /><Button variant="accent" onClick={() => copy(r.link)}><Copy size={14} />Copy</Button></div>
+      <div className="text-xs text-muted-foreground">The link works for 7 days. They set their own password, then sign in with their email.</div>
     </div>
   );
 }
@@ -39,7 +39,7 @@ export function InviteResult({ r }) {
 export function PermToggles({ perms, onChange }) {
   return (
     <div>
-      <div className="text-xs font-medium text-neutral-400 mb-2">What they can see besides the chat</div>
+      <div className="text-xs font-medium text-muted-foreground mb-2">What they can see besides the chat</div>
       <div className="space-y-2.5">{PERMS.map(([k, l]) => <Toggle key={k} checked={!!perms[k]} onChange={v => onChange({ ...perms, [k]: v })} label={l} />)}</div>
     </div>
   );
@@ -51,31 +51,31 @@ function MemberCard({ p, m, person, open, setOpen, onInvite }) {
   const legacy = !m.userId;
   const status = legacy ? 'legacy' : person?.status || 'invited';
   return (
-    <div className="rounded-2xl bg-white/[.03] ring-1 ring-white/[.06]">
+    <div className="rounded-2xl bg-field ring-1 ring-border">
       <button type="button" onClick={() => setOpen(open ? null : m.id)} className="w-full flex items-center gap-3 p-3 text-left">
-        <span className="w-9 h-9 rounded-xl bg-orange-600 grid place-items-center text-sm font-semibold text-white shrink-0">{m.name[0]?.toUpperCase()}</span>
+        <span className="w-9 h-9 rounded-xl bg-orange grid place-items-center text-sm font-medium text-primary-foreground shrink-0">{m.name[0]?.toUpperCase()}</span>
         <span className="flex-1 min-w-0">
           <span className="block text-sm font-medium truncate">{m.name}</span>
-          <span className="block text-xs text-neutral-500 truncate">{memberRole(m)}{m.email || person?.email ? ` · ${m.email || person.email}` : ''}</span>
+          <span className="block text-xs text-muted-foreground truncate">{memberRole(m)}{m.email || person?.email ? ` · ${m.email || person.email}` : ''}</span>
         </span>
         {status === 'legacy' && <Badge tone="amber">needs email invite</Badge>}
         {status === 'invited' && <Badge tone="sky">invited</Badge>}
         {status === 'disabled' && <Badge tone="rose">turned off</Badge>}
         {m.perms?.suggestions && <Badge tone="violet">reviews AI</Badge>}
-        <ChevronDown size={16} className={cx('text-neutral-500 transition', open && 'rotate-180')} />
+        <ChevronDown size={16} className={cx('text-muted-foreground transition', open && 'rotate-180')} />
       </button>
       {open && (
         <div className="px-3 pb-3 space-y-3 anim-fade">
           {legacy && (
-            <div className="rounded-xl bg-amber-500/5 ring-1 ring-amber-500/20 p-3 text-xs text-amber-200/90 space-y-2">
+            <div className="rounded-xl bg-warn-soft ring-1 ring-amber-ring p-3 text-xs text-warn-ink space-y-2">
               <p>{m.name} was added with an old PIN link, which no longer works. Invite them by email to keep their access — their past messages stay theirs.</p>
               {hasServer() && <Button size="sm" onClick={() => onInvite(m)}><KeyRound size={13} />Invite by email</Button>}
             </div>
           )}
           <PermToggles perms={{ ...DEFAULT_PERMS, ...m.perms }} onChange={perms => mut(q => updateMember(q, 'owner', m.id, { perms }))} />
           <div className="flex items-center gap-3 pt-1">
-            <span className="text-[11px] text-neutral-600 flex-1">Added {fmtRel(m.createdAt)}</span>
-            <button onClick={() => { if (confirm(`Remove ${m.name} from ${p.name}? They stop seeing this project. Their messages stay in the chat.`)) { mut(q => revokeMember(q, 'owner', m.id)); setOpen(null); toast('Removed from the project'); } }} className="text-xs text-rose-300 hover:underline flex items-center gap-1"><Ban size={12} />Remove</button>
+            <span className="text-xs text-text-tertiary flex-1">Added {fmtRel(m.createdAt)}</span>
+            <button onClick={() => { if (confirm(`Remove ${m.name} from ${p.name}? They stop seeing this project. Their messages stay in the chat.`)) { mut(q => revokeMember(q, 'owner', m.id)); setOpen(null); toast('Removed from the project'); } }} className="text-xs text-destructive-foreground hover:underline flex items-center gap-1"><Ban size={12} />Remove</button>
           </div>
         </div>
       )}
@@ -121,7 +121,7 @@ export default function MembersModal({ p, onClose }) {
   if (!hasServer()) {
     return (
       <Modal title="Project members" onClose={onClose}>
-        <p className="text-sm text-neutral-400">Inviting people needs the sync server. Set <code className="text-neutral-200">VITE_WORKER_URL</code> to your worker’s address and sign in as the owner.</p>
+        <p className="text-sm text-muted-foreground">Inviting people needs the sync server. Set <code className="text-foreground">VITE_WORKER_URL</code> to your worker’s address and sign in as the owner.</p>
       </Modal>
     );
   }
@@ -135,7 +135,7 @@ export default function MembersModal({ p, onClose }) {
         <InviteResult r={result} />
 
         {adding ? (
-          <div className="space-y-3 rounded-2xl ring-1 ring-sky-500/30 bg-sky-500/[.03] p-4 anim-up">
+          <div className="space-y-3 rounded-2xl ring-1 ring-blue-ring bg-primary-soft p-4 anim-up">
             {available.length > 0 && !d.legacyId && (
               <Field label="Who">
                 <Select value={d.who} onChange={e => setD(x => ({ ...x, who: e.target.value }))}>
@@ -163,11 +163,11 @@ export default function MembersModal({ p, onClose }) {
 
         {removed.length > 0 && (
           <div>
-            <button onClick={() => setShowRemoved(!showRemoved)} className="text-xs text-neutral-500 hover:text-neutral-300 flex items-center gap-1">
+            <button onClick={() => setShowRemoved(!showRemoved)} className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1">
               <ChevronDown size={13} className={cx('transition', showRemoved && 'rotate-180')} />{removed.length} removed (kept in the record)
             </button>
             {showRemoved && removed.map(m => (
-              <div key={m.id} className="flex items-center gap-2 text-xs text-neutral-500 py-1.5 px-1">
+              <div key={m.id} className="flex items-center gap-2 text-xs text-muted-foreground py-1.5 px-1">
                 <span className="flex-1 truncate">{m.name} · {memberRole(m)}</span><Badge>removed {fmtRel(m.revokedAt)}</Badge>
               </div>
             ))}

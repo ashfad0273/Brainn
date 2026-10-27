@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Maximize2, ExternalLink, X, Globe } from 'lucide-react';
+import { Maximize2, ExternalLink, X, Globe } from '@/lib/icons';
 import { api, hasServer } from '../lib/api';
 import { useEsc } from './ui';
 import { cx } from '../lib/util';
@@ -79,7 +79,7 @@ function ScaledFrame({ src, title }) {
   }, []);
   const PAGE_W = 1280, PAGE_H = 800, k = w / PAGE_W;
   return (
-    <div ref={box} className="relative overflow-hidden bg-white" style={{ height: Math.round(PAGE_H * k) || 200 }}>
+    <div ref={box} className="relative overflow-hidden bg-card" style={{ height: Math.round(PAGE_H * k) || 200 }}>
       {w > 0 && <iframe src={src} title={title} sandbox={SANDBOX} referrerPolicy="no-referrer" loading="lazy" tabIndex={-1}
         style={{ width: PAGE_W, height: PAGE_H, transform: `scale(${k})`, transformOrigin: '0 0', pointerEvents: 'none', border: 0 }} />}
     </div>
@@ -89,13 +89,13 @@ function ScaledFrame({ src, title }) {
 function Expanded({ href, src, title, onClose }) {
   useEsc(onClose);
   return (
-    <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex flex-col p-2 md:p-6 anim-fade" onClick={onClose}>
-      <div className="flex items-center gap-2 text-sm text-neutral-200 pb-2" onClick={e => e.stopPropagation()}>
-        <Globe size={15} className="text-neutral-400" /><span className="flex-1 truncate">{title || href}</span>
-        <a href={href} target="_blank" rel="noreferrer" className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-white/10 hover:bg-white/15"><ExternalLink size={14} />Open</a>
-        <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-white/10" aria-label="Close"><X size={18} /></button>
+    <div className="fixed inset-0 z-50 bg-background flex flex-col p-2 md:p-6 anim-fade" onClick={onClose}>
+      <div className="flex items-center gap-2 text-sm text-foreground pb-2" onClick={e => e.stopPropagation()}>
+        <Globe size={15} className="text-muted-foreground" /><span className="flex-1 truncate">{title || href}</span>
+        <a href={href} target="_blank" rel="noreferrer" className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-field-hover hover:bg-field-hover"><ExternalLink size={14} />Open</a>
+        <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-field-hover" aria-label="Close"><X size={18} /></button>
       </div>
-      <iframe src={src} title={title || href} sandbox={SANDBOX} referrerPolicy="no-referrer" className="flex-1 w-full rounded-xl bg-white" onClick={e => e.stopPropagation()} />
+      <iframe src={src} title={title || href} sandbox={SANDBOX} referrerPolicy="no-referrer" className="flex-1 w-full rounded-xl bg-card" onClick={e => e.stopPropagation()} />
     </div>
   );
 }
@@ -113,18 +113,18 @@ export default function LinkPreview({ href, className }) {
 
   const head = (
     <div className="flex items-center gap-2 px-3 py-2 min-w-0">
-      {meta?.favicon ? <img src={meta.favicon} alt="" className="w-4 h-4 rounded-sm shrink-0" onError={e => { e.currentTarget.style.display = 'none'; }} /> : <Globe size={14} className="text-neutral-500 shrink-0" />}
+      {meta?.favicon ? <img src={meta.favicon} alt="" className="w-4 h-4 rounded-sm shrink-0" onError={e => { e.currentTarget.style.display = 'none'; }} /> : <Globe size={14} className="text-muted-foreground shrink-0" />}
       <div className="min-w-0 flex-1">
-        <div className="text-[13px] text-neutral-100 truncate leading-tight">{title}</div>
-        <div className="text-[11px] text-neutral-500 truncate">{meta?.siteName && meta.siteName !== title ? meta.siteName : host}</div>
+        <div className="text-xs text-foreground truncate leading-tight">{title}</div>
+        <div className="text-xs text-muted-foreground truncate">{meta?.siteName && meta.siteName !== title ? meta.siteName : host}</div>
       </div>
-      {frame && <button type="button" onClick={() => setBig(true)} title="Open large" className="p-1 rounded-md text-neutral-400 hover:text-white hover:bg-white/10"><Maximize2 size={14} /></button>}
-      <a href={href} target="_blank" rel="noreferrer" title="Open in a new tab" className="p-1 rounded-md text-neutral-400 hover:text-white hover:bg-white/10"><ExternalLink size={14} /></a>
+      {frame && <button type="button" onClick={() => setBig(true)} title="Open large" className="p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-field-hover"><Maximize2 size={14} /></button>}
+      <a href={href} target="_blank" rel="noreferrer" title="Open in a new tab" className="p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-field-hover"><ExternalLink size={14} /></a>
     </div>
   );
 
   return (
-    <div ref={ref} className={cx('mt-1.5 w-full max-w-[420px] rounded-xl overflow-hidden bg-[#1b1b1b] ring-1 ring-white/10', className)}>
+    <div ref={ref} className={cx('mt-1.5 w-full max-w-[420px] rounded-xl overflow-hidden bg-card ring-1 ring-border', className)}>
       {head}
       {seen && (embed
         ? <iframe src={embed.src} title={title} sandbox={SANDBOX} referrerPolicy="no-referrer" loading="lazy" allow="autoplay; fullscreen; picture-in-picture; encrypted-media"
@@ -132,9 +132,9 @@ export default function LinkPreview({ href, className }) {
         : frame
           ? <button type="button" onClick={() => setBig(true)} className="block w-full text-left" title="Click to interact"><ScaledFrame src={frame} title={title} /></button>
           : meta?.image
-            ? <a href={href} target="_blank" rel="noreferrer" className="block"><img src={meta.image} alt="" loading="lazy" className="w-full max-h-52 object-cover bg-black/30" onError={e => { e.currentTarget.style.display = 'none'; }} /></a>
+            ? <a href={href} target="_blank" rel="noreferrer" className="block"><img src={meta.image} alt="" loading="lazy" className="w-full max-h-52 object-cover bg-muted" onError={e => { e.currentTarget.style.display = 'none'; }} /></a>
             : null)}
-      {!frame && meta?.description && <div className="px-3 pb-2.5 text-xs text-neutral-400 line-clamp-2">{meta.description}</div>}
+      {!frame && meta?.description && <div className="px-3 pb-2.5 text-xs text-muted-foreground line-clamp-2">{meta.description}</div>}
       {big && <Expanded href={href} src={frame} title={title} onClose={() => setBig(false)} />}
     </div>
   );

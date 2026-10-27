@@ -14,6 +14,7 @@ import { api } from './lib/api';
 import { setServerAi } from './lib/gemini';
 import { buildSeed } from './seed';
 import { uid, clone, now } from './lib/util';
+import { notify } from '@ume/ui/lib/toast';
 
 const Ctx = createContext(null);
 export const useStore = () => useContext(Ctx);
@@ -22,15 +23,14 @@ const KEY = 'workspace';
 const TAB = uid('tab');
 const PULL_MS = 20000, MEMBER_PULL_MS = 10000, PEOPLE_MS = 60000;
 
+// Toasts are Ume's (ToastProvider in main.jsx); `toasts` stays for the views that read it.
+const NO_TOASTS = [];
 function useToasts() {
-  const [toasts, setToasts] = useState([]);
   const toast = useCallback((text, tone = 'default') => {
-    const id = uid();
-    // the same message clicked four times shows once
-    setToasts(t => (t.some(x => x.text === text) ? t : [...t.slice(-3), { id, text, tone }]));
-    setTimeout(() => setToasts(t => t.filter(x => x.id !== id)), tone === 'error' ? 6000 : 3200);
+    if (tone === 'error') notify.error(text);
+    else notify.success(text);
   }, []);
-  return { toasts, toast };
+  return { toasts: NO_TOASTS, toast };
 }
 
 /** Demo copies merged into one project show each message twice; hide the extra copies. */

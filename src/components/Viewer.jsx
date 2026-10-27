@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { X, Download, ZoomIn, ZoomOut, Maximize2 } from 'lucide-react';
+import { X, Download, ZoomIn, ZoomOut, Maximize2 } from '@/lib/icons';
 import { useStore } from '../store';
 import { useAttachmentUrl, downloadAttachment } from '../lib/blobs';
 
@@ -37,15 +37,15 @@ export function Lightbox({ a, onClose }) {
 
   const cantShow = failed || bad;
   return createPortal(
-    <div className="fixed inset-0 z-[100] bg-black/90 flex flex-col anim-fade" onClick={e => e.target === e.currentTarget && onClose()}>
-      <div className="flex items-center gap-2 px-4 py-2.5 text-sm text-neutral-200 shrink-0">
+    <div className="fixed inset-0 z-[100] bg-background flex flex-col anim-fade" onClick={e => e.target === e.currentTarget && onClose()}>
+      <div className="flex items-center gap-2 px-4 py-2.5 text-sm text-foreground shrink-0">
         <span className="truncate flex-1" title={a.name}>{a.name}</span>
-        <span className="text-xs text-neutral-400 tabular-nums">{Math.round(z * 100)}%</span>
-        <button title="Zoom out (-)" onClick={() => zoom(0.8)} className="p-2 rounded-lg hover:bg-white/10"><ZoomOut size={16} /></button>
-        <button title="Zoom in (+)" onClick={() => zoom(1.25)} className="p-2 rounded-lg hover:bg-white/10"><ZoomIn size={16} /></button>
-        <button title="Actual size, 100% (0)" onClick={reset} className="p-2 rounded-lg hover:bg-white/10"><Maximize2 size={16} /></button>
-        <button title="Download original" onClick={() => dl(a)} className="p-2 rounded-lg hover:bg-white/10"><Download size={16} /></button>
-        <button title="Close (Esc)" onClick={onClose} className="p-2 rounded-lg hover:bg-white/10"><X size={18} /></button>
+        <span className="text-xs text-muted-foreground tabular-nums">{Math.round(z * 100)}%</span>
+        <button title="Zoom out (-)" onClick={() => zoom(0.8)} className="p-2 rounded-lg hover:bg-field-hover"><ZoomOut size={16} /></button>
+        <button title="Zoom in (+)" onClick={() => zoom(1.25)} className="p-2 rounded-lg hover:bg-field-hover"><ZoomIn size={16} /></button>
+        <button title="Actual size, 100% (0)" onClick={reset} className="p-2 rounded-lg hover:bg-field-hover"><Maximize2 size={16} /></button>
+        <button title="Download original" onClick={() => dl(a)} className="p-2 rounded-lg hover:bg-field-hover"><Download size={16} /></button>
+        <button title="Close (Esc)" onClick={onClose} className="p-2 rounded-lg hover:bg-field-hover"><X size={18} /></button>
       </div>
       <div className="flex-1 min-h-0 overflow-hidden grid place-items-center select-none"
         style={{ cursor: drag.current ? 'grabbing' : 'grab', touchAction: 'none' }}
@@ -55,9 +55,9 @@ export function Lightbox({ a, onClose }) {
         onPointerMove={e => drag.current && setPos({ x: e.clientX - drag.current.x, y: e.clientY - drag.current.y })}
         onPointerUp={() => { drag.current = null; }}>
         {cantShow ? (
-          <div className="text-center text-neutral-300 text-sm space-y-3 p-6">
+          <div className="text-center text-foreground text-sm space-y-3 p-6">
             <p>This browser can’t display {a.name}{/hei[cf]$/i.test(a.name) ? ' (HEIC)' : ''}.<br />The original file is saved — download it to open it elsewhere.</p>
-            <button onClick={() => dl(a)} className="px-3 py-2 rounded-lg bg-white text-neutral-900 inline-flex items-center gap-2"><Download size={14} />Download original</button>
+            <button onClick={() => dl(a)} className="px-3 py-2 rounded-lg bg-btn-primary text-btn-primary-fg inline-flex items-center gap-2"><Download size={14} />Download original</button>
           </div>
         ) : url && (
           <img src={url} alt={a.name} draggable={false} onError={handleImgError}
@@ -84,7 +84,7 @@ export function ImageThumb({ a, className, imgClass }) {
   };
 
   if (failed || bad) {
-    return <button onClick={() => dl(a)} className={'text-xs text-neutral-300 underline ' + (className || '')} title="Preview not supported in this browser — download the original">{a.name} — can’t preview, download original</button>;
+    return <button onClick={() => dl(a)} className={'text-xs text-foreground underline ' + (className || '')} title="Preview not supported in this browser — download the original">{a.name} — can’t preview, download original</button>;
   }
   return (
     <>

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { ArrowLeft, Search, Users, MoreHorizontal, Archive, ArchiveRestore, Download, Pencil, Braces, MessageSquare, ListTodo, ListChecks, GitBranch, Lock, Paperclip, Brain, History, Sparkles, KeyRound, X, LayoutGrid, PanelRight } from 'lucide-react';
+import { ArrowLeft, Search, Users, MoreHorizontal, Archive, ArchiveRestore, Download, Pencil, Braces, MessageSquare, ListTodo, ListChecks, GitBranch, Lock, Paperclip, Brain, History, Sparkles, KeyRound, X, LayoutGrid, PanelRight } from '@/lib/icons';
 import { useStore } from '../store';
 import { PCtx, Button, Menu, MenuItem, Drawer } from './ui';
 import Chat from './Chat';
@@ -63,17 +63,17 @@ export function ProjectShell({ p: record, role, me = null, names, tabs, tab, set
   const ctx = useMemo(() => ({ p, role, me, names, openItem: setDrawer, jumpTo, mut: mut || (fn => mutate(p.id, fn)), openSearch: () => setSearch(true) }), [p, role, me, names, jumpTo, mutate, mut]);
   const n = counts(p, role, me);
   const View = TABS[tab]?.[2] || Chat;
-  const badge = (k, cls) => n[k] > 0 && <span className={cx('text-[10px] min-w-[18px] h-[18px] px-1 rounded-full grid place-items-center', k === 'chat' ? 'bg-sky-500 text-white' : 'bg-white/10 text-neutral-300', cls)}>{n[k]}</span>;
+  const badge = (k, cls) => n[k] > 0 && <span className={cx('text-xs min-w-[18px] h-[18px] px-1 rounded-full grid place-items-center', k === 'chat' ? 'bg-primary text-primary-foreground' : 'bg-field-hover text-foreground', cls)}>{n[k]}</span>;
 
   return (
     <PCtx.Provider value={ctx}>
       <div className="h-full flex flex-col">
-        <header className="shrink-0 border-b border-white/[.06] bg-[#141414]">
+        <header className="shrink-0 border-b border-border bg-card">
           <div className="h-12 md:h-14 flex items-center gap-1.5 md:gap-3 px-1.5 md:px-5">
             {header}
             <Button variant="ghost" size="sm" className="px-2 sm:px-2.5" onClick={() => setSearch(true)} title="Search this project"><Search size={15} /><span className="hidden sm:inline">Search</span></Button>
-            {role === 'owner' && <Button variant="ghost" size="sm" className="text-sky-300 px-2 sm:px-2.5" onClick={() => setAssistant(true)} title="Project assistant"><Sparkles size={15} /><span className="hidden sm:inline">Assistant</span></Button>}
-            <Button variant="ghost" size="icon" onClick={toggleSide} title="Project overview" className={cx(side && 'xl:text-white xl:bg-white/5')}><PanelRight size={17} /></Button>
+            {role === 'owner' && <Button variant="ghost" size="sm" className="text-primary px-2 sm:px-2.5" onClick={() => setAssistant(true)} title="Project assistant"><Sparkles size={15} /><span className="hidden sm:inline">Assistant</span></Button>}
+            <Button variant="ghost" size="icon" onClick={toggleSide} title="Project overview" className={cx(side && 'xl:text-foreground xl:bg-field')}><PanelRight size={17} /></Button>
             {/* phones: the tabs live in a menu so the chat keeps the whole screen */}
             <div className="md:hidden">
               <Menu trigger={t => <Button variant="ghost" size="icon" onClick={t} title="Sections"><LayoutGrid size={17} /></Button>}>
@@ -85,9 +85,9 @@ export function ProjectShell({ p: record, role, me = null, names, tabs, tab, set
             {tabs.map(k => {
               const [label, Icon] = TABS[k];
               return (
-                <button key={k} onClick={() => setTab(k)} className={cx('relative flex items-center gap-1.5 px-3 py-2 md:py-2.5 text-sm whitespace-nowrap transition', tab === k ? 'text-white' : 'text-neutral-500 hover:text-neutral-200')}>
+                <button key={k} onClick={() => setTab(k)} className={cx('relative flex items-center gap-1.5 px-3 py-2 md:py-2.5 text-sm whitespace-nowrap transition', tab === k ? 'text-foreground' : 'text-muted-foreground hover:text-foreground')}>
                   <Icon size={15} />{label}{badge(k)}
-                  {tab === k && <span className="absolute left-2 right-2 -bottom-px h-0.5 rounded-full bg-white" />}
+                  {tab === k && <span className="absolute left-2 right-2 -bottom-px h-0.5 rounded-full bg-btn-primary" />}
                 </button>
               );
             })}
@@ -95,7 +95,7 @@ export function ProjectShell({ p: record, role, me = null, names, tabs, tab, set
         </header>
         <div className="flex-1 min-h-0 flex">
           <View focus={focus} />
-          {side && <aside className="w-[300px] shrink-0 border-l border-white/[.06] bg-[#151515] overflow-auto hidden xl:block"><ProjectOverview /></aside>}
+          {side && <aside className="w-[300px] shrink-0 border-l border-border bg-card overflow-auto hidden xl:block"><ProjectOverview /></aside>}
         </div>
       </div>
       {drawer && <ItemDrawer id={drawer} onClose={() => setDrawer(null)} />}
@@ -130,15 +130,15 @@ export default function ProjectPage({ p, tab, deep }) {
 
   const header = (
     <>
-      <a href="#/" className="p-1.5 rounded-lg hover:bg-white/5 text-neutral-400 hover:text-white shrink-0" title="All projects"><ArrowLeft size={18} /></a>
+      <a href="#/" className="p-1.5 rounded-lg hover:bg-field-hover text-muted-foreground hover:text-foreground shrink-0" title="All projects"><ArrowLeft size={18} /></a>
       <ProjectAvatar p={p} className="w-8 h-8 md:w-9 md:h-9" rounded="rounded-full md:rounded-xl" />
       <div className="min-w-0 flex-1">
-        <div className="font-semibold truncate leading-tight text-[15px] md:text-base flex items-center gap-2"><span className="truncate">{p.name}</span><StatusPill status={p.status} className="hidden md:inline-flex" /></div>
-        <div className="text-xs text-neutral-500 truncate">{owner ? (members.length ? members.map(m => m.name.split(' ')[0]).join(', ') : p.client || 'No members yet') : `with ${names.owner}`}</div>
+        <div className="font-medium truncate leading-tight text-sm md:text-base flex items-center gap-2"><span className="truncate">{p.name}</span><StatusPill status={p.status} className="hidden md:inline-flex" /></div>
+        <div className="text-xs text-muted-foreground truncate">{owner ? (members.length ? members.map(m => m.name.split(' ')[0]).join(', ') : p.client || 'No members yet') : `with ${names.owner}`}</div>
       </div>
       {owner && (
-        <button onClick={() => setModal('settings')} className={cx('hidden md:flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full ring-1 ring-inset', gem ? 'ring-emerald-500/30 text-emerald-300' : 'ring-white/10 text-neutral-400')} title="AI settings">
-          <span className={cx('w-1.5 h-1.5 rounded-full', gem ? 'bg-emerald-400' : 'bg-neutral-500')} />{aiName(state.settings)}
+        <button onClick={() => setModal('settings')} className={cx('hidden md:flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full ring-1 ring-inset', gem ? 'ring-green-ring text-pos' : 'ring-border text-muted-foreground')} title="AI settings">
+          <span className={cx('w-1.5 h-1.5 rounded-full', gem ? 'bg-green' : 'bg-grey-400')} />{aiName(state.settings)}
         </button>
       )}
       {owner && (

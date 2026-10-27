@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { X, MessageSquareQuote, Pencil, ExternalLink, Download, StickyNote, History, Info, Trash2, ScanText } from 'lucide-react';
+import { X, MessageSquareQuote, Pencil, ExternalLink, Download, StickyNote, History, Info, Trash2, ScanText } from '@/lib/icons';
 import { useStore } from '../store';
 import { useP, Button, Field, Input, Textarea, Select, Drawer, Modal, StatusBadge, TypeBadge, Secret, Badge } from './ui';
 import ReadFileModal, { ReadingView } from './ReadFile';
@@ -44,11 +44,11 @@ export default function ItemDrawer({ id, onClose }) {
 
   return (
     <Drawer onClose={onClose}>
-      <div className="sticky top-0 z-10 bg-[#171717]/95 backdrop-blur px-5 py-3.5 border-b border-white/5 flex items-center gap-2">
+      <div className="sticky top-0 z-10 bg-card px-5 py-3.5 border-b border-border flex items-center gap-2">
         <TypeBadge type={it.type} /><StatusBadge status={it.status} />
         <div className="flex-1" />
         {owner && !edit && <Button size="sm" variant="ghost" onClick={startEdit}><Pencil size={13} />Edit</Button>}
-        {owner && !edit && <Button size="icon" variant="ghost" className="text-neutral-500 hover:text-rose-300" onClick={() => setConfirmDel(true)} title="Delete (created by mistake)"><Trash2 size={15} /></Button>}
+        {owner && !edit && <Button size="icon" variant="ghost" className="text-muted-foreground hover:text-destructive-foreground" onClick={() => setConfirmDel(true)} title="Delete (created by mistake)"><Trash2 size={15} /></Button>}
         <Button variant="ghost" size="icon" onClick={onClose}><X size={18} /></Button>
       </div>
 
@@ -74,11 +74,11 @@ export default function ItemDrawer({ id, onClose }) {
           </div>
         ) : (
           <div>
-            <h2 className={cx('text-xl font-semibold leading-snug', !isActive(it) && 'line-through text-neutral-400')}>{it.title}</h2>
-            {it.detail && it.detail !== it.title && <p className="text-sm text-neutral-400 mt-2 whitespace-pre-wrap">{it.detail}</p>}
-            {it.type === 'sensitive' && it.value && owner && <div className="mt-3 inline-flex rounded-lg bg-black/30 ring-1 ring-rose-500/25 px-3 py-2"><Secret value={it.value} /></div>}
-            {it.type === 'file' && it.kind === 'link' && <a href={it.value} target="_blank" rel="noreferrer" className="mt-3 inline-flex items-center gap-1.5 text-sm text-sky-300 hover:underline break-all"><ExternalLink size={14} />{it.value}</a>}
-            {hasFile(att) && <button onClick={() => dl(att)} className="mt-3 inline-flex items-center gap-1.5 text-sm text-sky-300 hover:underline"><Download size={14} />Download {att.name}</button>}
+            <h2 className={cx('text-xl font-medium leading-snug', !isActive(it) && 'line-through text-muted-foreground')}>{it.title}</h2>
+            {it.detail && it.detail !== it.title && <p className="text-sm text-muted-foreground mt-2 whitespace-pre-wrap">{it.detail}</p>}
+            {it.type === 'sensitive' && it.value && owner && <div className="mt-3 inline-flex rounded-lg bg-neg-soft ring-1 ring-rose-ring px-3 py-2"><Secret value={it.value} /></div>}
+            {it.type === 'file' && it.kind === 'link' && <a href={it.value} target="_blank" rel="noreferrer" className="mt-3 inline-flex items-center gap-1.5 text-sm text-primary hover:underline break-all"><ExternalLink size={14} />{it.value}</a>}
+            {hasFile(att) && <button onClick={() => dl(att)} className="mt-3 inline-flex items-center gap-1.5 text-sm text-primary hover:underline"><Download size={14} />Download {att.name}</button>}
             <div className="flex flex-wrap gap-1.5 mt-3">
               {it.due && <Badge tone={isOverdue(it.due) && isActive(it) ? 'rose' : 'neutral'}>Due {fmtDue(it.due)}</Badge>}
               {it.priority !== 'normal' && <Badge tone={it.priority === 'high' ? 'orange' : 'neutral'}>{it.priority} priority</Badge>}
@@ -86,53 +86,53 @@ export default function ItemDrawer({ id, onClose }) {
               {it.category && <Badge>{SENSITIVE_CATS[it.category] || it.category}</Badge>}
               {it.type === 'requirement' && <Badge>{it.scope === 'out' ? 'Out of scope' : 'In scope'}</Badge>}
             </div>
-            {replaced && <button onClick={() => openItem(replaced.id)} className="mt-3 text-sm text-amber-300 hover:underline block">Replaced by “{replaced.title}” →</button>}
-            {replaces && <button onClick={() => openItem(replaces.id)} className="mt-3 text-sm text-neutral-400 hover:underline block">Replaces “{replaces.title}” →</button>}
+            {replaced && <button onClick={() => openItem(replaced.id)} className="mt-3 text-sm text-warn-ink hover:underline block">Replaced by “{replaced.title}” →</button>}
+            {replaces && <button onClick={() => openItem(replaces.id)} className="mt-3 text-sm text-muted-foreground hover:underline block">Replaces “{replaces.title}” →</button>}
           </div>
         )}
 
         {owner && (
           <div>
-            <div className="text-xs font-medium text-neutral-400 mb-2">Status</div>
+            <div className="text-xs font-medium text-muted-foreground mb-2">Status</div>
             <div className="flex flex-wrap gap-1.5">
               {T.statuses.map(s => (
                 <button key={s} onClick={() => mut(q => setStatus(q, 'owner', it.id, s))}
-                  className={cx('px-2.5 py-1 rounded-lg text-xs ring-1 ring-inset transition', it.status === s ? 'bg-white text-neutral-900 ring-white' : 'ring-white/10 text-neutral-300 hover:bg-white/5')}>{STATUS[s].label}</button>
+                  className={cx('px-2.5 py-1 rounded-lg text-xs ring-1 ring-inset transition', it.status === s ? 'bg-card text-text-figure shadow-button ring-border' : 'ring-border text-foreground hover:bg-field-hover')}>{STATUS[s].label}</button>
               ))}
             </div>
-            <p className="text-xs text-neutral-500 mt-2 flex items-center gap-1.5"><Info size={12} />Close a record by changing its status — the full trail stays below. Delete it only if it was created by mistake.</p>
+            <p className="text-xs text-muted-foreground mt-2 flex items-center gap-1.5"><Info size={12} />Close a record by changing its status — the full trail stays below. Delete it only if it was created by mistake.</p>
           </div>
         )}
 
         {src && (
           <div>
-            <div className="text-xs font-medium text-neutral-400 mb-2">Where it came from</div>
-            <button onClick={() => jumpTo(src.id, it.sourceSpan)} className="w-full text-left rounded-xl bg-white/[.03] ring-1 ring-white/[.06] p-3 hover:bg-white/[.06] transition">
-              <div className="text-xs text-neutral-500 mb-1 flex items-center gap-1.5"><MessageSquareQuote size={12} />{names.msg(src)} · {fmtDateTime(src.ts)}{it.sourceSpan && <span className="ml-auto text-amber-300/80">exact words ↗</span>}</div>
+            <div className="text-xs font-medium text-muted-foreground mb-2">Where it came from</div>
+            <button onClick={() => jumpTo(src.id, it.sourceSpan)} className="w-full text-left rounded-xl bg-field ring-1 ring-border p-3 hover:bg-field-hover transition">
+              <div className="text-xs text-muted-foreground mb-1 flex items-center gap-1.5"><MessageSquareQuote size={12} />{names.msg(src)} · {fmtDateTime(src.ts)}{it.sourceSpan && <span className="ml-auto text-warn-ink">exact words ↗</span>}</div>
               {it.sourceSpan && src.text
-                ? <div className="text-sm text-neutral-200 line-clamp-4"><mark className="hl-mark">{maskText(src.text.slice(it.sourceSpan.start, it.sourceSpan.end), secretValues(p))}</mark></div>
-                : <div className="text-sm text-neutral-300 line-clamp-4">{maskText(src.text, secretValues(p)) || src.attachments.map(a => a.name).join(', ')}</div>}
-              {it.sourceQuote && <div className="text-sm text-neutral-300 mt-1.5 border-l-2 border-amber-400/40 pl-2">From the file: “{it.sourceQuote}”</div>}
+                ? <div className="text-sm text-foreground line-clamp-4"><mark className="hl-mark">{maskText(src.text.slice(it.sourceSpan.start, it.sourceSpan.end), secretValues(p))}</mark></div>
+                : <div className="text-sm text-foreground line-clamp-4">{maskText(src.text, secretValues(p)) || src.attachments.map(a => a.name).join(', ')}</div>}
+              {it.sourceQuote && <div className="text-sm text-foreground mt-1.5 border-l-2 border-amber-ring pl-2">From the file: “{it.sourceQuote}”</div>}
             </button>
           </div>
         )}
 
         {it.type === 'file' && att && (it.reading || (owner && hasFile(att) && readableKind(att))) && (
           <div>
-            <div className="text-xs font-medium text-neutral-400 mb-2 flex items-center gap-1.5"><ScanText size={12} />What's inside{it.reading && <span className="text-neutral-600">· read {fmtDateTime(it.reading.ts)}</span>}</div>
-            {it.reading ? (owner ? <ReadingView r={it.reading} /> : it.reading.description && <p className="text-sm text-neutral-300">{it.reading.description}</p>) : <p className="text-sm text-neutral-500">Not read yet. The AI can read its text, tables and pictures and propose records.</p>}
+            <div className="text-xs font-medium text-muted-foreground mb-2 flex items-center gap-1.5"><ScanText size={12} />What's inside{it.reading && <span className="text-text-tertiary">· read {fmtDateTime(it.reading.ts)}</span>}</div>
+            {it.reading ? (owner ? <ReadingView r={it.reading} /> : it.reading.description && <p className="text-sm text-foreground">{it.reading.description}</p>) : <p className="text-sm text-muted-foreground">Not read yet. The AI can read its text, tables and pictures and propose records.</p>}
             {owner && src && hasFile(att) && readableKind(att) && <Button size="sm" className="mt-3" onClick={() => setReading(true)}><ScanText size={13} />{it.reading ? 'Read again' : 'Read with AI'}</Button>}
           </div>
         )}
 
         {it.type === 'requirement' && it.versions.length > 1 && (
           <div>
-            <div className="text-xs font-medium text-neutral-400 mb-2">Versions</div>
+            <div className="text-xs font-medium text-muted-foreground mb-2">Versions</div>
             <ol className="space-y-2">
               {[...it.versions].reverse().map((v, i) => (
-                <li key={i} className="rounded-xl bg-white/[.03] p-3">
-                  <div className="text-xs text-neutral-500 flex gap-2">v{it.versions.length - i} · {fmtDateTime(v.ts)} · {who(v.by)}{v.msg && <button onClick={() => jumpTo(v.msg)} className="text-sky-400 hover:underline">source</button>}</div>
-                  <div className={cx('text-sm mt-1', i > 0 && 'text-neutral-500')}>{v.title}</div>
+                <li key={i} className="rounded-xl bg-field p-3">
+                  <div className="text-xs text-muted-foreground flex gap-2">v{it.versions.length - i} · {fmtDateTime(v.ts)} · {who(v.by)}{v.msg && <button onClick={() => jumpTo(v.msg)} className="text-primary hover:underline">source</button>}</div>
+                  <div className={cx('text-sm mt-1', i > 0 && 'text-muted-foreground')}>{v.title}</div>
                 </li>
               ))}
             </ol>
@@ -140,10 +140,10 @@ export default function ItemDrawer({ id, onClose }) {
         )}
 
         <div>
-          <div className="text-xs font-medium text-neutral-400 mb-2 flex items-center gap-1.5"><StickyNote size={12} />Notes</div>
+          <div className="text-xs font-medium text-muted-foreground mb-2 flex items-center gap-1.5"><StickyNote size={12} />Notes</div>
           {it.notes.map(n => (
-            <div key={n.id} className="rounded-xl bg-white/[.03] p-3 mb-2 text-sm">
-              <div className="text-xs text-neutral-500 mb-1">{who(n.by)} · {fmtDateTime(n.ts)}{n.msg && <button onClick={() => jumpTo(n.msg)} className="ml-2 text-sky-400 hover:underline">source</button>}</div>{n.text}
+            <div key={n.id} className="rounded-xl bg-field p-3 mb-2 text-sm">
+              <div className="text-xs text-muted-foreground mb-1">{who(n.by)} · {fmtDateTime(n.ts)}{n.msg && <button onClick={() => jumpTo(n.msg)} className="ml-2 text-primary hover:underline">source</button>}</div>{n.text}
             </div>
           ))}
           {owner && (
@@ -152,24 +152,24 @@ export default function ItemDrawer({ id, onClose }) {
               <Button type="submit" disabled={!note.trim()}>Add</Button>
             </form>
           )}
-          {!owner && !it.notes.length && <div className="text-sm text-neutral-600">No notes.</div>}
+          {!owner && !it.notes.length && <div className="text-sm text-text-tertiary">No notes.</div>}
         </div>
 
         <div>
-          <div className="text-xs font-medium text-neutral-400 mb-2 flex items-center gap-1.5"><History size={12} />History</div>
-          <ol className="border-l border-white/10 ml-1.5 space-y-3">
+          <div className="text-xs font-medium text-muted-foreground mb-2 flex items-center gap-1.5"><History size={12} />History</div>
+          <ol className="border-l border-border ml-1.5 space-y-3">
             {[...it.history].reverse().map((h, i) => (
               <li key={i} className="pl-4 relative text-sm">
-                <span className="absolute -left-[4.5px] top-1.5 w-2 h-2 rounded-full bg-neutral-500" />
-                <div className="text-neutral-300">
+                <span className="absolute -left-[4.5px] top-1.5 w-2 h-2 rounded-full bg-grey-400" />
+                <div className="text-foreground">
                   {h.action === 'created' && <>Recorded by {who(h.by)}</>}
                   {h.action === 'status' && <>{who(h.by)} changed status: <b className="font-medium">{STATUS[h.from]?.label}</b> → <b className="font-medium">{STATUS[h.to]?.label}</b></>}
-                  {h.action === 'edit' && <>{who(h.by)} changed {FIELD_LABEL[h.field] || h.field}{!secretField(h.field) && h.field !== 'detail' && <>: <span className="text-neutral-500 line-through">{String(h.from || '—')}</span> → {String(h.to || '—')}</>}{secretField(h.field) && owner && <> (previous: <Secret value={String(h.from || '')} copy={false} />)</>}</>}
+                  {h.action === 'edit' && <>{who(h.by)} changed {FIELD_LABEL[h.field] || h.field}{!secretField(h.field) && h.field !== 'detail' && <>: <span className="text-muted-foreground line-through">{String(h.from || '—')}</span> → {String(h.to || '—')}</>}{secretField(h.field) && owner && <> (previous: <Secret value={String(h.from || '')} copy={false} />)</>}</>}
                   {h.action === 'note' && <>{who(h.by)} added a note</>}
                   {h.action === 'read' && <>{who(h.by)} had the file read{h.note ? ` — ${h.note}` : ''}</>}
                   {h.action === 'deleted' && <>{who(h.by)} deleted it</>}
                 </div>
-                <div className="text-xs text-neutral-500">{fmtDateTime(h.ts)}{h.note && h.action !== 'note' ? ` · ${h.note}` : ''}{h.msg && h.action !== 'created' && <button onClick={() => jumpTo(h.msg)} className="ml-2 text-sky-400 hover:underline">message</button>}</div>
+                <div className="text-xs text-muted-foreground">{fmtDateTime(h.ts)}{h.note && h.action !== 'note' ? ` · ${h.note}` : ''}{h.msg && h.action !== 'created' && <button onClick={() => jumpTo(h.msg)} className="ml-2 text-primary hover:underline">message</button>}</div>
               </li>
             ))}
           </ol>
@@ -180,8 +180,8 @@ export default function ItemDrawer({ id, onClose }) {
         <Modal title={`Delete this ${T.label.toLowerCase()}?`} sub="Only for records created by mistake. To close a real one, change its status instead (e.g. cancelled, dropped)." onClose={() => setConfirmDel(false)}
           footer={<><Button variant="ghost" onClick={() => setConfirmDel(false)}>Keep it</Button><Button variant="danger" onClick={() => { mut(q => deleteItem(q, 'owner', it.id, reason.trim())); toast(`Deleted “${it.title}”`); onClose(); }}><Trash2 size={14} />Delete</Button></>}>
           <div className="space-y-3">
-            <div className="rounded-xl bg-white/[.03] p-3 text-sm">{it.title}</div>
-            <p className="text-sm text-neutral-400">It disappears from every list, the chat links, search and the AI's view, in every open tab. The project log keeps a line saying it was deleted.</p>
+            <div className="rounded-xl bg-field p-3 text-sm">{it.title}</div>
+            <p className="text-sm text-muted-foreground">It disappears from every list, the chat links, search and the AI's view, in every open tab. The project log keeps a line saying it was deleted.</p>
             <Field label="Why? (optional)"><Input value={reason} onChange={e => setReason(e.target.value)} placeholder="e.g. Duplicate, created by mistake" /></Field>
           </div>
         </Modal>

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ScanText, ShieldCheck, Eye, ChevronDown, Sparkles } from 'lucide-react';
+import { ScanText, ShieldCheck, Eye, ChevronDown, Sparkles } from '@/lib/icons';
 import { useStore } from '../store';
 import { useP, Modal, Button, Toggle, Spinner, Badge } from './ui';
 import { readAttachment } from '../lib/brain';
@@ -19,8 +19,8 @@ export function ReadingView({ r }) {
   const s = r.stats || {};
   return (
     <div className="space-y-3">
-      {r.description && <p className="text-sm text-neutral-200 whitespace-pre-wrap">{r.description}</p>}
-      {r.imageContext && <div className="rounded-xl bg-white/[.03] ring-1 ring-white/[.06] p-3"><div className="text-xs text-neutral-500 mb-1 flex items-center gap-1.5"><Eye size={12} />Images & visuals</div><p className="text-sm text-neutral-300 whitespace-pre-wrap">{r.imageContext}</p></div>}
+      {r.description && <p className="text-sm text-foreground whitespace-pre-wrap">{r.description}</p>}
+      {r.imageContext && <div className="rounded-xl bg-field ring-1 ring-border p-3"><div className="text-xs text-muted-foreground mb-1 flex items-center gap-1.5"><Eye size={12} />Images & visuals</div><p className="text-sm text-foreground whitespace-pre-wrap">{r.imageContext}</p></div>}
       <div className="flex flex-wrap gap-1.5">
         {['headings', 'paragraphs', 'lists', 'tables', 'images'].filter(k => s[k]).map(k => <Badge key={k}>{s[k]} {k}</Badge>)}
         {r.truncated && <Badge tone="amber">long file — only the first part was sent</Badge>}
@@ -28,10 +28,10 @@ export function ReadingView({ r }) {
       </div>
       {r.doc && (
         <div>
-          <button onClick={() => setJson(!json)} className="text-xs text-neutral-500 hover:text-neutral-300 flex items-center gap-1">
+          <button onClick={() => setJson(!json)} className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1">
             <ChevronDown size={13} className={cx('transition', json && 'rotate-180')} />Structured JSON sent to the AI (secrets masked)
           </button>
-          {json && <pre className="mt-2 text-[11px] leading-relaxed bg-black/40 rounded-xl p-3 overflow-auto max-h-72 text-neutral-400">{JSON.stringify(r.doc, null, 2)}</pre>}
+          {json && <pre className="mt-2 text-xs leading-relaxed bg-modal-scrim rounded-xl p-3 overflow-auto max-h-72 text-muted-foreground">{JSON.stringify(r.doc, null, 2)}</pre>}
         </div>
       )}
     </div>
@@ -79,30 +79,30 @@ export default function ReadFileModal({ message, attachment, onClose }) {
       {step === 'choose' && (
         <div className="space-y-4">
           <div>
-            <div className="text-xs font-medium text-neutral-400 mb-2">Which AI should read it?</div>
+            <div className="text-xs font-medium text-muted-foreground mb-2">Which AI should read it?</div>
             <div className="grid sm:grid-cols-2 gap-2">
               {CHOICES.map(([k, title, text]) => (
                 <button key={k} type="button" disabled={!ready[k]} onClick={() => setProvider(k)}
-                  className={cx('text-left rounded-xl p-3 ring-1 ring-inset transition disabled:opacity-40 disabled:cursor-not-allowed', provider === k ? 'bg-sky-500/10 ring-sky-500/50' : 'ring-white/10 hover:bg-white/5')}>
-                  <div className="text-sm font-medium text-neutral-100 flex items-center gap-2"><span className={cx('w-2 h-2 rounded-full', provider === k ? 'bg-sky-400' : 'bg-neutral-600')} />{title}</div>
-                  <div className="text-xs text-neutral-500 mt-1">{ready[k] ? text : `Not set up — add ${PROVIDERS[k]} in Settings → AI.`}</div>
+                  className={cx('text-left rounded-xl p-3 ring-1 ring-inset transition disabled:opacity-40 disabled:cursor-not-allowed', provider === k ? 'bg-primary-soft ring-blue-ring' : 'ring-border hover:bg-field-hover')}>
+                  <div className="text-sm font-medium text-foreground flex items-center gap-2"><span className={cx('w-2 h-2 rounded-full', provider === k ? 'bg-primary' : 'bg-grey-400')} />{title}</div>
+                  <div className="text-xs text-muted-foreground mt-1">{ready[k] ? text : `Not set up — add ${PROVIDERS[k]} in Settings → AI.`}</div>
                 </button>
               ))}
             </div>
           </div>
           {provider === 'gemini' && visual && (
-            <div className="rounded-xl ring-1 ring-amber-500/25 bg-amber-500/[.04] p-3">
+            <div className="rounded-xl ring-1 ring-amber-ring bg-warn-soft p-3">
               <Toggle checked={vision} onChange={setVision} label="Also let Gemini see the image itself"
                 hint={`For pictures, mockups and scanned pages, OCR only finds text. With this on, the ${kind === 'image' ? 'image' : 'pictures / scanned pages'} are sent to Google as-is — text inside a picture can't be redacted.`} />
             </div>
           )}
-          <p className="text-xs text-neutral-500 flex items-start gap-1.5"><ShieldCheck size={13} className="mt-0.5 shrink-0 text-emerald-400" />Passwords, keys, tokens and card / account numbers become [SECRET_n] before sending. The OCR engine is downloaded once; the file itself stays in your browser{vision && provider === 'gemini' ? ' (except the image you chose to share)' : ''}.</p>
+          <p className="text-xs text-muted-foreground flex items-start gap-1.5"><ShieldCheck size={13} className="mt-0.5 shrink-0 text-pos" />Passwords, keys, tokens and card / account numbers become [SECRET_n] before sending. The OCR engine is downloaded once; the file itself stays in your browser{vision && provider === 'gemini' ? ' (except the image you chose to share)' : ''}.</p>
         </div>
       )}
-      {step === 'busy' && <div className="py-10 text-center text-sm text-neutral-400"><Spinner size={20} /><div className="mt-3">{progress || 'Starting…'}</div></div>}
+      {step === 'busy' && <div className="py-10 text-center text-sm text-muted-foreground"><Spinner size={20} /><div className="mt-3">{progress || 'Starting…'}</div></div>}
       {step === 'done' && res && (
         <div className="space-y-4">
-          <div className="flex items-center gap-2 text-sm"><Sparkles size={15} className="text-sky-300" />{res.count ? `${res.count} suggestion${res.count > 1 ? 's' : ''} added — review them in Suggestions.` : 'Nothing new to record from this file.'}</div>
+          <div className="flex items-center gap-2 text-sm"><Sparkles size={15} className="text-primary" />{res.count ? `${res.count} suggestion${res.count > 1 ? 's' : ''} added — review them in Suggestions.` : 'Nothing new to record from this file.'}</div>
           <ReadingView r={res} />
         </div>
       )}

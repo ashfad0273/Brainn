@@ -1,0 +1,326 @@
+{
+  "account": {
+    "inset": true,
+    "replacedAt": "2026-10-03T17:55:35.571Z"
+  },
+  "add": {
+    "inset": true,
+    "replacedAt": "2026-10-03T17:17:50.831Z"
+  },
+  "adjust": {
+    "inset": true,
+    "replacedAt": "2026-10-03T17:53:07.820Z"
+  },
+  "alert": {
+    "inset": true,
+    "replacedAt": "2026-10-03T17:58:04.983Z"
+  },
+  "amount": {
+    "inset": true,
+    "replacedAt": "2026-10-03T17:49:23.941Z"
+  },
+  "arrowLeft": {
+    "inset": true,
+    "replacedAt": "2026-10-03T18:00:26.039Z"
+  },
+  "arrowRight": {
+    "inset": true,
+    "replacedAt": "2026-10-03T18:00:09.157Z"
+  },
+  "backup": {
+    "inset": true,
+    "replacedAt": "2026-10-03T17:22:47.147Z"
+  },
+  "balance": {
+    "inset": true,
+    "replacedAt": "2026-10-03T17:29:58.148Z"
+  },
+  "blocked": {
+    "inset": true,
+    "replacedAt": "2026-10-03T17:58:44.293Z"
+  },
+  "breakdown": {
+    "inset": true,
+    "replacedAt": "2026-10-03T17:50:14.942Z"
+  },
+  "card": {
+    "inset": true,
+    "replacedAt": "2026-10-03T17:49:50.686Z"
+  },
+  "caretDown": {
+    "inset": false,
+    "replacedAt": "2026-10-05T00:00:00.000Z"
+  },
+  "caretRight": {
+    "inset": false,
+    "replacedAt": "2026-10-05T00:00:00.000Z"
+  },
+  "cash": {
+    "inset": true,
+    "replacedAt": "2026-10-03T17:29:47.315Z"
+  },
+  "category": {
+    "inset": true,
+    "replacedAt": "2026-10-03T17:56:14.379Z"
+  },
+  "check": {
+    "inset": true,
+    "replacedAt": "2026-10-03T17:53:29.429Z"
+  },
+  "chevronDown": {
+    "inset": true,
+    "replacedAt": "2026-10-03T18:00:56.871Z"
+  },
+  "chevronLeft": {
+    "inset": true,
+    "replacedAt": "2026-10-03T18:00:45.423Z"
+  },
+  "chevronsUpDown": {
+    "inset": true,
+    "replacedAt": "2026-10-03T18:00:38.586Z"
+  },
+  "chevronUp": {
+    "inset": true,
+    "replacedAt": "2026-10-03T18:00:51.758Z"
+  },
+  "client": {
+    "inset": true,
+    "replacedAt": "2026-10-03T17:55:55.942Z"
+  },
+  "close": {
+    "inset": true,
+    "replacedAt": "2026-10-03T17:53:36.913Z"
+  },
+  "copy": {
+    "inset": true,
+    "replacedAt": "2026-10-03T17:51:17.176Z"
+  },
+  "dark": {
+    "inset": true,
+    "replacedAt": "2026-10-03T18:01:20.999Z"
+  },
+  "date": {
+    "inset": true,
+    "replacedAt": "2026-10-03T17:48:57.416Z"
+  },
+  "delete": {
+    "inset": true,
+    "replacedAt": "2026-10-03T17:53:49.878Z"
+  },
+  "down": {
+    "inset": true,
+    "replacedAt": "2026-10-03T17:46:23.492Z"
+  },
+  "download": {
+    "inset": true,
+    "replacedAt": "2026-10-03T17:52:56.065Z"
+  },
+  "edit": {
+    "inset": true,
+    "replacedAt": "2026-10-03T17:18:36.829Z"
+  },
+  "email": {
+    "inset": true,
+    "replacedAt": "2026-10-03T17:54:55.260Z"
+  },
+  "empty": {
+    "inset": true,
+    "replacedAt": "2026-10-03T17:22:12.409Z"
+  },
+  "error": {
+    "inset": true,
+    "replacedAt": "2026-10-03T17:59:55.149Z"
+  },
+  "expense": {
+    "inset": true,
+    "replacedAt": "2026-10-03T17:29:16.705Z"
+  },
+  "external": {
+    "inset": true,
+    "replacedAt": "2026-10-03T17:51:44.134Z"
+  },
+  "fixedCosts": {
+    "inset": true,
+    "replacedAt": "2026-10-03T17:31:09.560Z"
+  },
+  "help": {
+    "inset": true,
+    "replacedAt": "2026-10-03T17:57:28.205Z"
+  },
+  "hide": {
+    "inset": true,
+    "replacedAt": "2026-10-03T17:22:57.244Z"
+  },
+  "history": {
+    "inset": true,
+    "replacedAt": "2026-10-03T17:50:49.352Z"
+  },
+  "income": {
+    "inset": true,
+    "replacedAt": "2026-10-03T17:28:44.949Z"
+  },
+  "info": {
+    "inset": true,
+    "replacedAt": "2026-10-03T17:57:20.849Z"
+  },
+  "key": {
+    "inset": true,
+    "replacedAt": "2026-10-03T17:24:16.457Z"
+  },
+  "light": {
+    "inset": true,
+    "replacedAt": "2026-10-03T17:22:31.157Z"
+  },
+  "loading": {
+    "inset": true,
+    "replacedAt": "2026-10-03T17:25:28.675Z"
+  },
+  "menu": {
+    "inset": true,
+    "replacedAt": "2026-10-03T17:56:46.573Z"
+  },
+  "minusCircle": {
+    "inset": true,
+    "replacedAt": "2026-10-03T17:58:13.347Z"
+  },
+  "more": {
+    "inset": true,
+    "replacedAt": "2026-10-03T17:53:15.756Z"
+  },
+  "moreVertical": {
+    "inset": true,
+    "replacedAt": "2026-10-03T17:53:19.949Z"
+  },
+  "net": {
+    "inset": true,
+    "replacedAt": "2026-10-03T17:44:32.638Z"
+  },
+  "neutral": {
+    "inset": true,
+    "replacedAt": "2026-10-03T17:59:34.131Z"
+  },
+  "notes": {
+    "inset": true,
+    "replacedAt": "2026-10-03T17:55:26.745Z"
+  },
+  "password": {
+    "inset": true,
+    "replacedAt": "2026-10-03T17:54:43.122Z"
+  },
+  "person": {
+    "inset": true,
+    "replacedAt": "2026-10-03T17:55:45.650Z"
+  },
+  "phone": {
+    "inset": true,
+    "replacedAt": "2026-10-03T18:01:06.179Z"
+  },
+  "print": {
+    "inset": true,
+    "replacedAt": "2026-10-03T17:52:17.456Z"
+  },
+  "profit": {
+    "inset": true,
+    "replacedAt": "2026-10-03T17:43:55.311Z"
+  },
+  "rate": {
+    "inset": true,
+    "replacedAt": "2026-10-03T17:54:10.762Z"
+  },
+  "receipt": {
+    "inset": true,
+    "replacedAt": "2026-10-03T17:50:04.617Z"
+  },
+  "recurring": {
+    "inset": true,
+    "replacedAt": "2026-10-03T17:49:38.655Z"
+  },
+  "remove": {
+    "inset": true,
+    "replacedAt": "2026-10-03T17:18:00.435Z"
+  },
+  "reset": {
+    "inset": true,
+    "replacedAt": "2026-10-03T17:50:54.048Z"
+  },
+  "role": {
+    "inset": true,
+    "replacedAt": "2026-10-03T17:54:23.609Z"
+  },
+  "savings": {
+    "inset": true,
+    "replacedAt": "2026-10-03T17:31:31.150Z"
+  },
+  "schedule": {
+    "inset": true,
+    "replacedAt": "2026-10-03T17:49:03.583Z"
+  },
+  "search": {
+    "inset": true,
+    "replacedAt": "2026-10-04T06:39:14.124Z"
+  },
+  "send": {
+    "inset": true,
+    "replacedAt": "2026-10-03T17:52:33.698Z"
+  },
+  "show": {
+    "inset": true,
+    "replacedAt": "2026-10-03T17:23:08.243Z"
+  },
+  "signOut": {
+    "inset": true,
+    "replacedAt": "2026-10-03T17:56:56.083Z"
+  },
+  "sparkle": {
+    "inset": true,
+    "replacedAt": "2026-10-03T17:24:40.734Z"
+  },
+  "success": {
+    "inset": true,
+    "replacedAt": "2026-10-03T17:59:46.523Z"
+  },
+  "system": {
+    "inset": true,
+    "replacedAt": "2026-10-03T18:01:13.425Z"
+  },
+  "target": {
+    "inset": true,
+    "replacedAt": "2026-10-03T17:45:53.238Z"
+  },
+  "time": {
+    "inset": true,
+    "replacedAt": "2026-10-03T17:54:34.210Z"
+  },
+  "transfer": {
+    "inset": true,
+    "replacedAt": "2026-10-04T03:27:21.630Z"
+  },
+  "trendDown": {
+    "inset": true,
+    "replacedAt": "2026-10-03T17:45:34.025Z"
+  },
+  "trendUp": {
+    "inset": true,
+    "replacedAt": "2026-10-03T17:45:21.234Z"
+  },
+  "up": {
+    "inset": true,
+    "replacedAt": "2026-10-03T17:46:12.724Z"
+  },
+  "upload": {
+    "inset": true,
+    "replacedAt": "2026-10-03T17:52:43.742Z"
+  },
+  "userAdd": {
+    "inset": true,
+    "replacedAt": "2026-10-03T17:56:28.243Z"
+  },
+  "userRemove": {
+    "inset": true,
+    "replacedAt": "2026-10-03T17:56:39.331Z"
+  },
+  "warning": {
+    "inset": true,
+    "replacedAt": "2026-10-03T17:57:48.290Z"
+  }
+}

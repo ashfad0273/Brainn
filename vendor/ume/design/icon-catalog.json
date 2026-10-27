@@ -1,0 +1,667 @@
+{
+  "groups": [
+    {
+      "id": "squidx",
+      "title": "Squidx set"
+    },
+    {
+      "id": "remix",
+      "title": "Remix set",
+      "caption": "Still the stock Remix glyph. Paste to make it yours."
+    }
+  ],
+  "replacedGroup": "squidx",
+  "icons": {
+    "overview": {
+      "group": "squidx",
+      "from": "Squidx Overview",
+      "original": "<svg viewBox=\"0 0 16 16\" fill=\"currentColor\"><path d=\"M8.02 2.667c.395 0 .78.132 1.092.375l3.555 2.764c.433.337.686.855.686 1.404v4.8c0 .354-.14.693-.39.943-.25.25-.59.39-.943.39h-8c-.354 0-.693-.14-.943-.39-.25-.25-.39-.59-.39-.943v-4.8c0-.27.062-.537.18-.78.12-.244.292-.457.506-.624l3.556-2.764a1.78 1.78 0 0 1 1.091-.375Zm3.218 6.988a.666.666 0 0 0-.916-.227c-.609.368-1.448.572-2.323.572-.874 0-1.712-.203-2.32-.57a.666.666 0 1 0-.69 1.14c.863.522 1.954.763 3.01.763s2.148-.24 3.012-.762a.667.667 0 0 0 .227-.916Z\"></path></svg>",
+      "usage": [
+        "lib/nav-icons.tsx"
+      ]
+    },
+    "accounts": {
+      "group": "squidx",
+      "from": "Squidx Accounts",
+      "original": "<svg viewBox=\"0 0 16 16\" fill=\"currentColor\"><path d=\"M2.75 5A.75.75 0 0 1 2 4.25C2 3.009 3.01 2 4.25 2h5a.75.75 0 0 1 0 1.5h-5a.75.75 0 0 0-.75.75.75.75 0 0 1-.75.75Z\"></path><path d=\"M12.25 5h-8a.75.75 0 0 1-.75-.75.75.75 0 0 0-1.5 0v6A2.75 2.75 0 0 0 4.75 13h7.5c.965 0 1.75-.785 1.75-1.75v-4.5C14 5.785 13.215 5 12.25 5ZM10 10a1 1 0 1 1 0-2 1 1 0 0 1 0 2Z\"></path></svg>",
+      "usage": []
+    },
+    "transactions": {
+      "group": "squidx",
+      "from": "Squidx Transactions",
+      "original": "<svg viewBox=\"0 0 16 16\" fill=\"currentColor\"><path d=\"M10.725 3.297c.971.024 1.883.306 2.853.779.258.125.422.388.422.674v6.5a.75.75 0 0 1-1.078.674c-.817-.398-1.497-.543-2.182-.512-.701.032-1.464.25-2.446.667-1.103.469-2.077.654-3.043.599-.955-.055-1.85-.343-2.791-.737A.75.75 0 0 1 2 11.25v-6.5a.75.75 0 0 1 1.04-.692c.845.353 1.545.514 2.244.506.703-.009 1.462-.19 2.422-.598 1.081-.46 2.048-.693 3.019-.669ZM8 6.5a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3Z\"></path></svg>",
+      "usage": []
+    },
+    "people": {
+      "group": "squidx",
+      "from": "Squidx People",
+      "original": "<svg viewBox=\"0 0 16 16\" fill=\"currentColor\"><path d=\"M4.895 5.005a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3Z\"></path><path d=\"m6.663 6.696.983 2.396a.75.75 0 0 1-.606 1.03l-.612.072-.215 3.343a.5.5 0 0 1-.5.468H4.077a.5.5 0 0 1-.5-.468l-.215-3.343-.67-.08a.75.75 0 0 1-.592-.978c.325-.812.759-1.82 1.025-2.445a.85.85 0 0 1 .536-.482 4.3 4.3 0 0 1 2.467 0c.242.074.438.253.535.487Z\"></path><path d=\"M11.202 5.005a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3Z\"></path><path d=\"m12.794 6.69 1.174 4.223a.75.75 0 0 1-.634.945l-.724.087-.193 1.62a.5.5 0 0 1-.496.44h-1.437a.5.5 0 0 1-.496-.44l-.193-1.62-.67-.08a.75.75 0 0 1-.662-1c.349-1.279.861-3.345 1.14-4.226a.65.65 0 0 1 .427-.42l.04-.014a3.6 3.6 0 0 1 2.265 0 .65.65 0 0 1 .46.484Z\"></path></svg>",
+      "usage": []
+    },
+    "subscriptions": {
+      "group": "squidx",
+      "from": "Squidx Subscriptions",
+      "original": "<svg viewBox=\"0 0 16 16\" fill=\"currentColor\"><path d=\"M5.02 3.755v-1a.75.75 0 0 1 1.5 0v1a.75.75 0 0 1-1.5 0Zm4.5 0v-1a.75.75 0 0 1 1.5 0v1a.75.75 0 0 1-1.5 0Z\"></path><path d=\"M10.77 3.005a2.75 2.75 0 0 1 2.75 2.75v.75a.5.5 0 0 1-.5.5h-9v4.25c0 .69.56 1.25 1.25 1.25h2.502a.75.75 0 0 1 0 1.5H5.27a2.75 2.75 0 0 1-2.75-2.75v-5.5a2.75 2.75 0 0 1 2.75-2.75h5.5Z\"></path><path d=\"m13.643 10.71-1.389-.466-.463-1.4c-.15-.452-.893-.452-1.043 0l-.463 1.4-1.389.466a.55.55 0 0 0 0 1.05l1.389.467.463 1.4a.55.55 0 0 0 1.044 0l.463-1.4 1.389-.467a.55.55 0 0 0 0-1.05Z\"></path></svg>",
+      "usage": []
+    },
+    "settings": {
+      "group": "squidx",
+      "from": "Squidx Settings",
+      "original": "<svg viewBox=\"0 0 16 16\" fill=\"currentColor\"><path d=\"M6.842 2.321a2.35 2.35 0 0 1 2.356 0l3.199 1.853a2.25 2.25 0 0 1 1.122 1.947v3.77a2.25 2.25 0 0 1-1.122 1.947l-3.2 1.852a2.35 2.35 0 0 1-2.355 0l-3.199-1.852a2.25 2.25 0 0 1-1.123-1.947v-3.77c0-.803.428-1.545 1.123-1.947l3.199-1.853ZM8.02 6.006a2 2 0 1 0 0 4 2 2 0 0 0 0-4Z\"></path></svg>",
+      "usage": []
+    },
+    "income": {
+      "group": "remix",
+      "from": "Remix ArrowLeftDownLine",
+      "original": "<svg viewBox=\"0 0 24 24\" xmlns=\"http://www.w3.org/2000/svg\" fill=\"currentColor\" class=\"remixicon \"><path d=\"M9 13.589L17.6066 4.98242L19.0208 6.39664L10.4142 15.0032H18V17.0032H7V6.00324H9V13.589Z\"></path></svg>",
+      "usage": []
+    },
+    "expense": {
+      "group": "remix",
+      "from": "Remix ArrowRightUpLine",
+      "original": "<svg viewBox=\"0 0 24 24\" xmlns=\"http://www.w3.org/2000/svg\" fill=\"currentColor\" class=\"remixicon \"><path d=\"M16.0037 9.41421L7.39712 18.0208L5.98291 16.6066L14.5895 8H7.00373V6H18.0037V17H16.0037V9.41421Z\"></path></svg>",
+      "usage": []
+    },
+    "transfer": {
+      "group": "remix",
+      "from": "Remix ArrowLeftRightLine",
+      "original": "<svg viewBox=\"0 0 24 24\" xmlns=\"http://www.w3.org/2000/svg\" fill=\"currentColor\" class=\"remixicon \"><path d=\"M16.0503 12.0498L21 16.9996L16.0503 21.9493L14.636 20.5351L17.172 17.9988L4 17.9996V15.9996L17.172 15.9988L14.636 13.464L16.0503 12.0498ZM7.94975 2.0498L9.36396 3.46402L6.828 5.9988L20 5.99955V7.99955L6.828 7.9988L9.36396 10.5351L7.94975 11.9493L3 6.99955L7.94975 2.0498Z\"></path></svg>",
+      "usage": []
+    },
+    "cash": {
+      "group": "remix",
+      "from": "Remix Wallet3Line",
+      "original": "<svg viewBox=\"0 0 24 24\" xmlns=\"http://www.w3.org/2000/svg\" fill=\"currentColor\" class=\"remixicon \"><path d=\"M22.0049 6.99979H23.0049V16.9998H22.0049V19.9998C22.0049 20.5521 21.5572 20.9998 21.0049 20.9998H3.00488C2.4526 20.9998 2.00488 20.5521 2.00488 19.9998V3.99979C2.00488 3.4475 2.4526 2.99979 3.00488 2.99979H21.0049C21.5572 2.99979 22.0049 3.4475 22.0049 3.99979V6.99979ZM20.0049 16.9998H14.0049C11.2435 16.9998 9.00488 14.7612 9.00488 11.9998C9.00488 9.23836 11.2435 6.99979 14.0049 6.99979H20.0049V4.99979H4.00488V18.9998H20.0049V16.9998ZM21.0049 14.9998V8.99979H14.0049C12.348 8.99979 11.0049 10.3429 11.0049 11.9998C11.0049 13.6566 12.348 14.9998 14.0049 14.9998H21.0049ZM14.0049 10.9998H17.0049V12.9998H14.0049V10.9998Z\"></path></svg>",
+      "usage": []
+    },
+    "balance": {
+      "group": "remix",
+      "from": "Remix BankLine",
+      "original": "<svg viewBox=\"0 0 24 24\" xmlns=\"http://www.w3.org/2000/svg\" fill=\"currentColor\" class=\"remixicon \"><path d=\"M2 20H22V22H2V20ZM4 12H6V19H4V12ZM9 12H11V19H9V12ZM13 12H15V19H13V12ZM18 12H20V19H18V12ZM2 7L12 2L22 7V11H2V7ZM4 8.23607V9H20V8.23607L12 4.23607L4 8.23607ZM12 8C11.4477 8 11 7.55228 11 7C11 6.44772 11.4477 6 12 6C12.5523 6 13 6.44772 13 7C13 7.55228 12.5523 8 12 8Z\"></path></svg>",
+      "usage": []
+    },
+    "profit": {
+      "group": "remix",
+      "from": "Remix LineChartLine",
+      "original": "<svg viewBox=\"0 0 24 24\" xmlns=\"http://www.w3.org/2000/svg\" fill=\"currentColor\" class=\"remixicon \"><path d=\"M5 3V19H21V21H3V3H5ZM20.2929 6.29289L21.7071 7.70711L16 13.4142L13 10.415L8.70711 14.7071L7.29289 13.2929L13 7.58579L16 10.585L20.2929 6.29289Z\"></path></svg>",
+      "usage": []
+    },
+    "net": {
+      "group": "remix",
+      "from": "Remix Scales3Line",
+      "original": "<svg viewBox=\"0 0 24 24\" xmlns=\"http://www.w3.org/2000/svg\" fill=\"currentColor\" class=\"remixicon \"><path d=\"M12.9985 2L12.9979 3.278L17.9985 4.94591L21.631 3.73509L22.2634 5.63246L19.2319 6.643L22.3272 15.1549C21.2353 16.2921 19.6996 17 17.9985 17C16.2975 17 14.7618 16.2921 13.6699 15.1549L16.7639 6.643L12.9979 5.387V19H16.9985V21H6.99854V19H10.9979V5.387L7.23192 6.643L10.3272 15.1549C9.23528 16.2921 7.69957 17 5.99854 17C4.2975 17 2.76179 16.2921 1.66992 15.1549L4.76392 6.643L1.73363 5.63246L2.36608 3.73509L5.99854 4.94591L10.9979 3.278L10.9985 2H12.9985ZM17.9985 9.10267L16.04 14.4892C16.628 14.8201 17.2979 15 17.9985 15C18.6992 15 19.3691 14.8201 19.957 14.4892L17.9985 9.10267ZM5.99854 9.10267L4.04004 14.4892C4.62795 14.8201 5.29792 15 5.99854 15C6.69916 15 7.36912 14.8201 7.95703 14.4892L5.99854 9.10267Z\"></path></svg>",
+      "usage": []
+    },
+    "fixedCosts": {
+      "group": "remix",
+      "from": "Remix StackLine",
+      "original": "<svg viewBox=\"0 0 24 24\" xmlns=\"http://www.w3.org/2000/svg\" fill=\"currentColor\" class=\"remixicon \"><path d=\"M20.0833 15.1999L21.2854 15.9212C21.5221 16.0633 21.5989 16.3704 21.4569 16.6072C21.4146 16.6776 21.3557 16.7365 21.2854 16.7787L12.5144 22.0412C12.1977 22.2313 11.8021 22.2313 11.4854 22.0412L2.71451 16.7787C2.47772 16.6366 2.40093 16.3295 2.54301 16.0927C2.58523 16.0223 2.64413 15.9634 2.71451 15.9212L3.9166 15.1999L11.9999 20.0499L20.0833 15.1999ZM20.0833 10.4999L21.2854 11.2212C21.5221 11.3633 21.5989 11.6704 21.4569 11.9072C21.4146 11.9776 21.3557 12.0365 21.2854 12.0787L11.9999 17.6499L2.71451 12.0787C2.47772 11.9366 2.40093 11.6295 2.54301 11.3927C2.58523 11.3223 2.64413 11.2634 2.71451 11.2212L3.9166 10.4999L11.9999 15.3499L20.0833 10.4999ZM12.5144 1.30864L21.2854 6.5712C21.5221 6.71327 21.5989 7.0204 21.4569 7.25719C21.4146 7.32757 21.3557 7.38647 21.2854 7.42869L11.9999 12.9999L2.71451 7.42869C2.47772 7.28662 2.40093 6.97949 2.54301 6.7427C2.58523 6.67232 2.64413 6.61343 2.71451 6.5712L11.4854 1.30864C11.8021 1.11864 12.1977 1.11864 12.5144 1.30864ZM11.9999 3.33233L5.88723 6.99995L11.9999 10.6676L18.1126 6.99995L11.9999 3.33233Z\"></path></svg>",
+      "usage": []
+    },
+    "savings": {
+      "group": "remix",
+      "from": "Remix Safe2Line",
+      "original": "<svg viewBox=\"0 0 24 24\" xmlns=\"http://www.w3.org/2000/svg\" fill=\"currentColor\" class=\"remixicon \"><path d=\"M20.0049 20.3331V21.9998H18.0049V20.6664L10.5871 21.9027C10.3147 21.9481 10.0571 21.7641 10.0117 21.4917C10.0072 21.4646 10.0049 21.4371 10.0049 21.4095V19.9998H6.00488V21.9998H4.00488V19.9998H3.00488C2.4526 19.9998 2.00488 19.552 2.00488 18.9998V3.99977C2.00488 3.44748 2.4526 2.99977 3.00488 2.99977H10.0049V1.59C10.0049 1.31385 10.2287 1.09 10.5049 1.09C10.5324 1.09 10.5599 1.09227 10.5871 1.0968L21.1693 2.8605C21.6515 2.94086 22.0049 3.35805 22.0049 3.84689V5.99977H23.0049V7.99977H22.0049V14.9998H23.0049V16.9998H22.0049V19.1526C22.0049 19.6415 21.6515 20.0587 21.1693 20.139L20.0049 20.3331ZM4.00488 4.99977V17.9998H10.0049V4.99977H4.00488ZM12.0049 19.6388L20.0049 18.3055V4.69402L12.0049 3.36069V19.6388ZM16.5049 13.9998C15.6765 13.9998 15.0049 12.8805 15.0049 11.4998C15.0049 10.1191 15.6765 8.99977 16.5049 8.99977C17.3333 8.99977 18.0049 10.1191 18.0049 11.4998C18.0049 12.8805 17.3333 13.9998 16.5049 13.9998Z\"></path></svg>",
+      "usage": []
+    },
+    "target": {
+      "group": "remix",
+      "from": "Remix Focus3Line",
+      "original": "<svg viewBox=\"0 0 24 24\" xmlns=\"http://www.w3.org/2000/svg\" fill=\"currentColor\" class=\"remixicon \"><path d=\"M13 1L13.001 4.06201C16.6192 4.51365 19.4869 7.38163 19.9381 11L23 11V13L19.938 13.001C19.4864 16.6189 16.6189 19.4864 13.001 19.938L13 23H11L11 19.9381C7.38163 19.4869 4.51365 16.6192 4.06201 13.001L1 13V11L4.06189 11C4.51312 7.38129 7.38129 4.51312 11 4.06189L11 1H13ZM12 6C8.68629 6 6 8.68629 6 12C6 15.3137 8.68629 18 12 18C15.3137 18 18 15.3137 18 12C18 8.68629 15.3137 6 12 6ZM12 10C13.1046 10 14 10.8954 14 12C14 13.1046 13.1046 14 12 14C10.8954 14 10 13.1046 10 12C10 10.8954 10.8954 10 12 10Z\"></path></svg>",
+      "usage": []
+    },
+    "trendUp": {
+      "group": "remix",
+      "from": "Remix ArrowRightUpLine",
+      "original": "<svg viewBox=\"0 0 24 24\" xmlns=\"http://www.w3.org/2000/svg\" fill=\"currentColor\" class=\"remixicon \"><path d=\"M16.0037 9.41421L7.39712 18.0208L5.98291 16.6066L14.5895 8H7.00373V6H18.0037V17H16.0037V9.41421Z\"></path></svg>",
+      "usage": []
+    },
+    "trendDown": {
+      "group": "remix",
+      "from": "Remix ArrowRightDownLine",
+      "original": "<svg viewBox=\"0 0 24 24\" xmlns=\"http://www.w3.org/2000/svg\" fill=\"currentColor\" class=\"remixicon \"><path d=\"M14.5895 16.0032L5.98291 7.39664L7.39712 5.98242L16.0037 14.589V7.00324H18.0037V18.0032H7.00373V16.0032H14.5895Z\"></path></svg>",
+      "usage": []
+    },
+    "up": {
+      "group": "remix",
+      "from": "Remix ArrowUpLine",
+      "original": "<svg viewBox=\"0 0 24 24\" xmlns=\"http://www.w3.org/2000/svg\" fill=\"currentColor\" class=\"remixicon \"><path d=\"M13.0001 7.82843V20H11.0001V7.82843L5.63614 13.1924L4.22192 11.7782L12.0001 4L19.7783 11.7782L18.3641 13.1924L13.0001 7.82843Z\"></path></svg>",
+      "usage": []
+    },
+    "down": {
+      "group": "remix",
+      "from": "Remix ArrowDownLine",
+      "original": "<svg viewBox=\"0 0 24 24\" xmlns=\"http://www.w3.org/2000/svg\" fill=\"currentColor\" class=\"remixicon \"><path d=\"M13.0001 16.1716L18.3641 10.8076L19.7783 12.2218L12.0001 20L4.22192 12.2218L5.63614 10.8076L11.0001 16.1716V4H13.0001V16.1716Z\"></path></svg>",
+      "usage": []
+    },
+    "breakdown": {
+      "group": "remix",
+      "from": "Remix PieChartLine",
+      "original": "<svg viewBox=\"0 0 24 24\" xmlns=\"http://www.w3.org/2000/svg\" fill=\"currentColor\" class=\"remixicon \"><path d=\"M9 2.4578V4.58152C6.06817 5.76829 4 8.64262 4 12C4 16.4183 7.58172 20 12 20C15.3574 20 18.2317 17.9318 19.4185 15H21.5422C20.2679 19.0571 16.4776 22 12 22C6.47715 22 2 17.5228 2 12C2 7.52236 4.94289 3.73207 9 2.4578ZM12 2C17.5228 2 22 6.47715 22 12C22 12.3375 21.9833 12.6711 21.9506 13H11V2.04938C11.3289 2.01672 11.6625 2 12 2ZM13 4.06189V11H19.9381C19.4869 7.38128 16.6187 4.51314 13 4.06189Z\"></path></svg>",
+      "usage": []
+    },
+    "receipt": {
+      "group": "remix",
+      "from": "Remix ReceiptLine",
+      "original": "<svg viewBox=\"0 0 24 24\" xmlns=\"http://www.w3.org/2000/svg\" fill=\"currentColor\" class=\"remixicon \"><path d=\"M9 4L6 2L3 4V19C3 20.6569 4.34315 22 6 22H20C21.6569 22 23 20.6569 23 19V16H21V4L18 2L15 4L12 2L9 4ZM19 16H7V19C7 19.5523 6.55228 20 6 20C5.44772 20 5 19.5523 5 19V5.07037L6 4.4037L9 6.4037L12 4.4037L15 6.4037L18 4.4037L19 5.07037V16ZM20 20H8.82929C8.93985 19.6872 9 19.3506 9 19V18H21V19C21 19.5523 20.5523 20 20 20Z\"></path></svg>",
+      "usage": []
+    },
+    "card": {
+      "group": "remix",
+      "from": "Remix BankCardLine",
+      "original": "<svg viewBox=\"0 0 24 24\" xmlns=\"http://www.w3.org/2000/svg\" fill=\"currentColor\" class=\"remixicon \"><path d=\"M3.00488 2.99979H21.0049C21.5572 2.99979 22.0049 3.4475 22.0049 3.99979V19.9998C22.0049 20.5521 21.5572 20.9998 21.0049 20.9998H3.00488C2.4526 20.9998 2.00488 20.5521 2.00488 19.9998V3.99979C2.00488 3.4475 2.4526 2.99979 3.00488 2.99979ZM20.0049 10.9998H4.00488V18.9998H20.0049V10.9998ZM20.0049 8.99979V4.99979H4.00488V8.99979H20.0049ZM14.0049 14.9998H18.0049V16.9998H14.0049V14.9998Z\"></path></svg>",
+      "usage": []
+    },
+    "recurring": {
+      "group": "remix",
+      "from": "Remix RepeatLine",
+      "original": "<svg viewBox=\"0 0 24 24\" xmlns=\"http://www.w3.org/2000/svg\" fill=\"currentColor\" class=\"remixicon \"><path d=\"M6 4H21C21.5523 4 22 4.44772 22 5V12H20V6H6V9L1 5L6 1V4ZM18 20H3C2.44772 20 2 19.5523 2 19V12H4V18H18V15L23 19L18 23V20Z\"></path></svg>",
+      "usage": []
+    },
+    "amount": {
+      "group": "remix",
+      "from": "Remix MoneyDollarCircleLine",
+      "original": "<svg viewBox=\"0 0 24 24\" xmlns=\"http://www.w3.org/2000/svg\" fill=\"currentColor\" class=\"remixicon \"><path d=\"M12.0049 22.0027C6.48204 22.0027 2.00488 17.5256 2.00488 12.0027C2.00488 6.4799 6.48204 2.00275 12.0049 2.00275C17.5277 2.00275 22.0049 6.4799 22.0049 12.0027C22.0049 17.5256 17.5277 22.0027 12.0049 22.0027ZM12.0049 20.0027C16.4232 20.0027 20.0049 16.421 20.0049 12.0027C20.0049 7.58447 16.4232 4.00275 12.0049 4.00275C7.5866 4.00275 4.00488 7.58447 4.00488 12.0027C4.00488 16.421 7.5866 20.0027 12.0049 20.0027ZM8.50488 14.0027H14.0049C14.281 14.0027 14.5049 13.7789 14.5049 13.5027C14.5049 13.2266 14.281 13.0027 14.0049 13.0027H10.0049C8.62417 13.0027 7.50488 11.8835 7.50488 10.5027C7.50488 9.12203 8.62417 8.00275 10.0049 8.00275H11.0049V6.00275H13.0049V8.00275H15.5049V10.0027H10.0049C9.72874 10.0027 9.50488 10.2266 9.50488 10.5027C9.50488 10.7789 9.72874 11.0027 10.0049 11.0027H14.0049C15.3856 11.0027 16.5049 12.122 16.5049 13.5027C16.5049 14.8835 15.3856 16.0027 14.0049 16.0027H13.0049V18.0027H11.0049V16.0027H8.50488V14.0027Z\"></path></svg>",
+      "usage": [
+        "components/ui/field-icon.tsx"
+      ]
+    },
+    "date": {
+      "group": "remix",
+      "from": "Remix CalendarLine",
+      "original": "<svg viewBox=\"0 0 24 24\" xmlns=\"http://www.w3.org/2000/svg\" fill=\"currentColor\" class=\"remixicon \"><path d=\"M9 1V3H15V1H17V3H21C21.5523 3 22 3.44772 22 4V20C22 20.5523 21.5523 21 21 21H3C2.44772 21 2 20.5523 2 20V4C2 3.44772 2.44772 3 3 3H7V1H9ZM20 11H4V19H20V11ZM7 5H4V9H20V5H17V7H15V5H9V7H7V5Z\"></path></svg>",
+      "usage": [
+        "components/ui/date-field.tsx",
+        "components/ui/field-icon.tsx",
+        "components/ui/input.tsx"
+      ]
+    },
+    "schedule": {
+      "group": "remix",
+      "from": "Remix CalendarScheduleLine",
+      "original": "<svg viewBox=\"0 0 24 24\" xmlns=\"http://www.w3.org/2000/svg\" fill=\"currentColor\" class=\"remixicon \"><path d=\"M7 3V1H9V3H15V1H17V3H21C21.5523 3 22 3.44772 22 4V9H20V5H17V7H15V5H9V7H7V5H4V19H10V21H3C2.44772 21 2 20.5523 2 20V4C2 3.44772 2.44772 3 3 3H7ZM17 12C14.7909 12 13 13.7909 13 16C13 18.2091 14.7909 20 17 20C19.2091 20 21 18.2091 21 16C21 13.7909 19.2091 12 17 12ZM11 16C11 12.6863 13.6863 10 17 10C20.3137 10 23 12.6863 23 16C23 19.3137 20.3137 22 17 22C13.6863 22 11 19.3137 11 16ZM16 13V16.4142L18.2929 18.7071L19.7071 17.2929L18 15.5858V13H16Z\"></path></svg>",
+      "usage": []
+    },
+    "category": {
+      "group": "remix",
+      "from": "Remix PriceTag3Line",
+      "original": "<svg viewBox=\"0 0 24 24\" xmlns=\"http://www.w3.org/2000/svg\" fill=\"currentColor\" class=\"remixicon \"><path d=\"M10.9042 2.10025L20.8037 3.51446L22.2179 13.414L13.0255 22.6063C12.635 22.9969 12.0019 22.9969 11.6113 22.6063L1.71184 12.7069C1.32131 12.3163 1.32131 11.6832 1.71184 11.2926L10.9042 2.10025ZM11.6113 4.22157L3.83316 11.9997L12.3184 20.485L20.0966 12.7069L19.036 5.28223L11.6113 4.22157ZM13.7327 10.5855C12.9516 9.80448 12.9516 8.53815 13.7327 7.7571C14.5137 6.97606 15.78 6.97606 16.5611 7.7571C17.3421 8.53815 17.3421 9.80448 16.5611 10.5855C15.78 11.3666 14.5137 11.3666 13.7327 10.5855Z\"></path></svg>",
+      "usage": [
+        "components/ui/field-icon.tsx",
+        "components/ui/select.tsx"
+      ]
+    },
+    "client": {
+      "group": "remix",
+      "from": "Remix Building2Line",
+      "original": "<svg viewBox=\"0 0 24 24\" xmlns=\"http://www.w3.org/2000/svg\" fill=\"currentColor\" class=\"remixicon \"><path d=\"M3 19V5.70046C3 5.27995 3.26307 4.90437 3.65826 4.76067L13.3291 1.24398C13.5886 1.14961 13.8755 1.28349 13.9699 1.54301C13.9898 1.59778 14 1.65561 14 1.71388V6.6667L20.3162 8.77211C20.7246 8.90822 21 9.29036 21 9.72079V19H23V21H1V19H3ZM5 19H12V3.85543L5 6.40089V19ZM19 19V10.4416L14 8.77488V19H19Z\"></path></svg>",
+      "usage": [
+        "components/ui/field-icon.tsx"
+      ]
+    },
+    "person": {
+      "group": "remix",
+      "from": "Remix UserLine",
+      "original": "<svg viewBox=\"0 0 24 24\" xmlns=\"http://www.w3.org/2000/svg\" fill=\"currentColor\" class=\"remixicon \"><path d=\"M4 22C4 17.5817 7.58172 14 12 14C16.4183 14 20 17.5817 20 22H18C18 18.6863 15.3137 16 12 16C8.68629 16 6 18.6863 6 22H4ZM12 13C8.685 13 6 10.315 6 7C6 3.685 8.685 1 12 1C15.315 1 18 3.685 18 7C18 10.315 15.315 13 12 13ZM12 11C14.21 11 16 9.21 16 7C16 4.79 14.21 3 12 3C9.79 3 8 4.79 8 7C8 9.21 9.79 11 12 11Z\"></path></svg>",
+      "usage": [
+        "components/ui/field-icon.tsx"
+      ]
+    },
+    "account": {
+      "group": "remix",
+      "from": "Remix BankLine",
+      "original": "<svg viewBox=\"0 0 24 24\" xmlns=\"http://www.w3.org/2000/svg\" fill=\"currentColor\" class=\"remixicon \"><path d=\"M2 20H22V22H2V20ZM4 12H6V19H4V12ZM9 12H11V19H9V12ZM13 12H15V19H13V12ZM18 12H20V19H18V12ZM2 7L12 2L22 7V11H2V7ZM4 8.23607V9H20V8.23607L12 4.23607L4 8.23607ZM12 8C11.4477 8 11 7.55228 11 7C11 6.44772 11.4477 6 12 6C12.5523 6 13 6.44772 13 7C13 7.55228 12.5523 8 12 8Z\"></path></svg>",
+      "usage": [
+        "components/ui/field-icon.tsx"
+      ]
+    },
+    "notes": {
+      "group": "remix",
+      "from": "Remix StickyNoteLine",
+      "original": "<svg viewBox=\"0 0 24 24\" xmlns=\"http://www.w3.org/2000/svg\" fill=\"currentColor\" class=\"remixicon \"><path d=\"M21 15L15 20.996L4.00221 21C3.4487 21 3 20.5551 3 20.0066V3.9934C3 3.44476 3.44495 3 3.9934 3H20.0066C20.5552 3 21 3.45576 21 4.00247V15ZM19 5H5V19H13V14C13 13.4872 13.386 13.0645 13.8834 13.0067L14 13L19 12.999V5ZM18.171 14.999L15 15V18.169L18.171 14.999Z\"></path></svg>",
+      "usage": [
+        "components/ui/field-icon.tsx",
+        "components/ui/textarea.tsx"
+      ]
+    },
+    "search": {
+      "group": "remix",
+      "from": "Remix SearchLine",
+      "original": "<svg viewBox=\"0 0 24 24\" xmlns=\"http://www.w3.org/2000/svg\" fill=\"currentColor\" class=\"remixicon \"><path d=\"M18.031 16.6168L22.3137 20.8995L20.8995 22.3137L16.6168 18.031C15.0769 19.263 13.124 20 11 20C6.032 20 2 15.968 2 11C2 6.032 6.032 2 11 2C15.968 2 20 6.032 20 11C20 13.124 19.263 15.0769 18.031 16.6168ZM16.0247 15.8748C17.2475 14.6146 18 12.8956 18 11C18 7.1325 14.8675 4 11 4C7.1325 4 4 7.1325 4 11C4 14.8675 7.1325 18 11 18C12.8956 18 14.6146 17.2475 15.8748 16.0247L16.0247 15.8748Z\"></path></svg>",
+      "usage": [
+        "components/patterns/LedgerSection.tsx",
+        "components/patterns/parts.tsx",
+        "components/ui/field-icon.tsx"
+      ]
+    },
+    "email": {
+      "group": "remix",
+      "from": "Remix MailLine",
+      "original": "<svg viewBox=\"0 0 24 24\" xmlns=\"http://www.w3.org/2000/svg\" fill=\"currentColor\" class=\"remixicon \"><path d=\"M3 3H21C21.5523 3 22 3.44772 22 4V20C22 20.5523 21.5523 21 21 21H3C2.44772 21 2 20.5523 2 20V4C2 3.44772 2.44772 3 3 3ZM20 7.23792L12.0718 14.338L4 7.21594V19H20V7.23792ZM4.51146 5L12.0619 11.662L19.501 5H4.51146Z\"></path></svg>",
+      "usage": [
+        "components/ui/field-icon.tsx"
+      ]
+    },
+    "password": {
+      "group": "remix",
+      "from": "Remix LockLine",
+      "original": "<svg viewBox=\"0 0 24 24\" xmlns=\"http://www.w3.org/2000/svg\" fill=\"currentColor\" class=\"remixicon \"><path d=\"M19 10H20C20.5523 10 21 10.4477 21 11V21C21 21.5523 20.5523 22 20 22H4C3.44772 22 3 21.5523 3 21V11C3 10.4477 3.44772 10 4 10H5V9C5 5.13401 8.13401 2 12 2C15.866 2 19 5.13401 19 9V10ZM5 12V20H19V12H5ZM11 14H13V18H11V14ZM17 10V9C17 6.23858 14.7614 4 12 4C9.23858 4 7 6.23858 7 9V10H17Z\"></path></svg>",
+      "usage": [
+        "components/ui/field-icon.tsx"
+      ]
+    },
+    "time": {
+      "group": "remix",
+      "from": "Remix TimeLine",
+      "original": "<svg viewBox=\"0 0 24 24\" xmlns=\"http://www.w3.org/2000/svg\" fill=\"currentColor\" class=\"remixicon \"><path d=\"M12 22C6.47715 22 2 17.5228 2 12C2 6.47715 6.47715 2 12 2C17.5228 2 22 6.47715 22 12C22 17.5228 17.5228 22 12 22ZM12 20C16.4183 20 20 16.4183 20 12C20 7.58172 16.4183 4 12 4C7.58172 4 4 7.58172 4 12C4 16.4183 7.58172 20 12 20ZM13 12H17V14H11V7H13V12Z\"></path></svg>",
+      "usage": []
+    },
+    "role": {
+      "group": "remix",
+      "from": "Remix Briefcase4Line",
+      "original": "<svg viewBox=\"0 0 24 24\" xmlns=\"http://www.w3.org/2000/svg\" fill=\"currentColor\" class=\"remixicon \"><path d=\"M7 5V2C7 1.44772 7.44772 1 8 1H16C16.5523 1 17 1.44772 17 2V5H21C21.5523 5 22 5.44772 22 6V20C22 20.5523 21.5523 21 21 21H3C2.44772 21 2 20.5523 2 20V6C2 5.44772 2.44772 5 3 5H7ZM9 13H4V19H20V13H15V16H9V13ZM20 7H4V11H9V9H15V11H20V7ZM11 11V14H13V11H11ZM9 3V5H15V3H9Z\"></path></svg>",
+      "usage": []
+    },
+    "rate": {
+      "group": "remix",
+      "from": "Remix ExchangeDollarLine",
+      "original": "<svg viewBox=\"0 0 24 24\" xmlns=\"http://www.w3.org/2000/svg\" fill=\"currentColor\" class=\"remixicon \"><path d=\"M19.3788 15.1057C20.9258 11.4421 19.5373 7.11431 16.0042 5.0745C13.4511 3.60046 10.4232 3.69365 8.03452 5.0556L7.04216 3.31879C10.028 1.61639 13.8128 1.4999 17.0042 3.34245C21.4949 5.93513 23.2139 11.4848 21.1217 16.112L22.4635 16.8867L18.2984 19.1008L18.1334 14.3867L19.3788 15.1057ZM4.62961 8.89968C3.08263 12.5633 4.47116 16.8911 8.00421 18.9309C10.5573 20.4049 13.5851 20.3118 15.9737 18.9499L16.9661 20.6867C13.9803 22.389 10.1956 22.5055 7.00421 20.663C2.51357 18.0703 0.794565 12.5206 2.88672 7.89342L1.54492 7.11873L5.70999 4.90463L5.87505 9.61873L4.62961 8.89968ZM8.50421 14.0027H14.0042C14.2804 14.0027 14.5042 13.7788 14.5042 13.5027C14.5042 13.2266 14.2804 13.0027 14.0042 13.0027H10.0042C8.6235 13.0027 7.50421 11.8834 7.50421 10.5027C7.50421 9.122 8.6235 8.00271 10.0042 8.00271H11.0042V7.00271H13.0042V8.00271H15.5042V10.0027H10.0042C9.72807 10.0027 9.50421 10.2266 9.50421 10.5027C9.50421 10.7788 9.72807 11.0027 10.0042 11.0027H14.0042C15.3849 11.0027 16.5042 12.122 16.5042 13.5027C16.5042 14.8834 15.3849 16.0027 14.0042 16.0027H13.0042V17.0027H11.0042V16.0027H8.50421V14.0027Z\"></path></svg>",
+      "usage": []
+    },
+    "add": {
+      "group": "remix",
+      "from": "Remix AddLine",
+      "original": "<svg viewBox=\"0 0 24 24\" xmlns=\"http://www.w3.org/2000/svg\" fill=\"currentColor\" class=\"remixicon \"><path d=\"M11 11V5H13V11H19V13H13V19H11V13H5V11H11Z\"></path></svg>",
+      "usage": [
+        "components/patterns/form-parts.tsx"
+      ]
+    },
+    "remove": {
+      "group": "remix",
+      "from": "Remix SubtractLine",
+      "original": "<svg viewBox=\"0 0 24 24\" xmlns=\"http://www.w3.org/2000/svg\" fill=\"currentColor\" class=\"remixicon \"><path d=\"M5 11V13H19V11H5Z\"></path></svg>",
+      "usage": []
+    },
+    "edit": {
+      "group": "remix",
+      "from": "Remix PencilLine",
+      "original": "<svg viewBox=\"0 0 24 24\" xmlns=\"http://www.w3.org/2000/svg\" fill=\"currentColor\" class=\"remixicon \"><path d=\"M15.7279 9.57627L14.3137 8.16206L5 17.4758V18.89H6.41421L15.7279 9.57627ZM17.1421 8.16206L18.5563 6.74785L17.1421 5.33363L15.7279 6.74785L17.1421 8.16206ZM7.24264 20.89H3V16.6473L16.435 3.21231C16.8256 2.82179 17.4587 2.82179 17.8492 3.21231L20.6777 6.04074C21.0682 6.43126 21.0682 7.06443 20.6777 7.45495L7.24264 20.89Z\"></path></svg>",
+      "usage": []
+    },
+    "delete": {
+      "group": "remix",
+      "from": "Remix DeleteBin6Line",
+      "original": "<svg viewBox=\"0 0 24 24\" xmlns=\"http://www.w3.org/2000/svg\" fill=\"currentColor\" class=\"remixicon \"><path d=\"M7 4V2H17V4H22V6H20V21C20 21.5523 19.5523 22 19 22H5C4.44772 22 4 21.5523 4 21V6H2V4H7ZM6 6V20H18V6H6ZM9 9H11V17H9V9ZM13 9H15V17H13V9Z\"></path></svg>",
+      "usage": []
+    },
+    "close": {
+      "group": "remix",
+      "from": "Remix CloseLine",
+      "original": "<svg viewBox=\"0 0 24 24\" xmlns=\"http://www.w3.org/2000/svg\" fill=\"currentColor\" class=\"remixicon \"><path d=\"M11.9997 10.5865L16.9495 5.63672L18.3637 7.05093L13.4139 12.0007L18.3637 16.9504L16.9495 18.3646L11.9997 13.4149L7.04996 18.3646L5.63574 16.9504L10.5855 12.0007L5.63574 7.05093L7.04996 5.63672L11.9997 10.5865Z\"></path></svg>",
+      "usage": [
+        "components/motion/animated-badge.tsx",
+        "components/motion/button/stateful.tsx",
+        "components/patterns/SidePanel.tsx",
+        "components/ui/badge.tsx",
+        "components/ui/dialog.tsx",
+        "components/ui/drawer.tsx",
+        "components/ui/modal.tsx",
+        "components/ui/sheet.tsx",
+        "components/ui/toast.tsx"
+      ]
+    },
+    "check": {
+      "group": "remix",
+      "from": "Remix CheckLine",
+      "original": "<svg viewBox=\"0 0 24 24\" xmlns=\"http://www.w3.org/2000/svg\" fill=\"currentColor\" class=\"remixicon \"><path d=\"M9.9997 15.1709L19.1921 5.97852L20.6063 7.39273L9.9997 17.9993L3.63574 11.6354L5.04996 10.2212L9.9997 15.1709Z\"></path></svg>",
+      "usage": [
+        "components/motion/animated-badge.tsx",
+        "components/motion/button/stateful.tsx",
+        "components/ui/badge.tsx",
+        "components/ui/drawer.tsx",
+        "components/ui/menu.tsx",
+        "components/ui/select.tsx",
+        "components/ui/toast.tsx"
+      ]
+    },
+    "more": {
+      "group": "remix",
+      "from": "Remix MoreLine",
+      "original": "<svg viewBox=\"0 0 24 24\" xmlns=\"http://www.w3.org/2000/svg\" fill=\"currentColor\" class=\"remixicon \"><path d=\"M4.5 10.5C3.675 10.5 3 11.175 3 12C3 12.825 3.675 13.5 4.5 13.5C5.325 13.5 6 12.825 6 12C6 11.175 5.325 10.5 4.5 10.5ZM19.5 10.5C18.675 10.5 18 11.175 18 12C18 12.825 18.675 13.5 19.5 13.5C20.325 13.5 21 12.825 21 12C21 11.175 20.325 10.5 19.5 10.5ZM12 10.5C11.175 10.5 10.5 11.175 10.5 12C10.5 12.825 11.175 13.5 12 13.5C12.825 13.5 13.5 12.825 13.5 12C13.5 11.175 12.825 10.5 12 10.5Z\"></path></svg>",
+      "usage": []
+    },
+    "moreVertical": {
+      "group": "remix",
+      "from": "Remix More2Line",
+      "original": "<svg viewBox=\"0 0 24 24\" xmlns=\"http://www.w3.org/2000/svg\" fill=\"currentColor\" class=\"remixicon \"><path d=\"M12 3C11.175 3 10.5 3.675 10.5 4.5C10.5 5.325 11.175 6 12 6C12.825 6 13.5 5.325 13.5 4.5C13.5 3.675 12.825 3 12 3ZM12 18C11.175 18 10.5 18.675 10.5 19.5C10.5 20.325 11.175 21 12 21C12.825 21 13.5 20.325 13.5 19.5C13.5 18.675 12.825 18 12 18ZM12 10.5C11.175 10.5 10.5 11.175 10.5 12C10.5 12.825 11.175 13.5 12 13.5C12.825 13.5 13.5 12.825 13.5 12C13.5 11.175 12.825 10.5 12 10.5Z\"></path></svg>",
+      "usage": []
+    },
+    "filter": {
+      "group": "squidx",
+      "from": "Squidx Filter",
+      "original": "<svg viewBox=\"0 0 16 16\" fill=\"currentColor\"><path d=\"M13.25 5.5H2.75a.75.75 0 0 1 0-1.5h10.5a.75.75 0 0 1 0 1.5Z\"></path><path d=\"M11.25 9h-6.5a.75.75 0 0 1 0-1.5h6.5a.75.75 0 0 1 0 1.5Z\"></path><path d=\"M9.25 12.5h-2.5a.75.75 0 0 1 0-1.5h2.5a.75.75 0 0 1 0 1.5Z\"></path></svg>",
+      "usage": []
+    },
+    "adjust": {
+      "group": "remix",
+      "from": "Remix EqualizerLine",
+      "original": "<svg viewBox=\"0 0 24 24\" xmlns=\"http://www.w3.org/2000/svg\" fill=\"currentColor\" class=\"remixicon \"><path d=\"M6.17071 18C6.58254 16.8348 7.69378 16 9 16C10.3062 16 11.4175 16.8348 11.8293 18H22V20H11.8293C11.4175 21.1652 10.3062 22 9 22C7.69378 22 6.58254 21.1652 6.17071 20H2V18H6.17071ZM12.1707 11C12.5825 9.83481 13.6938 9 15 9C16.3062 9 17.4175 9.83481 17.8293 11H22V13H17.8293C17.4175 14.1652 16.3062 15 15 15C13.6938 15 12.5825 14.1652 12.1707 13H2V11H12.1707ZM6.17071 4C6.58254 2.83481 7.69378 2 9 2C10.3062 2 11.4175 2.83481 11.8293 4H22V6H11.8293C11.4175 7.16519 10.3062 8 9 8C7.69378 8 6.58254 7.16519 6.17071 6H2V4H6.17071ZM9 6C9.55228 6 10 5.55228 10 5C10 4.44772 9.55228 4 9 4C8.44772 4 8 4.44772 8 5C8 5.55228 8.44772 6 9 6ZM15 13C15.5523 13 16 12.5523 16 12C16 11.4477 15.5523 11 15 11C14.4477 11 14 11.4477 14 12C14 12.5523 14.4477 13 15 13ZM9 20C9.55228 20 10 19.5523 10 19C10 18.4477 9.55228 18 9 18C8.44772 18 8 18.4477 8 19C8 19.5523 8.44772 20 9 20Z\"></path></svg>",
+      "usage": []
+    },
+    "sort": {
+      "group": "squidx",
+      "from": "Squidx Sort",
+      "original": "<svg viewBox=\"-2 -2 16 16\" fill=\"currentColor\"><path d=\"M6 11.75a.748.748 0 0 1-.53-.22l-2.75-2.75a.75.75 0 0 1 1.061-1.061L6.001 9.939l2.22-2.22a.75.75 0 0 1 1.061 1.061l-2.75 2.75a.748.748 0 0 1-.53.22H6Z\"></path><path d=\"M8.75 4.5a.748.748 0 0 1-.53-.22L6 2.06 3.78 4.28a.75.75 0 0 1-1.061-1.061L5.47.47a.75.75 0 0 1 1.061 0l2.75 2.75a.75.75 0 0 1-.53 1.281Z\"></path></svg>",
+      "usage": [
+        "components/patterns/parts.tsx",
+        "components/ui/resizable-columns.tsx"
+      ]
+    },
+    "download": {
+      "group": "remix",
+      "from": "Remix DownloadLine",
+      "original": "<svg viewBox=\"0 0 24 24\" xmlns=\"http://www.w3.org/2000/svg\" fill=\"currentColor\" class=\"remixicon \"><path d=\"M3 19H21V21H3V19ZM13 13.1716L19.0711 7.1005L20.4853 8.51472L12 17L3.51472 8.51472L4.92893 7.1005L11 13.1716V2H13V13.1716Z\"></path></svg>",
+      "usage": []
+    },
+    "upload": {
+      "group": "remix",
+      "from": "Remix UploadLine",
+      "original": "<svg viewBox=\"0 0 24 24\" xmlns=\"http://www.w3.org/2000/svg\" fill=\"currentColor\" class=\"remixicon \"><path d=\"M3 19H21V21H3V19ZM13 5.82843V17H11V5.82843L4.92893 11.8995L3.51472 10.4853L12 2L20.4853 10.4853L19.0711 11.8995L13 5.82843Z\"></path></svg>",
+      "usage": []
+    },
+    "print": {
+      "group": "remix",
+      "from": "Remix PrinterLine",
+      "original": "<svg viewBox=\"0 0 24 24\" xmlns=\"http://www.w3.org/2000/svg\" fill=\"currentColor\" class=\"remixicon \"><path d=\"M17 2C17.5523 2 18 2.44772 18 3V7H21C21.5523 7 22 7.44772 22 8V18C22 18.5523 21.5523 19 21 19H18V21C18 21.5523 17.5523 22 17 22H7C6.44772 22 6 21.5523 6 21V19H3C2.44772 19 2 18.5523 2 18V8C2 7.44772 2.44772 7 3 7H6V3C6 2.44772 6.44772 2 7 2H17ZM16 17H8V20H16V17ZM20 9H4V17H6V16C6 15.4477 6.44772 15 7 15H17C17.5523 15 18 15.4477 18 16V17H20V9ZM8 10V12H5V10H8ZM16 4H8V7H16V4Z\"></path></svg>",
+      "usage": []
+    },
+    "send": {
+      "group": "remix",
+      "from": "Remix SendPlaneLine",
+      "original": "<svg viewBox=\"0 0 24 24\" xmlns=\"http://www.w3.org/2000/svg\" fill=\"currentColor\" class=\"remixicon \"><path d=\"M21.7267 2.95694L16.2734 22.0432C16.1225 22.5716 15.7979 22.5956 15.5563 22.1126L11 13L1.9229 9.36919C1.41322 9.16532 1.41953 8.86022 1.95695 8.68108L21.0432 2.31901C21.5716 2.14285 21.8747 2.43866 21.7267 2.95694ZM19.0353 5.09647L6.81221 9.17085L12.4488 11.4255L15.4895 17.5068L19.0353 5.09647Z\"></path></svg>",
+      "usage": []
+    },
+    "copy": {
+      "group": "remix",
+      "from": "Remix FileCopyLine",
+      "original": "<svg viewBox=\"0 0 24 24\" xmlns=\"http://www.w3.org/2000/svg\" fill=\"currentColor\" class=\"remixicon \"><path d=\"M6.9998 6V3C6.9998 2.44772 7.44752 2 7.9998 2H19.9998C20.5521 2 20.9998 2.44772 20.9998 3V17C20.9998 17.5523 20.5521 18 19.9998 18H16.9998V20.9991C16.9998 21.5519 16.5499 22 15.993 22H4.00666C3.45059 22 3 21.5554 3 20.9991L3.0026 7.00087C3.0027 6.44811 3.45264 6 4.00942 6H6.9998ZM5.00242 8L5.00019 20H14.9998V8H5.00242ZM8.9998 6H16.9998V16H18.9998V4H8.9998V6Z\"></path></svg>",
+      "usage": []
+    },
+    "external": {
+      "group": "remix",
+      "from": "Remix ExternalLinkLine",
+      "original": "<svg viewBox=\"0 0 24 24\" xmlns=\"http://www.w3.org/2000/svg\" fill=\"currentColor\" class=\"remixicon \"><path d=\"M10 6V8H5V19H16V14H18V20C18 20.5523 17.5523 21 17 21H4C3.44772 21 3 20.5523 3 20V7C3 6.44772 3.44772 6 4 6H10ZM21 3V11H19L18.9999 6.413L11.2071 14.2071L9.79289 12.7929L17.5849 5H13V3H21Z\"></path></svg>",
+      "usage": []
+    },
+    "reset": {
+      "group": "remix",
+      "from": "Remix ResetLeftLine",
+      "original": "<svg viewBox=\"0 0 24 24\" xmlns=\"http://www.w3.org/2000/svg\" fill=\"currentColor\" class=\"remixicon \"><path d=\"M22 12C22 17.5228 17.5229 22 12 22C6.4772 22 2 17.5228 2 12C2 6.47715 6.4772 2 12 2V4C7.5817 4 4 7.58172 4 12C4 16.4183 7.5817 20 12 20C16.4183 20 20 16.4183 20 12C20 9.25022 18.6127 6.82447 16.4998 5.38451L16.5 8H14.5V2L20.5 2V4L18.0008 3.99989C20.4293 5.82434 22 8.72873 22 12Z\"></path></svg>",
+      "usage": []
+    },
+    "archive": {
+      "group": "remix",
+      "from": "Remix ArchiveLine",
+      "original": "<svg viewBox=\"0 0 24 24\" xmlns=\"http://www.w3.org/2000/svg\" fill=\"currentColor\" class=\"remixicon \"><path d=\"M3 10H2V4.00293C2 3.44903 2.45531 3 2.9918 3H21.0082C21.556 3 22 3.43788 22 4.00293V10H21V20.0015C21 20.553 20.5551 21 20.0066 21H3.9934C3.44476 21 3 20.5525 3 20.0015V10ZM19 10H5V19H19V10ZM4 5V8H20V5H4ZM9 12H15V14H9V12Z\"></path></svg>",
+      "usage": []
+    },
+    "history": {
+      "group": "remix",
+      "from": "Remix HistoryLine",
+      "original": "<svg viewBox=\"0 0 24 24\" xmlns=\"http://www.w3.org/2000/svg\" fill=\"currentColor\" class=\"remixicon \"><path d=\"M12 2C17.5228 2 22 6.47715 22 12C22 17.5228 17.5228 22 12 22C6.47715 22 2 17.5228 2 12H4C4 16.4183 7.58172 20 12 20C16.4183 20 20 16.4183 20 12C20 7.58172 16.4183 4 12 4C9.25022 4 6.82447 5.38734 5.38451 7.50024L8 7.5V9.5H2V3.5H4L3.99989 5.99918C5.82434 3.57075 8.72873 2 12 2ZM13 7L12.9998 11.585L16.2426 14.8284L14.8284 16.2426L10.9998 12.413L11 7H13Z\"></path></svg>",
+      "usage": []
+    },
+    "signOut": {
+      "group": "remix",
+      "from": "Remix LogoutBoxRLine",
+      "original": "<svg viewBox=\"0 0 24 24\" xmlns=\"http://www.w3.org/2000/svg\" fill=\"currentColor\" class=\"remixicon \"><path d=\"M5 22C4.44772 22 4 21.5523 4 21V3C4 2.44772 4.44772 2 5 2H19C19.5523 2 20 2.44772 20 3V6H18V4H6V20H18V18H20V21C20 21.5523 19.5523 22 19 22H5ZM18 16V13H11V11H18V8L23 12L18 16Z\"></path></svg>",
+      "usage": []
+    },
+    "menu": {
+      "group": "remix",
+      "from": "Remix MenuLine",
+      "original": "<svg viewBox=\"0 0 24 24\" xmlns=\"http://www.w3.org/2000/svg\" fill=\"currentColor\" class=\"remixicon \"><path d=\"M3 4H21V6H3V4ZM3 11H21V13H3V11ZM3 18H21V20H3V18Z\"></path></svg>",
+      "usage": []
+    },
+    "userAdd": {
+      "group": "remix",
+      "from": "Remix UserAddLine",
+      "original": "<svg viewBox=\"0 0 24 24\" xmlns=\"http://www.w3.org/2000/svg\" fill=\"currentColor\" class=\"remixicon \"><path d=\"M14 14.252V16.3414C13.3744 16.1203 12.7013 16 12 16C8.68629 16 6 18.6863 6 22H4C4 17.5817 7.58172 14 12 14C12.6906 14 13.3608 14.0875 14 14.252ZM12 13C8.685 13 6 10.315 6 7C6 3.685 8.685 1 12 1C15.315 1 18 3.685 18 7C18 10.315 15.315 13 12 13ZM12 11C14.21 11 16 9.21 16 7C16 4.79 14.21 3 12 3C9.79 3 8 4.79 8 7C8 9.21 9.79 11 12 11ZM18 17V14H20V17H23V19H20V22H18V19H15V17H18Z\"></path></svg>",
+      "usage": []
+    },
+    "userRemove": {
+      "group": "remix",
+      "from": "Remix UserUnfollowLine",
+      "original": "<svg viewBox=\"0 0 24 24\" xmlns=\"http://www.w3.org/2000/svg\" fill=\"currentColor\" class=\"remixicon \"><path d=\"M14 14.252V16.3414C13.3744 16.1203 12.7013 16 12 16C8.68629 16 6 18.6863 6 22H4C4 17.5817 7.58172 14 12 14C12.6906 14 13.3608 14.0875 14 14.252ZM12 13C8.685 13 6 10.315 6 7C6 3.685 8.685 1 12 1C15.315 1 18 3.685 18 7C18 10.315 15.315 13 12 13ZM12 11C14.21 11 16 9.21 16 7C16 4.79 14.21 3 12 3C9.79 3 8 4.79 8 7C8 9.21 9.79 11 12 11ZM19 17.5858L21.1213 15.4645L22.5355 16.8787L20.4142 19L22.5355 21.1213L21.1213 22.5355L19 20.4142L16.8787 22.5355L15.4645 21.1213L17.5858 19L15.4645 16.8787L16.8787 15.4645L19 17.5858Z\"></path></svg>",
+      "usage": []
+    },
+    "dateSolid": {
+      "group": "squidx",
+      "from": "Squidx Calendar",
+      "original": "<svg viewBox=\"0 0 16 16\" fill=\"currentColor\"><path d=\"M6 10a1 1 0 1 0 0-2 1 1 0 0 0 0 2Z\"></path><path d=\"M11 3.525V2.75a.75.75 0 0 0-1.5 0v.75h-3v-.75a.75.75 0 0 0-1.5 0v.775A2.74 2.74 0 0 0 2.5 6.25v5A2.75 2.75 0 0 0 5.25 14h5.5a2.75 2.75 0 0 0 2.75-2.75v-5A2.74 2.74 0 0 0 11 3.525ZM12 11.25c0 .689-.561 1.25-1.25 1.25h-5.5c-.689 0-1.25-.561-1.25-1.25V7h8v4.25Z\"></path></svg>",
+      "usage": []
+    },
+    "addSolid": {
+      "group": "squidx",
+      "from": "Squidx AddCircle",
+      "original": "<svg viewBox=\"0 0 16 16\" fill=\"currentColor\"><path d=\"M8 2c3.314 0 6 2.686 6 6s-2.686 6-6 6-6-2.686-6-6 2.686-6 6-6Zm0 3a.75.75 0 0 0-.75.75v1.5h-1.5a.75.75 0 0 0 0 1.5h1.5v1.5a.75.75 0 0 0 1.5 0v-1.5h1.5a.75.75 0 0 0 0-1.5h-1.5v-1.5A.75.75 0 0 0 8 5Z\"></path></svg>",
+      "usage": []
+    },
+    "timeSolid": {
+      "group": "squidx",
+      "from": "Squidx Clock",
+      "original": "<svg viewBox=\"-2 -2 16 16\" fill=\"currentColor\"><path d=\"M6 0C2.691 0 0 2.691 0 6s2.691 6 6 6 6-2.691 6-6-2.691-6-6-6Zm2.564 8.244A.75.75 0 0 1 7.999 8.5a.746.746 0 0 1-.493-.186l-2-1.75A.75.75 0 0 1 5.25 6V3.25a.75.75 0 0 1 1.5 0v2.41l1.744 1.526a.75.75 0 0 1 .07 1.058Z\"></path></svg>",
+      "usage": []
+    },
+    "chevronDown": {
+      "group": "remix",
+      "from": "Remix ArrowDownSLine",
+      "original": "<svg viewBox=\"0 0 24 24\" xmlns=\"http://www.w3.org/2000/svg\" fill=\"currentColor\" class=\"remixicon \"><path d=\"M11.9999 13.1714L16.9497 8.22168L18.3639 9.63589L11.9999 15.9999L5.63599 9.63589L7.0502 8.22168L11.9999 13.1714Z\"></path></svg>",
+      "usage": [
+        "components/ui/segmented-pill.tsx",
+        "components/ui/select.tsx"
+      ]
+    },
+    "chevronUp": {
+      "group": "remix",
+      "from": "Remix ArrowUpSLine",
+      "original": "<svg viewBox=\"0 0 24 24\" xmlns=\"http://www.w3.org/2000/svg\" fill=\"currentColor\" class=\"remixicon \"><path d=\"M11.9999 10.8284L7.0502 15.7782L5.63599 14.364L11.9999 8L18.3639 14.364L16.9497 15.7782L11.9999 10.8284Z\"></path></svg>",
+      "usage": [
+        "components/ui/select.tsx"
+      ]
+    },
+    "chevronLeft": {
+      "group": "remix",
+      "from": "Remix ArrowLeftSLine",
+      "original": "<svg viewBox=\"0 0 24 24\" xmlns=\"http://www.w3.org/2000/svg\" fill=\"currentColor\" class=\"remixicon \"><path d=\"M10.8284 12.0007L15.7782 16.9504L14.364 18.3646L8 12.0007L14.364 5.63672L15.7782 7.05093L10.8284 12.0007Z\"></path></svg>",
+      "usage": [
+        "components/patterns/LedgerSection.tsx",
+        "components/ui/date-field.tsx"
+      ]
+    },
+    "chevronRight": {
+      "group": "squidx",
+      "from": "Squidx ChevronRight",
+      "original": "<svg viewBox=\"-2 -2 16 16\" fill=\"currentColor\"><path d=\"M4.25 11a.748.748 0 0 1-.53-1.281L7.44 5.999 3.72 2.279a.75.75 0 0 1 1.061-1.061l4.25 4.25a.75.75 0 0 1 0 1.061l-4.25 4.25a.748.748 0 0 1-.53.22Z\"></path></svg>",
+      "usage": [
+        "components/patterns/LedgerSection.tsx",
+        "components/ui/date-field.tsx",
+        "components/ui/drawer.tsx",
+        "components/ui/menu.tsx"
+      ]
+    },
+    "chevronsUpDown": {
+      "group": "remix",
+      "from": "Remix ExpandUpDownLine",
+      "original": "<svg viewBox=\"0 0 24 24\" xmlns=\"http://www.w3.org/2000/svg\" fill=\"currentColor\" class=\"remixicon \"><path d=\"M18.2072 9.0428 12.0001 2.83569 5.793 9.0428 7.20721 10.457 12.0001 5.66412 16.793 10.457 18.2072 9.0428ZM5.79285 14.9572 12 21.1643 18.2071 14.9572 16.7928 13.543 12 18.3359 7.20706 13.543 5.79285 14.9572Z\"></path></svg>",
+      "usage": [
+        "components/ui/select.tsx"
+      ]
+    },
+    "caretRight": {
+      "group": "remix",
+      "from": "Remix ArrowRightSFill",
+      "original": "<svg viewBox=\"0 0 24 24\" xmlns=\"http://www.w3.org/2000/svg\" fill=\"currentColor\" class=\"remixicon \"><path d=\"M16 12L10 18V6L16 12Z\"></path></svg>",
+      "usage": []
+    },
+    "caretDown": {
+      "group": "remix",
+      "from": "Remix ArrowDownSFill",
+      "original": "<svg viewBox=\"0 0 24 24\" xmlns=\"http://www.w3.org/2000/svg\" fill=\"currentColor\" class=\"remixicon \"><path d=\"M12 16L6 10H18L12 16Z\"></path></svg>",
+      "usage": []
+    },
+    "arrowLeft": {
+      "group": "remix",
+      "from": "Remix ArrowLeftLine",
+      "original": "<svg viewBox=\"0 0 24 24\" xmlns=\"http://www.w3.org/2000/svg\" fill=\"currentColor\" class=\"remixicon \"><path d=\"M7.82843 10.9999H20V12.9999H7.82843L13.1924 18.3638L11.7782 19.778L4 11.9999L11.7782 4.22168L13.1924 5.63589L7.82843 10.9999Z\"></path></svg>",
+      "usage": []
+    },
+    "arrowRight": {
+      "group": "remix",
+      "from": "Remix ArrowRightLine",
+      "original": "<svg viewBox=\"0 0 24 24\" xmlns=\"http://www.w3.org/2000/svg\" fill=\"currentColor\" class=\"remixicon \"><path d=\"M16.1716 10.9999L10.8076 5.63589L12.2218 4.22168L20 11.9999L12.2218 19.778L10.8076 18.3638L16.1716 12.9999H4V10.9999H16.1716Z\"></path></svg>",
+      "usage": []
+    },
+    "info": {
+      "group": "remix",
+      "from": "Remix InformationLine",
+      "original": "<svg viewBox=\"0 0 24 24\" xmlns=\"http://www.w3.org/2000/svg\" fill=\"currentColor\" class=\"remixicon \"><path d=\"M12 22C6.47715 22 2 17.5228 2 12C2 6.47715 6.47715 2 12 2C17.5228 2 22 6.47715 22 12C22 17.5228 17.5228 22 12 22ZM12 20C16.4183 20 20 16.4183 20 12C20 7.58172 16.4183 4 12 4C7.58172 4 4 7.58172 4 12C4 16.4183 7.58172 20 12 20ZM11 7H13V9H11V7ZM11 11H13V17H11V11Z\"></path></svg>",
+      "usage": [
+        "components/motion/animated-badge.tsx",
+        "components/ui/badge.tsx",
+        "components/ui/toast.tsx"
+      ]
+    },
+    "help": {
+      "group": "remix",
+      "from": "Remix QuestionLine",
+      "original": "<svg viewBox=\"0 0 24 24\" xmlns=\"http://www.w3.org/2000/svg\" fill=\"currentColor\" class=\"remixicon \"><path d=\"M12 22C6.47715 22 2 17.5228 2 12C2 6.47715 6.47715 2 12 2C17.5228 2 22 6.47715 22 12C22 17.5228 17.5228 22 12 22ZM12 20C16.4183 20 20 16.4183 20 12C20 7.58172 16.4183 4 12 4C7.58172 4 4 7.58172 4 12C4 16.4183 7.58172 20 12 20ZM11 15H13V17H11V15ZM13 13.3551V14H11V12.5C11 11.9477 11.4477 11.5 12 11.5C12.8284 11.5 13.5 10.8284 13.5 10C13.5 9.17157 12.8284 8.5 12 8.5C11.2723 8.5 10.6656 9.01823 10.5288 9.70577L8.56731 9.31346C8.88637 7.70919 10.302 6.5 12 6.5C13.933 6.5 15.5 8.067 15.5 10C15.5 11.5855 14.4457 12.9248 13 13.3551Z\"></path></svg>",
+      "usage": []
+    },
+    "warning": {
+      "group": "remix",
+      "from": "Remix AlertLine",
+      "original": "<svg viewBox=\"0 0 24 24\" xmlns=\"http://www.w3.org/2000/svg\" fill=\"currentColor\" class=\"remixicon \"><path d=\"M12.8659 3.00017L22.3922 19.5002C22.6684 19.9785 22.5045 20.5901 22.0262 20.8662C21.8742 20.954 21.7017 21.0002 21.5262 21.0002H2.47363C1.92135 21.0002 1.47363 20.5525 1.47363 20.0002C1.47363 19.8246 1.51984 19.6522 1.60761 19.5002L11.1339 3.00017C11.41 2.52187 12.0216 2.358 12.4999 2.63414C12.6519 2.72191 12.7782 2.84815 12.8659 3.00017ZM4.20568 19.0002H19.7941L11.9999 5.50017L4.20568 19.0002ZM10.9999 16.0002H12.9999V18.0002H10.9999V16.0002ZM10.9999 9.00017H12.9999V14.0002H10.9999V9.00017Z\"></path></svg>",
+      "usage": [
+        "components/motion/animated-badge.tsx",
+        "components/ui/badge.tsx",
+        "components/ui/toast.tsx"
+      ]
+    },
+    "alert": {
+      "group": "remix",
+      "from": "Remix ErrorWarningLine",
+      "original": "<svg viewBox=\"0 0 24 24\" xmlns=\"http://www.w3.org/2000/svg\" fill=\"currentColor\" class=\"remixicon \"><path d=\"M12 22C6.47715 22 2 17.5228 2 12C2 6.47715 6.47715 2 12 2C17.5228 2 22 6.47715 22 12C22 17.5228 17.5228 22 12 22ZM12 20C16.4183 20 20 16.4183 20 12C20 7.58172 16.4183 4 12 4C7.58172 4 4 7.58172 4 12C4 16.4183 7.58172 20 12 20ZM11 15H13V17H11V15ZM11 7H13V13H11V7Z\"></path></svg>",
+      "usage": [
+        "components/ui/toast.tsx"
+      ]
+    },
+    "error": {
+      "group": "remix",
+      "from": "Remix CloseCircleLine",
+      "original": "<svg viewBox=\"0 0 24 24\" xmlns=\"http://www.w3.org/2000/svg\" fill=\"currentColor\" class=\"remixicon \"><path d=\"M12 22C6.47715 22 2 17.5228 2 12C2 6.47715 6.47715 2 12 2C17.5228 2 22 6.47715 22 12C22 17.5228 17.5228 22 12 22ZM12 20C16.4183 20 20 16.4183 20 12C20 7.58172 16.4183 4 12 4C7.58172 4 4 7.58172 4 12C4 16.4183 7.58172 20 12 20ZM12 10.5858L14.8284 7.75736L16.2426 9.17157L13.4142 12L16.2426 14.8284L14.8284 16.2426L12 13.4142L9.17157 16.2426L7.75736 14.8284L10.5858 12L7.75736 9.17157L9.17157 7.75736L12 10.5858Z\"></path></svg>",
+      "usage": []
+    },
+    "success": {
+      "group": "remix",
+      "from": "Remix CheckboxCircleLine",
+      "original": "<svg viewBox=\"0 0 24 24\" xmlns=\"http://www.w3.org/2000/svg\" fill=\"currentColor\" class=\"remixicon \"><path d=\"M4 12C4 7.58172 7.58172 4 12 4C16.4183 4 20 7.58172 20 12C20 16.4183 16.4183 20 12 20C7.58172 20 4 16.4183 4 12ZM12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2ZM17.4571 9.45711L16.0429 8.04289L11 13.0858L8.20711 10.2929L6.79289 11.7071L11 15.9142L17.4571 9.45711Z\"></path></svg>",
+      "usage": []
+    },
+    "neutral": {
+      "group": "remix",
+      "from": "Remix CircleLine",
+      "original": "<svg viewBox=\"0 0 24 24\" xmlns=\"http://www.w3.org/2000/svg\" fill=\"currentColor\" class=\"remixicon \"><path d=\"M12 22C6.47715 22 2 17.5228 2 12C2 6.47715 6.47715 2 12 2C17.5228 2 22 6.47715 22 12C22 17.5228 17.5228 22 12 22ZM12 20C16.4183 20 20 16.4183 20 12C20 7.58172 16.4183 4 12 4C7.58172 4 4 7.58172 4 12C4 16.4183 7.58172 20 12 20Z\"></path></svg>",
+      "usage": [
+        "components/motion/animated-badge.tsx",
+        "components/ui/badge.tsx"
+      ]
+    },
+    "minusCircle": {
+      "group": "remix",
+      "from": "Remix IndeterminateCircleLine",
+      "original": "<svg viewBox=\"0 0 24 24\" xmlns=\"http://www.w3.org/2000/svg\" fill=\"currentColor\" class=\"remixicon \"><path d=\"M12 22C6.47715 22 2 17.5228 2 12C2 6.47715 6.47715 2 12 2C17.5228 2 22 6.47715 22 12C22 17.5228 17.5228 22 12 22ZM12 20C16.4183 20 20 16.4183 20 12C20 7.58172 16.4183 4 12 4C7.58172 4 4 7.58172 4 12C4 16.4183 7.58172 20 12 20ZM7 11H17V13H7V11Z\"></path></svg>",
+      "usage": []
+    },
+    "blocked": {
+      "group": "remix",
+      "from": "Remix ForbidLine",
+      "original": "<svg viewBox=\"0 0 24 24\" xmlns=\"http://www.w3.org/2000/svg\" fill=\"currentColor\" class=\"remixicon \"><path d=\"M12 22C6.47715 22 2 17.5228 2 12C2 6.47715 6.47715 2 12 2C17.5228 2 22 6.47715 22 12C22 17.5228 17.5228 22 12 22ZM12 20C16.4183 20 20 16.4183 20 12C20 7.58172 16.4183 4 12 4C7.58172 4 4 7.58172 4 12C4 16.4183 7.58172 20 12 20ZM8.52313 7.10891L16.8911 15.4769C16.6997 15.7454 16.4836 16.0017 16.2426 16.2426C16.0017 16.4836 15.7454 16.6997 15.4769 16.8911L7.10891 8.52313C7.30029 8.25459 7.51644 7.99828 7.75736 7.75736C7.99828 7.51644 8.25459 7.30029 8.52313 7.10891Z\"></path></svg>",
+      "usage": []
+    },
+    "loading": {
+      "group": "remix",
+      "from": "Remix Loader4Line",
+      "original": "<svg viewBox=\"0 0 24 24\" xmlns=\"http://www.w3.org/2000/svg\" fill=\"currentColor\" class=\"remixicon \"><path d=\"M18.364 5.63604L16.9497 7.05025C15.683 5.7835 13.933 5 12 5C8.13401 5 5 8.13401 5 12C5 15.866 8.13401 19 12 19C15.866 19 19 15.866 19 12H21C21 16.9706 16.9706 21 12 21C7.02944 21 3 16.9706 3 12C3 7.02944 7.02944 3 12 3C14.4853 3 16.7353 4.00736 18.364 5.63604Z\"></path></svg>",
+      "usage": [
+        "components/motion/animated-badge.tsx",
+        "components/motion/button/stateful.tsx",
+        "components/ui/badge.tsx",
+        "components/ui/spinner.tsx",
+        "components/ui/toast.tsx"
+      ]
+    },
+    "empty": {
+      "group": "remix",
+      "from": "Remix Inbox2Line",
+      "original": "<svg viewBox=\"0 0 24 24\" xmlns=\"http://www.w3.org/2000/svg\" fill=\"currentColor\" class=\"remixicon \"><path d=\"M4.02381 3.78307C4.12549 3.32553 4.5313 3 5 3H19C19.4687 3 19.8745 3.32553 19.9762 3.78307L21.9762 12.7831C21.992 12.8543 22 12.927 22 13V20C22 20.5523 21.5523 21 21 21H3C2.44772 21 2 20.5523 2 20V13C2 12.927 2.00799 12.8543 2.02381 12.7831L4.02381 3.78307ZM5.80217 5L4.24662 12H9C9 13.6569 10.3431 15 12 15C13.6569 15 15 13.6569 15 12H19.7534L18.1978 5H5.80217ZM16.584 14C15.8124 15.7659 14.0503 17 12 17C9.94968 17 8.1876 15.7659 7.41604 14H4V19H20V14H16.584Z\"></path></svg>",
+      "usage": [
+        "components/patterns/EmptyState.tsx"
+      ]
+    },
+    "sparkle": {
+      "group": "remix",
+      "from": "Remix SparklingLine",
+      "original": "<svg viewBox=\"0 0 24 24\" xmlns=\"http://www.w3.org/2000/svg\" fill=\"currentColor\" class=\"remixicon \"><path d=\"M14 4.4375C15.3462 4.4375 16.4375 3.34619 16.4375 2H17.5625C17.5625 3.34619 18.6538 4.4375 20 4.4375V5.5625C18.6538 5.5625 17.5625 6.65381 17.5625 8H16.4375C16.4375 6.65381 15.3462 5.5625 14 5.5625V4.4375ZM1 11C4.31371 11 7 8.31371 7 5H9C9 8.31371 11.6863 11 15 11V13C11.6863 13 9 15.6863 9 19H7C7 15.6863 4.31371 13 1 13V11ZM4.87601 12C6.18717 12.7276 7.27243 13.8128 8 15.124 8.72757 13.8128 9.81283 12.7276 11.124 12 9.81283 11.2724 8.72757 10.1872 8 8.87601 7.27243 10.1872 6.18717 11.2724 4.87601 12ZM17.25 14C17.25 15.7949 15.7949 17.25 14 17.25V18.75C15.7949 18.75 17.25 20.2051 17.25 22H18.75C18.75 20.2051 20.2051 18.75 22 18.75V17.25C20.2051 17.25 18.75 15.7949 18.75 14H17.25Z\"></path></svg>",
+      "usage": []
+    },
+    "key": {
+      "group": "remix",
+      "from": "Remix Key2Line",
+      "original": "<svg viewBox=\"0 0 24 24\" xmlns=\"http://www.w3.org/2000/svg\" fill=\"currentColor\" class=\"remixicon \"><path d=\"M10.7577 11.8281L18.6066 3.97919L20.0208 5.3934L18.6066 6.80761L21.0815 9.28249L19.6673 10.6967L17.1924 8.22183L15.7782 9.63604L17.8995 11.7574L16.4853 13.1716L14.364 11.0503L12.1719 13.2423C13.4581 15.1837 13.246 17.8251 11.5355 19.5355C9.58291 21.4882 6.41709 21.4882 4.46447 19.5355C2.51184 17.5829 2.51184 14.4171 4.46447 12.4645C6.17493 10.754 8.81633 10.5419 10.7577 11.8281ZM10.1213 18.1213C11.2929 16.9497 11.2929 15.0503 10.1213 13.8787C8.94975 12.7071 7.05025 12.7071 5.87868 13.8787C4.70711 15.0503 4.70711 16.9497 5.87868 18.1213C7.05025 19.2929 8.94975 19.2929 10.1213 18.1213Z\"></path></svg>",
+      "usage": []
+    },
+    "show": {
+      "group": "remix",
+      "from": "Remix EyeLine",
+      "original": "<svg viewBox=\"0 0 24 24\" xmlns=\"http://www.w3.org/2000/svg\" fill=\"currentColor\" class=\"remixicon \"><path d=\"M12.0003 3C17.3924 3 21.8784 6.87976 22.8189 12C21.8784 17.1202 17.3924 21 12.0003 21C6.60812 21 2.12215 17.1202 1.18164 12C2.12215 6.87976 6.60812 3 12.0003 3ZM12.0003 19C16.2359 19 19.8603 16.052 20.7777 12C19.8603 7.94803 16.2359 5 12.0003 5C7.7646 5 4.14022 7.94803 3.22278 12C4.14022 16.052 7.7646 19 12.0003 19ZM12.0003 16.5C9.51498 16.5 7.50026 14.4853 7.50026 12C7.50026 9.51472 9.51498 7.5 12.0003 7.5C14.4855 7.5 16.5003 9.51472 16.5003 12C16.5003 14.4853 14.4855 16.5 12.0003 16.5ZM12.0003 14.5C13.381 14.5 14.5003 13.3807 14.5003 12C14.5003 10.6193 13.381 9.5 12.0003 9.5C10.6196 9.5 9.50026 10.6193 9.50026 12C9.50026 13.3807 10.6196 14.5 12.0003 14.5Z\"></path></svg>",
+      "usage": []
+    },
+    "hide": {
+      "group": "remix",
+      "from": "Remix EyeOffLine",
+      "original": "<svg viewBox=\"0 0 24 24\" xmlns=\"http://www.w3.org/2000/svg\" fill=\"currentColor\" class=\"remixicon \"><path d=\"M17.8827 19.2968C16.1814 20.3755 14.1638 21.0002 12.0003 21.0002C6.60812 21.0002 2.12215 17.1204 1.18164 12.0002C1.61832 9.62282 2.81932 7.5129 4.52047 5.93457L1.39366 2.80777L2.80788 1.39355L22.6069 21.1925L21.1927 22.6068L17.8827 19.2968ZM5.9356 7.3497C4.60673 8.56015 3.6378 10.1672 3.22278 12.0002C4.14022 16.0521 7.7646 19.0002 12.0003 19.0002C13.5997 19.0002 15.112 18.5798 16.4243 17.8384L14.396 15.8101C13.7023 16.2472 12.8808 16.5002 12.0003 16.5002C9.51498 16.5002 7.50026 14.4854 7.50026 12.0002C7.50026 11.1196 7.75317 10.2981 8.19031 9.60442L5.9356 7.3497ZM12.9139 14.328L9.67246 11.0866C9.5613 11.3696 9.50026 11.6777 9.50026 12.0002C9.50026 13.3809 10.6196 14.5002 12.0003 14.5002C12.3227 14.5002 12.6309 14.4391 12.9139 14.328ZM20.8068 16.5925L19.376 15.1617C20.0319 14.2268 20.5154 13.1586 20.7777 12.0002C19.8603 7.94818 16.2359 5.00016 12.0003 5.00016C11.1544 5.00016 10.3329 5.11773 9.55249 5.33818L7.97446 3.76015C9.22127 3.26959 10.5793 3.00016 12.0003 3.00016C17.3924 3.00016 21.8784 6.87992 22.8189 12.0002C22.5067 13.6998 21.8038 15.2628 20.8068 16.5925ZM11.7229 7.50857C11.8146 7.50299 11.9071 7.50016 12.0003 7.50016C14.4855 7.50016 16.5003 9.51488 16.5003 12.0002C16.5003 12.0933 16.4974 12.1858 16.4919 12.2775L11.7229 7.50857Z\"></path></svg>",
+      "usage": []
+    },
+    "backup": {
+      "group": "remix",
+      "from": "Remix Database2Line",
+      "original": "<svg viewBox=\"0 0 24 24\" xmlns=\"http://www.w3.org/2000/svg\" fill=\"currentColor\" class=\"remixicon \"><path d=\"M5 12.5C5 12.8134 5.46101 13.3584 6.53047 13.8931C7.91405 14.5849 9.87677 15 12 15C14.1232 15 16.0859 14.5849 17.4695 13.8931C18.539 13.3584 19 12.8134 19 12.5V10.3287C17.35 11.3482 14.8273 12 12 12C9.17273 12 6.64996 11.3482 5 10.3287V12.5ZM19 15.3287C17.35 16.3482 14.8273 17 12 17C9.17273 17 6.64996 16.3482 5 15.3287V17.5C5 17.8134 5.46101 18.3584 6.53047 18.8931C7.91405 19.5849 9.87677 20 12 20C14.1232 20 16.0859 19.5849 17.4695 18.8931C18.539 18.3584 19 17.8134 19 17.5V15.3287ZM3 17.5V7.5C3 5.01472 7.02944 3 12 3C16.9706 3 21 5.01472 21 7.5V17.5C21 19.9853 16.9706 22 12 22C7.02944 22 3 19.9853 3 17.5ZM12 10C14.1232 10 16.0859 9.58492 17.4695 8.89313C18.539 8.3584 19 7.81342 19 7.5C19 7.18658 18.539 6.6416 17.4695 6.10687C16.0859 5.41508 14.1232 5 12 5C9.87677 5 7.91405 5.41508 6.53047 6.10687C5.46101 6.6416 5 7.18658 5 7.5C5 7.81342 5.46101 8.3584 6.53047 8.89313C7.91405 9.58492 9.87677 10 12 10Z\"></path></svg>",
+      "usage": []
+    },
+    "light": {
+      "group": "remix",
+      "from": "Remix SunLine",
+      "original": "<svg viewBox=\"0 0 24 24\" xmlns=\"http://www.w3.org/2000/svg\" fill=\"currentColor\" class=\"remixicon \"><path d=\"M12 18C8.68629 18 6 15.3137 6 12C6 8.68629 8.68629 6 12 6C15.3137 6 18 8.68629 18 12C18 15.3137 15.3137 18 12 18ZM12 16C14.2091 16 16 14.2091 16 12C16 9.79086 14.2091 8 12 8C9.79086 8 8 9.79086 8 12C8 14.2091 9.79086 16 12 16ZM11 1H13V4H11V1ZM11 20H13V23H11V20ZM3.51472 4.92893L4.92893 3.51472L7.05025 5.63604L5.63604 7.05025L3.51472 4.92893ZM16.9497 18.364L18.364 16.9497L20.4853 19.0711L19.0711 20.4853L16.9497 18.364ZM19.0711 3.51472L20.4853 4.92893L18.364 7.05025L16.9497 5.63604L19.0711 3.51472ZM5.63604 16.9497L7.05025 18.364L4.92893 20.4853L3.51472 19.0711L5.63604 16.9497ZM23 11V13H20V11H23ZM4 11V13H1V11H4Z\"></path></svg>",
+      "usage": []
+    },
+    "dark": {
+      "group": "remix",
+      "from": "Remix MoonLine",
+      "original": "<svg viewBox=\"0 0 24 24\" xmlns=\"http://www.w3.org/2000/svg\" fill=\"currentColor\" class=\"remixicon \"><path d=\"M10 7C10 10.866 13.134 14 17 14C18.9584 14 20.729 13.1957 21.9995 11.8995C22 11.933 22 11.9665 22 12C22 17.5228 17.5228 22 12 22C6.47715 22 2 17.5228 2 12C2 6.47715 6.47715 2 12 2C12.0335 2 12.067 2 12.1005 2.00049C10.8043 3.27098 10 5.04157 10 7ZM4 12C4 16.4183 7.58172 20 12 20C15.0583 20 17.7158 18.2839 19.062 15.7621C18.3945 15.9187 17.7035 16 17 16C12.0294 16 8 11.9706 8 7C8 6.29648 8.08133 5.60547 8.2379 4.938C5.71611 6.28423 4 8.9417 4 12Z\"></path></svg>",
+      "usage": []
+    },
+    "system": {
+      "group": "remix",
+      "from": "Remix ComputerLine",
+      "original": "<svg viewBox=\"0 0 24 24\" xmlns=\"http://www.w3.org/2000/svg\" fill=\"currentColor\" class=\"remixicon \"><path d=\"M4 16H20V5H4V16ZM13 18V20H17V22H7V20H11V18H2.9918C2.44405 18 2 17.5511 2 16.9925V4.00748C2 3.45107 2.45531 3 2.9918 3H21.0082C21.556 3 22 3.44892 22 4.00748V16.9925C22 17.5489 21.5447 18 21.0082 18H13Z\"></path></svg>",
+      "usage": []
+    },
+    "phone": {
+      "group": "remix",
+      "from": "Remix SmartphoneLine",
+      "original": "<svg viewBox=\"0 0 24 24\" xmlns=\"http://www.w3.org/2000/svg\" fill=\"currentColor\" class=\"remixicon \"><path d=\"M7 4V20H17V4H7ZM6 2H18C18.5523 2 19 2.44772 19 3V21C19 21.5523 18.5523 22 18 22H6C5.44772 22 5 21.5523 5 21V3C5 2.44772 5.44772 2 6 2ZM12 17C12.5523 17 13 17.4477 13 18C13 18.5523 12.5523 19 12 19C11.4477 19 11 18.5523 11 18C11 17.4477 11.4477 17 12 17Z\"></path></svg>",
+      "usage": []
+    }
+  }
+}

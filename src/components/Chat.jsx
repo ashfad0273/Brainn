@@ -3,7 +3,7 @@ import {
   Paperclip, Mic, ArrowUp, Square, X, Download, FileText, Search, MoreHorizontal,
   Plus, Copy, Sparkles, ScanText, Check, Reply, Bold, Italic, Strikethrough,
   Link as LinkIcon, ListOrdered, List, Quote, Code, Terminal, Smile, AtSign, Loader2, Hash
-} from 'lucide-react';
+} from '@/lib/icons';
 import { useStore } from '../store';
 import * as kv from '../lib/kv';
 import { api, hasServer } from '../lib/api';
@@ -25,8 +25,8 @@ import { cleanTitle } from '../lib/extract';
 import { generateText } from '../lib/gemini';
 
 const URL_RE = /(\bhttps?:\/\/[^\s<>"']+|\bwww\.[^\s<>"']+)/gi;
-const AVATAR = ['bg-orange-600', 'bg-violet-600', 'bg-emerald-600', 'bg-pink-600', 'bg-amber-600', 'bg-teal-600'];
-const NAME_TONE = ['text-orange-300', 'text-violet-300', 'text-emerald-300', 'text-pink-300', 'text-amber-300', 'text-teal-300'];
+const AVATAR = ['bg-orange', 'bg-violet', 'bg-green', 'bg-pink', 'bg-amber', 'bg-teal'];
+const NAME_TONE = ['text-orange', 'text-violet', 'text-pos', 'text-pink', 'text-warn-ink', 'text-teal'];
 const toneOf = id => parseInt(hashId(id || 'client').slice(0, 4), 36) % AVATAR.length;
 
 function formatInline(text) {
@@ -47,11 +47,11 @@ function formatInline(text) {
     }
     if (token.startsWith('```') && token.endsWith('```')) {
       const inner = token.slice(3, -3).replace(/^\w+\n/, '');
-      parts.push(<pre key={match.index} className="my-1.5 p-2 rounded-lg bg-black/40 font-mono text-[13px] overflow-x-auto text-sky-200">{inner}</pre>);
+      parts.push(<pre key={match.index} className="my-1.5 p-2 rounded-lg bg-modal-scrim font-mono text-xs overflow-x-auto text-primary">{inner}</pre>);
     } else if (token.startsWith('`') && token.endsWith('`')) {
-      parts.push(<code key={match.index} className="px-1.5 py-0.5 rounded bg-black/40 font-mono text-[0.88em] text-sky-300">{token.slice(1, -1)}</code>);
+      parts.push(<code key={match.index} className="px-1.5 py-0.5 rounded bg-modal-scrim font-mono text-[0.88em] text-primary">{token.slice(1, -1)}</code>);
     } else if (token.startsWith('**') && token.endsWith('**')) {
-      parts.push(<strong key={match.index} className="font-semibold text-white">{token.slice(2, -2)}</strong>);
+      parts.push(<strong key={match.index} className="font-medium text-foreground">{token.slice(2, -2)}</strong>);
     } else if ((token.startsWith('~~') && token.endsWith('~~')) || (token.startsWith('~') && token.endsWith('~'))) {
       const sliceLen = token.startsWith('~~') ? 2 : 1;
       parts.push(<del key={match.index} className="opacity-75">{token.slice(sliceLen, -sliceLen)}</del>);
@@ -60,17 +60,17 @@ function formatInline(text) {
     } else if (token.startsWith('[') && token.includes('](')) {
       const linkMatch = token.match(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/);
       if (linkMatch) {
-        parts.push(<a key={match.index} href={linkMatch[2]} target="_blank" rel="noreferrer" className="underline decoration-sky-400 underline-offset-2 hover:text-sky-300 break-all">{linkMatch[1]}</a>);
+        parts.push(<a key={match.index} href={linkMatch[2]} target="_blank" rel="noreferrer" className="underline decoration-primary underline-offset-2 hover:text-primary break-all">{linkMatch[1]}</a>);
       } else {
         parts.push(token);
       }
     } else if (/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(token)) {
-      parts.push(<a key={match.index} href={`mailto:${token}`} className="inline-flex items-center text-emerald-300 underline decoration-emerald-400/50 underline-offset-2 hover:text-emerald-200 font-medium">{token}</a>);
+      parts.push(<a key={match.index} href={`mailto:${token}`} className="inline-flex items-center text-pos underline decoration-green-ring underline-offset-2 hover:text-pos font-medium">{token}</a>);
     } else if (token.startsWith('@') && token.length > 1) {
-      parts.push(<span key={match.index} className="inline-flex items-center font-semibold text-sky-300 bg-sky-500/15 px-1 py-0.5 rounded text-[0.92em]">@{token.slice(1)}</span>);
+      parts.push(<span key={match.index} className="inline-flex items-center font-medium text-primary bg-primary-soft px-1 py-0.5 rounded text-[0.92em]">@{token.slice(1)}</span>);
     } else if (URL_RE.test(token)) {
       const href = token.startsWith('http') ? token : 'https://' + token;
-      parts.push(<a key={match.index} href={href} target="_blank" rel="noreferrer" className="underline decoration-white/40 underline-offset-2 hover:decoration-white break-all">{token}</a>);
+      parts.push(<a key={match.index} href={href} target="_blank" rel="noreferrer" className="underline decoration-border-strong underline-offset-2 hover:decoration-foreground break-all">{token}</a>);
     } else {
       parts.push(token);
     }
@@ -110,12 +110,12 @@ function htmlToMarkdown(html) {
 function markdownToHtml(md) {
   if (!md) return '';
   let s = md.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-  s = s.replace(/```([\s\S]*?)```/g, '<pre class="my-1.5 p-2 rounded-lg bg-black/40 font-mono text-[13px] text-sky-200">$1</pre>');
-  s = s.replace(/\*\*([^*\n]+)\*\*/g, '<strong class="font-semibold text-white">$1</strong>');
+  s = s.replace(/```([\s\S]*?)```/g, '<pre class="my-1.5 p-2 rounded-lg bg-modal-scrim font-mono text-xs text-primary">$1</pre>');
+  s = s.replace(/\*\*([^*\n]+)\*\*/g, '<strong class="font-medium text-foreground">$1</strong>');
   s = s.replace(/~~([^~\n]+)~~/g, '<del class="opacity-75">$1</del>');
   s = s.replace(/(?:^|\s)\*([^*\n]+)\*(?:\s|$)/g, ' <em class="italic">$1</em> ');
-  s = s.replace(/`([^`\n]+)`/g, '<code class="px-1.5 py-0.5 rounded bg-black/40 font-mono text-[0.88em] text-sky-300">$1</code>');
-  s = s.replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, '<a href="$2" class="underline decoration-sky-400 text-sky-300">$1</a>');
+  s = s.replace(/`([^`\n]+)`/g, '<code class="px-1.5 py-0.5 rounded bg-modal-scrim font-mono text-[0.88em] text-primary">$1</code>');
+  s = s.replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, '<a href="$2" class="underline decoration-primary text-primary">$1</a>');
   s = s.replace(/\n/g, '<br>');
   return s;
 }
@@ -153,7 +153,7 @@ function MessageText({ text, secrets, span, markId }) {
   return pieces.map((x, i) => {
     const body = x.secret
       ? <button type="button" title={shown[i] ? 'Hide' : 'Sensitive — click to reveal'} onClick={() => setShown(v => ({ ...v, [i]: !v[i] }))}
-          className="inline rounded px-1.5 mx-0.5 bg-black/30 ring-1 ring-rose-400/40 font-mono text-[0.9em]">{shown[i] ? x.secret : '••••••'}</button>
+          className="inline rounded px-1.5 mx-0.5 bg-neg-soft ring-1 ring-rose-ring font-mono text-[0.9em]">{shown[i] ? x.secret : '••••••'}</button>
       : <Linkified text={text.slice(x.s, x.e)} />;
     if (!x.hl) return <Fragment key={i}>{body}</Fragment>;
     const id = first ? markId : undefined;
@@ -164,7 +164,7 @@ function MessageText({ text, secrets, span, markId }) {
 
 function VoiceNote({ a }) {
   const { url } = useAttachmentUrl(a);
-  return <div className="mt-2">{url ? <audio controls src={url} className="h-10 max-w-full" /> : <span className="text-xs text-neutral-500">{hasFile(a) ? 'Loading voice note…' : 'Voice note (audio too large to keep in the browser)'}</span>}</div>;
+  return <div className="mt-2">{url ? <audio controls src={url} className="h-10 max-w-full" /> : <span className="text-xs text-muted-foreground">{hasFile(a) ? 'Loading voice note…' : 'Voice note (audio too large to keep in the browser)'}</span>}</div>;
 }
 
 function ReadButton({ a, m, read }) {
@@ -172,7 +172,7 @@ function ReadButton({ a, m, read }) {
   return (
     <>
       <button type="button" onClick={e => { e.stopPropagation(); setOpen(true); }} title={read ? 'Read again with AI' : 'Read this file with AI (text, tables, OCR)'}
-        className={cx('shrink-0 flex items-center gap-1 text-[11px] px-2 py-1 rounded-lg ring-1 ring-inset transition', read ? 'ring-emerald-500/30 text-emerald-300 hover:bg-emerald-500/10' : 'ring-sky-500/30 text-sky-300 hover:bg-sky-500/10')}>
+        className={cx('shrink-0 flex items-center gap-1 text-xs px-2 py-1 rounded-lg ring-1 ring-inset transition', read ? 'ring-green-ring text-pos hover:bg-pos-soft' : 'ring-blue-ring text-primary hover:bg-primary-soft')}>
         {read ? <Check size={12} /> : <ScanText size={12} />}{read ? 'Read' : 'Read with AI'}
       </button>
       {open && <ReadFileModal message={m} attachment={a} onClose={() => setOpen(false)} />}
@@ -188,20 +188,20 @@ function Attachment({ a, m, readings }) {
   if (a.kind === 'image' && hasFile(a)) {
     return (
       <div className="mt-2 flex items-end gap-2">
-        <ImageThumb a={a} className="block cursor-zoom-in" imgClass="max-h-64 max-w-full rounded-xl ring-1 ring-white/10" />
+        <ImageThumb a={a} className="block cursor-zoom-in" imgClass="max-h-64 max-w-full rounded-xl ring-1 ring-border" />
         {read}
       </div>
     );
   }
   if (a.kind === 'voice') return <VoiceNote a={a} />;
   return (
-    <div className="mt-2 flex items-center gap-3 rounded-xl bg-[#1d1d1d] ring-1 ring-white/10 px-3 py-2 max-w-sm">
-      <span className="w-9 h-9 rounded-lg bg-cyan-500/10 text-cyan-300 grid place-items-center shrink-0"><FileText size={17} /></span>
-      <div className="min-w-0 flex-1"><div className="text-sm truncate text-neutral-100">{a.name}</div><div className="text-xs text-neutral-500">{a.category} · {fmtSize(a.size)}</div></div>
+    <div className="mt-2 flex items-center gap-3 rounded-xl bg-card ring-1 ring-border px-3 py-2 max-w-sm">
+      <span className="w-9 h-9 rounded-lg bg-teal-soft text-teal grid place-items-center shrink-0"><FileText size={17} /></span>
+      <div className="min-w-0 flex-1"><div className="text-sm truncate text-foreground">{a.name}</div><div className="text-xs text-muted-foreground">{a.category} · {fmtSize(a.size)}</div></div>
       {read}
       {hasFile(a)
-        ? <button onClick={() => dl(a)} title="Download" className="text-neutral-400 hover:text-white"><Download size={16} /></button>
-        : <span className="text-[10px] text-neutral-600" title="Only the file details were stored">no copy</span>}
+        ? <button onClick={() => dl(a)} title="Download" className="text-muted-foreground hover:text-foreground"><Download size={16} /></button>
+        : <span className="text-xs text-text-tertiary" title="Only the file details were stored">no copy</span>}
     </div>
   );
 }
@@ -217,40 +217,40 @@ function Message({ m, secrets, linked, onRecord, onReply, hl, readings, sugg = [
   const [allLinks, setAllLinks] = useState(false);
   return (
     <div id={'msg-' + m.id} className={cx('group flex gap-2 md:gap-3 px-1 md:px-2 py-0.5 md:py-1 anim-up', mine && 'flex-row-reverse')}>
-      <div className={cx('w-8 h-8 rounded-lg shrink-0 hidden md:grid place-items-center text-xs font-semibold text-white', m.from === 'owner' ? 'bg-sky-600' : AVATAR[tone])}>{(name || '?')[0].toUpperCase()}</div>
+      <div className={cx('w-8 h-8 rounded-lg shrink-0 hidden md:grid place-items-center text-xs font-medium text-foreground', m.from === 'owner' ? 'bg-primary' : AVATAR[tone])}>{(name || '?')[0].toUpperCase()}</div>
       <div className={cx('max-w-[85%] md:max-w-[78%] min-w-0 flex flex-col', mine ? 'items-end' : 'items-start')}>
-        <div className="text-[10px] md:text-[11px] text-neutral-500 mb-0.5 md:mb-1 px-1">
-          {!mine && <span className={cx('font-medium', m.from === 'owner' ? 'text-sky-300' : NAME_TONE[tone])}>{name}</span>}
-          {!mine && member && <span className="text-neutral-600"> · {memberRole(member)}</span>}
+        <div className="text-xs md:text-xs text-muted-foreground mb-0.5 md:mb-1 px-1">
+          {!mine && <span className={cx('font-medium', m.from === 'owner' ? 'text-primary' : NAME_TONE[tone])}>{name}</span>}
+          {!mine && member && <span className="text-text-tertiary"> · {memberRole(member)}</span>}
           {mine ? '' : ' · '}{fmtTime(m.ts)}
         </div>
 
         {/* Quoted Reply if message was a reply to another message */}
         {m.replyTo && (
           <div onClick={() => flash('msg-' + m.replyTo.id)}
-            className="mb-1 px-2.5 py-1 rounded-lg bg-black/40 border-l-2 border-sky-400 text-xs text-neutral-300 hover:bg-black/60 cursor-pointer transition flex items-center gap-1.5 max-w-full">
-            <Reply size={11} className="text-sky-400 shrink-0" />
-            <span className="font-semibold text-sky-300 shrink-0">{m.replyTo.name}:</span>
+            className="mb-1 px-2.5 py-1 rounded-lg bg-modal-scrim border-l-2 border-primary text-xs text-foreground hover:bg-modal-scrim cursor-pointer transition flex items-center gap-1.5 max-w-full">
+            <Reply size={11} className="text-primary shrink-0" />
+            <span className="font-medium text-primary shrink-0">{m.replyTo.name}:</span>
             <span className="truncate opacity-80">{m.replyTo.text}</span>
           </div>
         )}
 
         <div className={cx('flex items-center gap-1', mine && 'flex-row-reverse')}>
           {(m.text || m.voice) && (
-            <div className={cx('rounded-2xl px-3 py-1.5 md:px-4 md:py-2.5 text-[14.5px] md:text-[15px] leading-relaxed whitespace-pre-wrap break-words', mine ? 'bg-sky-600 text-white rounded-tr-md' : 'bg-[#242424] text-neutral-100 rounded-tl-md')}>
+            <div className={cx('rounded-2xl px-3 py-1.5 md:px-4 md:py-2.5 text-[14.5px] md:text-sm leading-relaxed whitespace-pre-wrap break-words', mine ? 'bg-primary text-primary-foreground rounded-tr-md' : 'bg-muted text-foreground rounded-tl-md')}>
               {m.voice && <div className="text-xs opacity-70 mb-1 flex items-center gap-1"><Mic size={12} />Voice note · {m.voice.duration}s{m.text ? ' · transcript' : ''}</div>}
               {m.text ? <MessageText text={m.text} secrets={secrets} span={hl} markId={'hl-' + m.id} /> : <span className="opacity-60 text-sm">No transcript</span>}
             </div>
           )}
-          <button type="button" onClick={() => onReply(m)} title="Reply" className="opacity-0 group-hover:opacity-100 focus:opacity-100 p-1.5 rounded-md text-neutral-500 hover:text-white hover:bg-white/5 transition">
+          <button type="button" onClick={() => onReply(m)} title="Reply" className="opacity-0 group-hover:opacity-100 focus:opacity-100 p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-field-hover transition">
             <Reply size={14} />
           </button>
           {owner && (
             <Menu align={mine ? 'right' : 'left'} trigger={toggle => (
-              <button onClick={toggle} title="More" className="opacity-0 group-hover:opacity-100 focus:opacity-100 p-1 rounded-md text-neutral-600 md:text-neutral-500 hover:text-white hover:bg-white/5 transition"><MoreHorizontal size={16} /></button>
+              <button onClick={toggle} title="More" className="opacity-0 group-hover:opacity-100 focus:opacity-100 p-1 rounded-md text-text-tertiary md:text-muted-foreground hover:text-foreground hover:bg-field-hover transition"><MoreHorizontal size={16} /></button>
             )}>
               <MenuItem icon={Reply} onClick={() => onReply(m)}>Reply</MenuItem>
-              <div className="px-3 pt-1.5 pb-1 text-[11px] uppercase tracking-wide text-neutral-500">Record from this message</div>
+              <div className="px-2.5 pt-2.5 pb-1.5 text-label-mono text-text-secondary">Record from this message</div>
               {TYPE_ORDER.filter(t => t !== 'file').map(t => <MenuItem key={t} icon={TYPES[t].icon} onClick={() => onRecord(t, m)}>{TYPES[t].label}</MenuItem>)}
               {m.text && <MenuItem icon={Copy} onClick={async () => toast((await copyText(m.text)) ? 'Copied' : 'Copy blocked')}>Copy text</MenuItem>}
             </Menu>
@@ -261,12 +261,12 @@ function Message({ m, secrets, linked, onRecord, onReply, hl, readings, sugg = [
         {owner && linked.length > 0 && (
           <div className={cx('flex flex-wrap gap-1 mt-1.5', mine && 'justify-end')}>
             {linked.map(({ it, done }, i) => (
-              <button key={it.id + done} onClick={() => openItem(it.id)} className={cx('text-[10px] md:text-[11px] px-1.5 md:px-2 py-0.5 rounded-md ring-1 ring-inset hover:-translate-y-px transition max-w-full truncate', COLOR[TYPES[it.type].color].badge, i >= 2 && !allLinks && 'hidden md:inline-block')}>
+              <button key={it.id + done} onClick={() => openItem(it.id)} className={cx('text-xs md:text-xs px-1.5 md:px-2 py-0.5 rounded-md ring-1 ring-inset hover:-translate-y-px transition max-w-full truncate', COLOR[TYPES[it.type].color].badge, i >= 2 && !allLinks && 'hidden md:inline-block')}>
                 {done === 'updated' ? '↻ updated' : done === 'note' ? '✎ note' : done ? `✓ ${done}` : TYPES[it.type].label}:{it.title.length > 32 ? it.title.slice(0, 32) + '…' : it.title}
               </button>
             ))}
             {/* phones: only the first two records, the rest on tap */}
-            {linked.length > 2 && !allLinks && <button onClick={() => setAllLinks(true)} className="md:hidden text-[10px] px-1.5 py-0.5 rounded-md bg-white/5 text-neutral-400">+{linked.length - 2} more</button>}
+            {linked.length > 2 && !allLinks && <button onClick={() => setAllLinks(true)} className="md:hidden text-xs px-1.5 py-0.5 rounded-md bg-field text-muted-foreground">+{linked.length - 2} more</button>}
           </div>
         )}
         <MessageSuggestions list={sugg} mine={mine} />
@@ -502,8 +502,8 @@ function Composer({ onSend, files, setFiles, replyTo, setReplyTo }) {
     const textContent = range.toString() || (isBlock ? 'code block' : 'code');
     const el = document.createElement(isBlock ? 'pre' : 'code');
     el.className = isBlock
-      ? 'my-1.5 p-2 rounded-lg bg-black/50 font-mono text-[13px] text-sky-200 block'
-      : 'px-1.5 py-0.5 rounded bg-black/40 font-mono text-[0.88em] text-sky-300';
+      ? 'my-1.5 p-2 rounded-lg bg-modal-scrim font-mono text-xs text-primary block'
+      : 'px-1.5 py-0.5 rounded bg-modal-scrim font-mono text-[0.88em] text-primary';
     el.textContent = textContent;
     range.deleteContents();
     range.insertNode(el);
@@ -656,9 +656,9 @@ Write a natural, concise, ready-to-send chat message. Do NOT include greetings l
       {files.length > 0 && (
         <div className="flex flex-wrap gap-2 mb-2">
           {files.map(f => (
-            <span key={f.id} className="flex items-center gap-2 text-xs bg-[#1f1f1f] ring-1 ring-white/10 rounded-lg pl-2.5 pr-1 py-1">
-              <Paperclip size={12} />{f.name}<span className="text-neutral-500">{fmtSize(f.size)}</span>
-              <button onClick={() => setFiles(x => x.filter(y => y.id !== f.id))} className="p-0.5 rounded hover:bg-white/10" title="Remove"><X size={12} /></button>
+            <span key={f.id} className="flex items-center gap-2 text-xs bg-card ring-1 ring-border rounded-lg pl-2.5 pr-1 py-1">
+              <Paperclip size={12} />{f.name}<span className="text-muted-foreground">{fmtSize(f.size)}</span>
+              <button onClick={() => setFiles(x => x.filter(y => y.id !== f.id))} className="p-0.5 rounded hover:bg-field-hover" title="Remove"><X size={12} /></button>
             </span>
           ))}
         </div>
@@ -666,18 +666,18 @@ Write a natural, concise, ready-to-send chat message. Do NOT include greetings l
 
       {/* Floating Selection AI Rephrase Pill */}
       {selectedText.trim().length > 1 && !rec && (
-        <div className="absolute left-4 md:left-10 -top-8 z-20 flex items-center gap-1 bg-[#252525] ring-1 ring-sky-500/40 rounded-xl px-2 py-1 shadow-xl anim-up">
-          <button type="button" onClick={() => setShowRephraseMenu(v => !v)} className="flex items-center gap-1.5 text-xs text-sky-300 font-medium hover:text-white px-1">
-            {aiLoading ? <Loader2 size={13} className="animate-spin text-sky-400" /> : <Sparkles size={13} className="text-sky-400" />}
+        <div className="absolute left-4 md:left-10 -top-8 z-20 flex items-center gap-1 bg-muted ring-1 ring-blue-ring rounded-xl px-2 py-1 shadow-xl anim-up">
+          <button type="button" onClick={() => setShowRephraseMenu(v => !v)} className="flex items-center gap-1.5 text-xs text-primary font-medium hover:text-foreground px-1">
+            {aiLoading ? <Loader2 size={13} className="animate-spin text-primary" /> : <Sparkles size={13} className="text-primary" />}
             Rephrase with AI
           </button>
           {showRephraseMenu && (
-            <div className="absolute left-0 bottom-full mb-1 w-52 bg-[#1e1e1e] ring-1 ring-white/15 rounded-xl p-1 shadow-2xl space-y-0.5">
+            <div className="absolute left-0 bottom-full mb-1 w-52 bg-card ring-1 ring-border rounded-xl p-1 shadow-2xl space-y-0.5">
               {REPHRASE_OPTIONS.map(opt => (
                 <button key={opt.key} type="button" onClick={() => handleRephrase(opt.key)}
-                  className="w-full text-left px-2.5 py-1.5 rounded-lg hover:bg-white/10 flex flex-col transition text-xs">
-                  <span className="font-medium text-neutral-200">{opt.label}</span>
-                  <span className="text-[10px] text-neutral-400">{opt.hint}</span>
+                  className="w-full text-left px-2.5 py-1.5 rounded-lg hover:bg-field-hover flex flex-col transition text-xs">
+                  <span className="font-medium text-foreground">{opt.label}</span>
+                  <span className="text-xs text-muted-foreground">{opt.hint}</span>
                 </button>
               ))}
             </div>
@@ -687,17 +687,17 @@ Write a natural, concise, ready-to-send chat message. Do NOT include greetings l
 
       {/* AI Writing Assistant Popover */}
       {showAi && !rec && (
-        <div className="absolute left-2 md:left-8 right-2 md:right-8 bottom-full mb-2 z-20 bg-[#1d1d1d] ring-1 ring-white/15 rounded-2xl p-3 shadow-2xl anim-up max-w-xl">
-          <div className="flex items-center justify-between pb-2 border-b border-white/5">
-            <span className="text-xs font-semibold text-purple-300 flex items-center gap-1.5"><Sparkles size={14} />AI Writing Assistant</span>
-            <button onClick={() => setShowAi(false)} className="text-neutral-500 hover:text-white"><X size={14} /></button>
+        <div className="absolute left-2 md:left-8 right-2 md:right-8 bottom-full mb-2 z-20 bg-card ring-1 ring-border rounded-2xl p-3 shadow-2xl anim-up max-w-xl">
+          <div className="flex items-center justify-between pb-2 border-b border-border">
+            <span className="text-xs font-medium text-violet flex items-center gap-1.5"><Sparkles size={14} />AI Writing Assistant</span>
+            <button onClick={() => setShowAi(false)} className="text-muted-foreground hover:text-foreground"><X size={14} /></button>
           </div>
           <div className="mt-2 space-y-1">
-            <div className="text-[11px] text-neutral-500 font-medium uppercase tracking-wider">Quick Prompts</div>
+            <div className="text-label-mono text-muted-foreground">Quick Prompts</div>
             <div className="flex flex-wrap gap-1.5">
               {AI_PROMPTS.map(p => (
                 <button key={p.label} type="button" disabled={aiLoading} onClick={() => handleAiGenerate(p.prompt)}
-                  className="text-xs px-2.5 py-1 rounded-lg bg-white/5 hover:bg-white/10 text-neutral-300 hover:text-white ring-1 ring-white/10 transition">
+                  className="text-xs px-2.5 py-1 rounded-lg bg-field hover:bg-field-hover text-foreground hover:text-foreground ring-1 ring-border transition">
                   {p.label}
                 </button>
               ))}
@@ -706,9 +706,9 @@ Write a natural, concise, ready-to-send chat message. Do NOT include greetings l
           <div className="mt-3 flex gap-1.5">
             <input value={aiCustom} onChange={e => setAiCustom(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') handleAiGenerate(aiCustom); }}
               placeholder="Or tell AI what to write… e.g. tell client we deployed the updates"
-              className="flex-1 bg-black/40 ring-1 ring-white/10 rounded-xl px-3 py-1.5 text-xs text-white outline-none focus:ring-purple-400/50" />
+              className="flex-1 bg-modal-scrim ring-1 ring-border rounded-xl px-3 py-1.5 text-xs text-foreground outline-none focus:ring-ring" />
             <button type="button" disabled={aiLoading || !aiCustom.trim()} onClick={() => handleAiGenerate(aiCustom)}
-              className="px-3 py-1.5 rounded-xl bg-purple-600 hover:bg-purple-500 disabled:opacity-40 text-xs text-white font-medium flex items-center gap-1 transition">
+              className="px-3 py-1.5 rounded-xl bg-violet hover:bg-violet/90 disabled:opacity-40 text-xs text-primary-foreground font-medium flex items-center gap-1 transition">
               {aiLoading ? <Loader2 size={13} className="animate-spin" /> : <Sparkles size={13} />}Generate
             </button>
           </div>
@@ -717,15 +717,15 @@ Write a natural, concise, ready-to-send chat message. Do NOT include greetings l
 
       {/* Emoji Picker Popover */}
       {showEmoji && !rec && (
-        <div className="absolute left-4 md:left-14 bottom-full mb-2 z-20 bg-[#1e1e1e] ring-1 ring-white/15 rounded-2xl p-2.5 shadow-2xl anim-up max-w-xs">
-          <div className="flex items-center justify-between pb-1.5 mb-1.5 border-b border-white/5">
-            <span className="text-xs font-medium text-neutral-400">Emojis</span>
-            <button onClick={() => setShowEmoji(false)} className="text-neutral-500 hover:text-white"><X size={13} /></button>
+        <div className="absolute left-4 md:left-14 bottom-full mb-2 z-20 bg-card ring-1 ring-border rounded-2xl p-2.5 shadow-2xl anim-up max-w-xs">
+          <div className="flex items-center justify-between pb-1.5 mb-1.5 border-b border-border">
+            <span className="text-xs font-medium text-muted-foreground">Emojis</span>
+            <button onClick={() => setShowEmoji(false)} className="text-muted-foreground hover:text-foreground"><X size={13} /></button>
           </div>
           <div className="grid grid-cols-7 gap-1 max-h-48 overflow-y-auto pr-1">
             {EMOJIS.map(em => (
               <button key={em} type="button" onClick={() => insertEmoji(em)}
-                className="w-8 h-8 rounded-lg hover:bg-white/10 text-base grid place-items-center transition">
+                className="w-8 h-8 rounded-lg hover:bg-field-hover text-base grid place-items-center transition">
                 {em}
               </button>
             ))}
@@ -735,14 +735,14 @@ Write a natural, concise, ready-to-send chat message. Do NOT include greetings l
 
       {/* #template popover */}
       {tpl && tplMatches.length > 0 && !rec && (
-        <div className="absolute left-10 md:left-24 bottom-full mb-2 z-20 bg-[#1e1e1e] ring-1 ring-white/15 rounded-2xl p-2 shadow-2xl anim-up w-80 max-w-[calc(100vw-2rem)]">
-          <div className="px-2 py-1 text-[11px] font-medium text-neutral-500 uppercase tracking-wider flex items-center gap-1"><Hash size={11} />Templates <span className="ml-auto normal-case tracking-normal text-neutral-600">↑↓ · Enter</span></div>
+        <div className="absolute left-10 md:left-24 bottom-full mb-2 z-20 bg-card ring-1 ring-border rounded-2xl p-2 shadow-2xl anim-up w-80 max-w-[calc(100vw-2rem)]">
+          <div className="px-2 py-1 text-label-mono text-muted-foreground flex items-center gap-1"><Hash size={11} />Templates <span className="ml-auto normal-case tracking-normal text-text-tertiary">↑↓ · Enter</span></div>
           <div className="space-y-0.5 max-h-60 overflow-y-auto">
             {tplMatches.map((t, i) => (
               <button key={t.id} type="button" onMouseDown={e => { e.preventDefault(); insertTemplate(t); }}
-                className={cx('w-full text-left px-2.5 py-1.5 rounded-lg text-xs', i === tpl.i % tplMatches.length ? 'bg-white/10' : 'hover:bg-white/5')}>
-                <div className="font-medium text-sky-300">#{t.shortcut}</div>
-                <div className="text-neutral-400 truncate">{t.text || htmlToMarkdown(t.html)}</div>
+                className={cx('w-full text-left px-2.5 py-1.5 rounded-lg text-xs', i === tpl.i % tplMatches.length ? 'bg-field-hover' : 'hover:bg-field-hover')}>
+                <div className="font-medium text-primary">#{t.shortcut}</div>
+                <div className="text-muted-foreground truncate">{t.text || htmlToMarkdown(t.html)}</div>
               </button>
             ))}
           </div>
@@ -751,61 +751,61 @@ Write a natural, concise, ready-to-send chat message. Do NOT include greetings l
 
       {/* Mention Member Popover */}
       {showMention && !rec && (
-        <div className="absolute left-10 md:left-24 bottom-full mb-2 z-20 bg-[#1e1e1e] ring-1 ring-white/15 rounded-2xl p-2 shadow-2xl anim-up w-56">
-          <div className="px-2 py-1 text-[11px] font-medium text-neutral-500 uppercase tracking-wider flex items-center justify-between">
+        <div className="absolute left-10 md:left-24 bottom-full mb-2 z-20 bg-card ring-1 ring-border rounded-2xl p-2 shadow-2xl anim-up w-56">
+          <div className="px-2 py-1 text-label-mono text-muted-foreground flex items-center justify-between">
             <span>Mention Someone</span>
-            {mentionQuery && <span className="text-sky-400 text-[10px]">@{mentionQuery}</span>}
+            {mentionQuery && <span className="text-primary text-xs">@{mentionQuery}</span>}
           </div>
           <div className="space-y-0.5 max-h-48 overflow-y-auto">
             {showOwner && (
               <button type="button" onClick={() => insertMention(names.owner)}
-                className="w-full text-left px-2.5 py-1.5 rounded-lg hover:bg-white/10 text-xs text-neutral-200 flex items-center justify-between">
-                <span className="font-medium text-sky-300">@{names.owner}</span>
-                <span className="text-[10px] text-neutral-500">Owner</span>
+                className="w-full text-left px-2.5 py-1.5 rounded-lg hover:bg-field-hover text-xs text-foreground flex items-center justify-between">
+                <span className="font-medium text-primary">@{names.owner}</span>
+                <span className="text-xs text-muted-foreground">Owner</span>
               </button>
             )}
             {filteredMembers.map(m => (
               <button key={m.id} type="button" onClick={() => insertMention(m.name)}
-                className="w-full text-left px-2.5 py-1.5 rounded-lg hover:bg-white/10 text-xs text-neutral-200 flex items-center justify-between">
+                className="w-full text-left px-2.5 py-1.5 rounded-lg hover:bg-field-hover text-xs text-foreground flex items-center justify-between">
                 <span>@{m.name}</span>
-                <span className="text-[10px] text-neutral-500">{memberRole(m)}</span>
+                <span className="text-xs text-muted-foreground">{memberRole(m)}</span>
               </button>
             ))}
             {!showOwner && !filteredMembers.length && (
-              <div className="px-2 py-2 text-xs text-neutral-500 text-center">No member matches "@{mentionQuery}"</div>
+              <div className="px-2 py-2 text-xs text-muted-foreground text-center">No member matches "@{mentionQuery}"</div>
             )}
           </div>
         </div>
       )}
 
       {/* Main Slack-style Composer Box */}
-      <div className="bg-[#1b1b1b] ring-1 ring-white/10 rounded-2xl transition focus-within:ring-sky-500/60 overflow-hidden">
+      <div className="bg-card ring-1 ring-border rounded-2xl transition focus-within:ring-ring overflow-hidden">
         {/* Reply Preview Banner */}
         {replyTo && (
-          <div className="flex items-center justify-between bg-black/40 border-l-2 border-sky-400 px-3 py-1.5 text-xs text-neutral-300">
+          <div className="flex items-center justify-between bg-modal-scrim border-l-2 border-primary px-3 py-1.5 text-xs text-foreground">
             <div className="flex items-center gap-2 min-w-0">
-              <Reply size={12} className="text-sky-400 shrink-0" />
-              <span className="font-semibold text-sky-300 shrink-0">Replying to {replyTo.name}:</span>
-              <span className="text-neutral-400 truncate">{replyTo.text}</span>
+              <Reply size={12} className="text-primary shrink-0" />
+              <span className="font-medium text-primary shrink-0">Replying to {replyTo.name}:</span>
+              <span className="text-muted-foreground truncate">{replyTo.text}</span>
             </div>
-            <button type="button" onClick={() => setReplyTo && setReplyTo(null)} className="p-0.5 rounded hover:bg-white/10 text-neutral-400 hover:text-white shrink-0"><X size={14} /></button>
+            <button type="button" onClick={() => setReplyTo && setReplyTo(null)} className="p-0.5 rounded hover:bg-field-hover text-muted-foreground hover:text-foreground shrink-0"><X size={14} /></button>
           </div>
         )}
 
         {/* Top Slack Formatting Bar (Aa toggle) */}
         {showFormat && !rec && (
-          <div className="flex items-center gap-0.5 px-2 py-1 border-b border-white/5 bg-[#171717] overflow-x-auto">
-            <button type="button" onClick={() => formatDoc('bold')} title="Bold (Ctrl+B)" className="p-1.5 rounded hover:bg-white/10 text-neutral-400 hover:text-white"><Bold size={14} /></button>
-            <button type="button" onClick={() => formatDoc('italic')} title="Italic (Ctrl+I)" className="p-1.5 rounded hover:bg-white/10 text-neutral-400 hover:text-white"><Italic size={14} /></button>
-            <button type="button" onClick={() => formatDoc('strikeThrough')} title="Strikethrough" className="p-1.5 rounded hover:bg-white/10 text-neutral-400 hover:text-white"><Strikethrough size={14} /></button>
-            <div className="h-4 w-px bg-white/10 mx-1" />
-            <button type="button" onClick={formatLink} title="Link (Ctrl+K)" className="p-1.5 rounded hover:bg-white/10 text-neutral-400 hover:text-white"><LinkIcon size={14} /></button>
-            <button type="button" onClick={() => formatDoc('insertOrderedList')} title="Numbered list" className="p-1.5 rounded hover:bg-white/10 text-neutral-400 hover:text-white"><ListOrdered size={14} /></button>
-            <button type="button" onClick={() => formatDoc('insertUnorderedList')} title="Bullet list" className="p-1.5 rounded hover:bg-white/10 text-neutral-400 hover:text-white"><List size={14} /></button>
-            <button type="button" onClick={() => formatDoc('formatBlock', 'blockquote')} title="Blockquote" className="p-1.5 rounded hover:bg-white/10 text-neutral-400 hover:text-white"><Quote size={14} /></button>
-            <div className="h-4 w-px bg-white/10 mx-1" />
-            <button type="button" onClick={() => formatCode(false)} title="Inline code" className="p-1.5 rounded hover:bg-white/10 text-neutral-400 hover:text-white"><Code size={14} /></button>
-            <button type="button" onClick={() => formatCode(true)} title="Code block" className="p-1.5 rounded hover:bg-white/10 text-neutral-400 hover:text-white"><Terminal size={14} /></button>
+          <div className="flex items-center gap-0.5 px-2 py-1 border-b border-border bg-card overflow-x-auto">
+            <button type="button" onClick={() => formatDoc('bold')} title="Bold (Ctrl+B)" className="p-1.5 rounded hover:bg-field-hover text-muted-foreground hover:text-foreground"><Bold size={14} /></button>
+            <button type="button" onClick={() => formatDoc('italic')} title="Italic (Ctrl+I)" className="p-1.5 rounded hover:bg-field-hover text-muted-foreground hover:text-foreground"><Italic size={14} /></button>
+            <button type="button" onClick={() => formatDoc('strikeThrough')} title="Strikethrough" className="p-1.5 rounded hover:bg-field-hover text-muted-foreground hover:text-foreground"><Strikethrough size={14} /></button>
+            <div className="h-4 w-px bg-field-hover mx-1" />
+            <button type="button" onClick={formatLink} title="Link (Ctrl+K)" className="p-1.5 rounded hover:bg-field-hover text-muted-foreground hover:text-foreground"><LinkIcon size={14} /></button>
+            <button type="button" onClick={() => formatDoc('insertOrderedList')} title="Numbered list" className="p-1.5 rounded hover:bg-field-hover text-muted-foreground hover:text-foreground"><ListOrdered size={14} /></button>
+            <button type="button" onClick={() => formatDoc('insertUnorderedList')} title="Bullet list" className="p-1.5 rounded hover:bg-field-hover text-muted-foreground hover:text-foreground"><List size={14} /></button>
+            <button type="button" onClick={() => formatDoc('formatBlock', 'blockquote')} title="Blockquote" className="p-1.5 rounded hover:bg-field-hover text-muted-foreground hover:text-foreground"><Quote size={14} /></button>
+            <div className="h-4 w-px bg-field-hover mx-1" />
+            <button type="button" onClick={() => formatCode(false)} title="Inline code" className="p-1.5 rounded hover:bg-field-hover text-muted-foreground hover:text-foreground"><Code size={14} /></button>
+            <button type="button" onClick={() => formatCode(true)} title="Code block" className="p-1.5 rounded hover:bg-field-hover text-muted-foreground hover:text-foreground"><Terminal size={14} /></button>
           </div>
         )}
 
@@ -813,9 +813,9 @@ Write a natural, concise, ready-to-send chat message. Do NOT include greetings l
         <div className="px-2 pt-2 pb-1">
           {rec ? (
             <div className="flex items-center gap-3 px-2 py-2 min-w-0">
-              <span className="wave flex items-center gap-[3px] text-rose-400 h-5">{[0, 1, 2, 3].map(i => <span key={i} style={{ animationDelay: i * 0.12 + 's' }} />)}</span>
-              <span className="text-sm text-rose-300 tabular-nums">{Math.floor((Date.now() - rec.started) / 1000)}s</span>
-              <span className="text-sm text-neutral-400 truncate">{rec.transcript || (rec.live ? 'Listening… transcript appears here' : 'Recording… (no live transcript in this browser)')}</span>
+              <span className="wave flex items-center gap-[3px] text-destructive-foreground h-5">{[0, 1, 2, 3].map(i => <span key={i} style={{ animationDelay: i * 0.12 + 's' }} />)}</span>
+              <span className="text-sm text-destructive-foreground tabular-nums">{Math.floor((Date.now() - rec.started) / 1000)}s</span>
+              <span className="text-sm text-muted-foreground truncate">{rec.transcript || (rec.live ? 'Listening… transcript appears here' : 'Recording… (no live transcript in this browser)')}</span>
             </div>
           ) : (
             <div
@@ -852,30 +852,30 @@ Write a natural, concise, ready-to-send chat message. Do NOT include greetings l
                 }
               }}
               data-placeholder={aiLoading ? 'AI is drafting message…' : `Message (/ for AI writing, @ to mention${templates.length ? ', # for templates' : ''})`}
-              className="w-full bg-transparent outline-none py-1.5 px-2 text-[15px] text-white min-h-[42px] max-h-48 overflow-y-auto leading-relaxed empty:before:content-[attr(data-placeholder)] empty:before:text-neutral-500 empty:before:pointer-events-none focus:outline-none [&_strong]:font-semibold [&_strong]:text-white [&_em]:italic [&_em]:text-neutral-200 [&_del]:line-through [&_del]:opacity-75 [&_code]:px-1.5 [&_code]:py-0.5 [&_code]:rounded [&_code]:bg-black/40 [&_code]:font-mono [&_code]:text-[0.88em] [&_code]:text-sky-300 [&_a]:underline [&_a]:text-sky-300 [&_pre]:p-2 [&_pre]:rounded-lg [&_pre]:bg-black/50 [&_pre]:font-mono [&_pre]:text-[13px] [&_pre]:text-sky-200 [&_blockquote]:border-l-2 [&_blockquote]:border-sky-400 [&_blockquote]:pl-2 [&_blockquote]:italic [&_blockquote]:text-neutral-300"
+              className="w-full bg-transparent outline-none py-1.5 px-2 text-sm text-foreground min-h-[42px] max-h-48 overflow-y-auto leading-relaxed empty:before:content-[attr(data-placeholder)] empty:before:text-muted-foreground empty:before:pointer-events-none focus:outline-none [&_strong]:font-medium [&_strong]:text-foreground [&_em]:italic [&_em]:text-foreground [&_del]:line-through [&_del]:opacity-75 [&_code]:px-1.5 [&_code]:py-0.5 [&_code]:rounded [&_code]:bg-modal-scrim [&_code]:font-mono [&_code]:text-[0.88em] [&_code]:text-primary [&_a]:underline [&_a]:text-primary [&_pre]:p-2 [&_pre]:rounded-lg [&_pre]:bg-modal-scrim [&_pre]:font-mono [&_pre]:text-xs [&_pre]:text-primary [&_blockquote]:border-l-2 [&_blockquote]:border-primary [&_blockquote]:pl-2 [&_blockquote]:italic [&_blockquote]:text-foreground"
             />
           )}
         </div>
 
         {/* Bottom Slack Action Toolbar */}
-        <div className="flex items-center justify-between px-2 py-1.5 border-t border-white/[.04]">
+        <div className="flex items-center justify-between px-2 py-1.5 border-t border-border">
           <div className="flex items-center gap-0.5">
             <input ref={fileRef} type="file" multiple hidden onChange={e => { add(e.target.files); e.target.value = ''; }} />
-            <button type="button" onClick={() => fileRef.current.click()} title="Attach files" className="p-1.5 rounded-lg text-neutral-400 hover:text-white hover:bg-white/10 transition"><Paperclip size={17} /></button>
+            <button type="button" onClick={() => fileRef.current.click()} title="Attach files" className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-field-hover transition"><Paperclip size={17} /></button>
             <button type="button" onClick={() => setShowFormat(v => !v)} title="Toggle formatting bar"
-              className={cx('px-2 py-1 rounded-lg text-xs font-semibold transition', showFormat ? 'bg-sky-500/20 text-sky-300 ring-1 ring-sky-500/30' : 'text-neutral-400 hover:text-white hover:bg-white/10')}>
+              className={cx('px-2 py-1 rounded-lg text-xs font-medium transition', showFormat ? 'bg-primary-soft text-primary ring-1 ring-blue-ring' : 'text-muted-foreground hover:text-foreground hover:bg-field-hover')}>
               Aa
             </button>
             <button type="button" onClick={() => { setShowEmoji(v => !v); setShowMention(false); setShowAi(false); }} title="Add emoji"
-              className={cx('p-1.5 rounded-lg transition', showEmoji ? 'bg-amber-500/20 text-amber-300' : 'text-neutral-400 hover:text-white hover:bg-white/10')}>
+              className={cx('p-1.5 rounded-lg transition', showEmoji ? 'bg-warn-soft text-warn-ink' : 'text-muted-foreground hover:text-foreground hover:bg-field-hover')}>
               <Smile size={17} />
             </button>
             <button type="button" onClick={() => { setShowMention(v => !v); setShowEmoji(false); setShowAi(false); setMentionQuery(''); }} title="Mention someone"
-              className={cx('p-1.5 rounded-lg transition', showMention ? 'bg-sky-500/20 text-sky-300' : 'text-neutral-400 hover:text-white hover:bg-white/10')}>
+              className={cx('p-1.5 rounded-lg transition', showMention ? 'bg-primary-soft text-primary' : 'text-muted-foreground hover:text-foreground hover:bg-field-hover')}>
               <AtSign size={17} />
             </button>
             <button type="button" onClick={() => { setShowAi(v => !v); setShowEmoji(false); setShowMention(false); }} title="AI writing assistant (/)"
-              className={cx('p-1.5 rounded-lg transition flex items-center gap-1 text-xs', showAi ? 'bg-purple-500/25 text-purple-300 ring-1 ring-purple-500/40' : 'text-neutral-400 hover:text-purple-300 hover:bg-white/10')}>
+              className={cx('p-1.5 rounded-lg transition flex items-center gap-1 text-xs', showAi ? 'bg-violet-soft text-violet ring-1 ring-violet-ring' : 'text-muted-foreground hover:text-violet hover:bg-field-hover')}>
               <Sparkles size={16} />
             </button>
           </div>
@@ -884,13 +884,13 @@ Write a natural, concise, ready-to-send chat message. Do NOT include greetings l
             {rec ? (
               <>
                 <Button variant="ghost" size="icon" title="Discard" onClick={cancel}><X size={17} /></Button>
-                <button type="button" onClick={stop} title="Stop and send" className="h-8 w-8 rounded-full grid place-items-center bg-rose-500 text-white" style={{ animation: 'pulse-ring 1.2s infinite' }}><Square size={13} fill="currentColor" /></button>
+                <button type="button" onClick={stop} title="Stop and send" className="h-8 w-8 rounded-full grid place-items-center bg-rose text-primary-foreground" style={{ animation: 'pulse-ring 1.2s infinite' }}><Square size={13} fill="currentColor" /></button>
               </>
             ) : (
               <>
                 {!text.trim() && !files.length && <Button variant="ghost" size="icon" title="Record a voice note" onClick={start}><Mic size={18} /></Button>}
                 {(text.trim() || files.length > 0) && (
-                  <button type="button" onClick={submit} title="Send message" className="h-8 w-8 rounded-full grid place-items-center bg-white text-neutral-900 hover:scale-105 active:scale-95 transition">
+                  <button type="button" onClick={submit} title="Send message" className="h-8 w-8 rounded-full grid place-items-center bg-btn-primary text-btn-primary-fg hover:scale-105 active:scale-95 transition">
                     <ArrowUp size={17} />
                   </button>
                 )}
@@ -1031,20 +1031,20 @@ export default function Chat({ focus }) {
         res.filter(r => r.status === 'rejected').forEach(r => toast(r.reason.message, 'error'));
         setFiles(f => [...f, ...res.filter(r => r.status === 'fulfilled').map(r => r.value)]);
       }}>
-      {drag && <div className="absolute inset-3 z-10 rounded-2xl border-2 border-dashed border-sky-400/70 bg-sky-500/10 grid place-items-center text-sky-200 pointer-events-none">Drop files to attach</div>}
+      {drag && <div className="absolute inset-3 z-10 rounded-2xl border-2 border-dashed border-primary bg-primary-soft grid place-items-center text-primary pointer-events-none">Drop files to attach</div>}
 
       <div className={cx('items-center gap-2 px-3 md:px-8 pt-2 md:pt-3', searching ? 'flex' : 'hidden md:flex')}>
         {searching ? (
-          <div className="flex-1 flex items-center gap-2 bg-[#1b1b1b] ring-1 ring-white/10 rounded-xl px-3 py-1.5 anim-fade">
-            <Search size={15} className="text-neutral-500" />
+          <div className="flex-1 flex items-center gap-2 bg-card ring-1 ring-border rounded-xl px-3 py-1.5 anim-fade">
+            <Search size={15} className="text-muted-foreground" />
             <input autoFocus value={q} onChange={e => setQ(e.target.value)} placeholder="Search this conversation" className="flex-1 min-w-0 bg-transparent outline-none text-sm" />
-            {q && <span className="text-xs text-neutral-500">{list.length} found</span>}
-            <button onClick={() => { setSearching(false); setQ(''); }} className="text-neutral-500 hover:text-white"><X size={15} /></button>
+            {q && <span className="text-xs text-muted-foreground">{list.length} found</span>}
+            <button onClick={() => { setSearching(false); setQ(''); }} className="text-muted-foreground hover:text-foreground"><X size={15} /></button>
           </div>
         ) : (
           <>
             <div className="flex-1 min-w-0 flex items-center gap-3">
-              <span className="text-xs text-neutral-500 whitespace-nowrap hidden lg:inline">{p.messages.length} messages</span>
+              <span className="text-xs text-muted-foreground whitespace-nowrap hidden lg:inline">{p.messages.length} messages</span>
               <ChatTimeBar p={p} me={me} />
             </div>
             {review && pendingCount > 0 && <Badge tone="sky"><Sparkles size={11} />{pendingCount} to review</Badge>}
@@ -1064,7 +1064,7 @@ export default function Chat({ focus }) {
           lastDay = day;
           return (
             <Fragment key={m.id}>
-              {sep && <div className="flex items-center justify-center gap-3 py-2 md:py-3 px-2"><div className="hidden md:block h-px flex-1 bg-white/5" /><span className="text-[11px] uppercase tracking-wide text-neutral-400 md:text-neutral-500 bg-[#1d1d1d] md:bg-transparent rounded-full px-2.5 py-0.5 md:p-0">{day}</span><div className="hidden md:block h-px flex-1 bg-white/5" /></div>}
+              {sep && <div className="flex items-center justify-center gap-3 py-2 md:py-3 px-2"><div className="hidden md:block h-px flex-1 bg-field" /><span className="text-label-mono text-muted-foreground md:text-muted-foreground bg-card md:bg-transparent rounded-full px-2.5 py-0.5 md:p-0">{day}</span><div className="hidden md:block h-px flex-1 bg-field" /></div>}
               <Message m={m} secrets={secrets} linked={bySource[m.id] || []} readings={readings} hl={hl?.id === m.id ? hl.span : null} sugg={byMsg[m.id] || []}
                 onRecord={(type, msg) => setRecord({ type, msg })}
                 onReply={target => setReplyTo({ id: target.id, name: names.msg(target), text: (target.text || target.attachments?.[0]?.name || 'Voice note').slice(0, 140) })} />
@@ -1073,7 +1073,7 @@ export default function Chat({ focus }) {
         })}
         {loose.length > 0 && !ql && (
           <div className="max-w-md mx-auto py-3 space-y-1.5">
-            <div className="text-[11px] text-sky-300/80 flex items-center gap-1.5 px-1"><Sparkles size={11} />{loose.length} more suggestion{loose.length > 1 ? 's' : ''} (from the assistant or files)</div>
+            <div className="text-xs text-primary flex items-center gap-1.5 px-1"><Sparkles size={11} />{loose.length} more suggestion{loose.length > 1 ? 's' : ''} (from the assistant or files)</div>
             {loose.map(s => <SuggestionCard key={s.id} s={s} />)}
           </div>
         )}

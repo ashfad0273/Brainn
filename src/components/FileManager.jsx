@@ -2,7 +2,7 @@ import { useMemo, useRef, useState } from 'react';
 import {
   Search, Upload, Folder, FolderPlus, LayoutGrid, List as ListIcon, Download, ExternalLink, MessageSquareQuote,
   Pencil, Trash2, FolderInput, FileText, Image as ImageIcon, Mic, Film, Link2, Files, ArrowLeft, MoreHorizontal,
-} from 'lucide-react';
+} from '@/lib/icons';
 import { useStore } from '../store';
 import { Sidebar } from './Home';
 import SettingsModal from './Settings';
@@ -82,7 +82,7 @@ export default function FileManager() {
   };
 
   const actions = f => (
-    <Menu trigger={t => <button onClick={e => { e.stopPropagation(); t(); }} className="p-1 rounded-md text-neutral-500 hover:text-white hover:bg-white/10" title="More"><MoreHorizontal size={15} /></button>}>
+    <Menu trigger={t => <button onClick={e => { e.stopPropagation(); t(); }} className="p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-field-hover" title="More"><MoreHorizontal size={15} /></button>}>
       {f.kind === 'link' ? <MenuItem icon={ExternalLink} onClick={() => open(f)}>Open link</MenuItem> : hasFile(f.a) && <MenuItem icon={Download} onClick={() => dl(f.a)}>Download</MenuItem>}
       {f.it.sourceMsg && <MenuItem icon={MessageSquareQuote} onClick={() => { location.hash = `#/p/${f.p.id}/chat/m/${f.it.sourceMsg}`; }}>Show in chat</MenuItem>}
       {canEdit && <MenuItem icon={Pencil} onClick={() => setModal({ kind: 'rename', f, value: f.it.title })}>Rename</MenuItem>}
@@ -94,45 +94,45 @@ export default function FileManager() {
   const thumb = (f, cls) => {
     const I = ICON[f.kind];
     if (f.kind === 'image' && hasFile(f.a)) return <ImageThumb a={f.a} className={cx('block cursor-zoom-in', cls)} imgClass="w-full h-full object-cover" />;
-    return <div className={cx('grid place-items-center bg-gradient-to-br from-cyan-500/10 to-transparent text-cyan-300/70', cls)}><I size={cls.includes('h-28') ? 28 : 16} /></div>;
+    return <div className={cx('grid place-items-center bg-teal-soft text-teal', cls)}><I size={cls.includes('h-28') ? 28 : 16} /></div>;
   };
 
   return (
     <div className="h-full flex">
       <Sidebar active="files" onSettings={t => setSettings(t)} />
       <main className="flex-1 min-w-0 flex flex-col">
-        <div className="shrink-0 border-b border-white/[.06] px-4 md:px-8 py-4 space-y-3">
+        <div className="shrink-0 border-b border-border px-4 md:px-8 py-4 space-y-3">
           <div className="flex flex-wrap items-center gap-2">
-            <a href="#/" className="md:hidden p-1.5 rounded-lg hover:bg-white/5 text-neutral-400"><ArrowLeft size={18} /></a>
-            <h1 className="text-2xl font-semibold tracking-tight flex-1">Files</h1>
-            <div className="flex items-center gap-2 bg-[#181818] ring-1 ring-white/[.08] rounded-xl px-3 focus-within:ring-sky-500/60 w-full sm:w-64 order-last sm:order-none">
-              <Search size={15} className="text-neutral-500" /><input value={q} onChange={e => setQ(e.target.value)} placeholder="Search files" className="bg-transparent outline-none py-2 text-sm w-full" />
+            <a href="#/" className="md:hidden p-1.5 rounded-lg hover:bg-field-hover text-muted-foreground"><ArrowLeft size={18} /></a>
+            <h1 className="text-2xl font-medium tracking-tight flex-1">Files</h1>
+            <div className="flex items-center gap-2 bg-card ring-1 ring-border rounded-xl px-3 focus-within:ring-ring w-full sm:w-64 order-last sm:order-none">
+              <Search size={15} className="text-muted-foreground" /><input value={q} onChange={e => setQ(e.target.value)} placeholder="Search files" className="bg-transparent outline-none py-2 text-sm w-full" />
             </div>
             <Button variant="ghost" size="icon" onClick={() => setGrid(g => { try { localStorage.setItem('pb-files-view', g ? 'list' : 'grid'); } catch { /* private mode */ } return !g; })} title={grid ? 'List view' : 'Grid view'}>{grid ? <ListIcon size={17} /> : <LayoutGrid size={17} />}</Button>
             <input ref={fileRef} type="file" multiple hidden onChange={e => { upload(e.target.files); e.target.value = ''; }} />
             <Button variant="primary" onClick={() => (project ? fileRef.current.click() : toast('Pick a project to upload into', 'error'))} title={project ? `Upload to ${project.name}${folder ? ' / ' + folder : ''}` : 'Pick a project first'}><Upload size={15} />Upload</Button>
           </div>
           <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5">
-            <button onClick={() => { setPid('all'); setFolder(null); }} className={cx('shrink-0 px-3 py-1.5 rounded-lg text-sm', pid === 'all' ? 'bg-white/10 text-white' : 'text-neutral-400 hover:text-white')}>All projects</button>
+            <button onClick={() => { setPid('all'); setFolder(null); }} className={cx('shrink-0 px-3 py-1.5 rounded-lg text-sm', pid === 'all' ? 'bg-field-hover text-foreground' : 'text-muted-foreground hover:text-foreground')}>All projects</button>
             {projects.map(p => (
-              <button key={p.id} onClick={() => { setPid(p.id); setFolder(null); }} className={cx('shrink-0 flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-sm', pid === p.id ? 'bg-white/10 text-white' : 'text-neutral-400 hover:text-white')}>
-                <ProjectAvatar p={p} className="w-5 h-5" rounded="rounded-md" text="text-[10px]" />{p.name}<span className="text-xs text-neutral-600">{all.filter(f => f.p.id === p.id).length}</span>
+              <button key={p.id} onClick={() => { setPid(p.id); setFolder(null); }} className={cx('shrink-0 flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-sm', pid === p.id ? 'bg-field-hover text-foreground' : 'text-muted-foreground hover:text-foreground')}>
+                <ProjectAvatar p={p} className="w-5 h-5" rounded="rounded-md" text="text-xs" />{p.name}<span className="text-xs text-text-tertiary">{all.filter(f => f.p.id === p.id).length}</span>
               </button>
             ))}
           </div>
           {project && (
             <div className="flex items-center gap-1.5 flex-wrap">
-              <button onClick={() => setFolder(null)} className={cx('flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs ring-1 ring-inset', folder === null ? 'bg-sky-500/15 ring-sky-500/40 text-sky-200' : 'ring-white/10 text-neutral-400 hover:text-white')}><Folder size={12} />Everything</button>
-              <button onClick={() => setFolder('')} className={cx('flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs ring-1 ring-inset', folder === '' ? 'bg-sky-500/15 ring-sky-500/40 text-sky-200' : 'ring-white/10 text-neutral-400 hover:text-white')}><Folder size={12} />Not in a folder</button>
-              {folders.map(fd => <button key={fd} onClick={() => setFolder(fd)} className={cx('flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs ring-1 ring-inset', folder === fd ? 'bg-sky-500/15 ring-sky-500/40 text-sky-200' : 'ring-white/10 text-neutral-300 hover:text-white')}><Folder size={12} />{fd}</button>)}
-              {canEdit && <button onClick={() => setModal({ kind: 'folder', value: '' })} className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs text-neutral-500 hover:text-white"><FolderPlus size={12} />New folder</button>}
+              <button onClick={() => setFolder(null)} className={cx('flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs ring-1 ring-inset', folder === null ? 'bg-primary-soft ring-blue-ring text-primary' : 'ring-border text-muted-foreground hover:text-foreground')}><Folder size={12} />Everything</button>
+              <button onClick={() => setFolder('')} className={cx('flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs ring-1 ring-inset', folder === '' ? 'bg-primary-soft ring-blue-ring text-primary' : 'ring-border text-muted-foreground hover:text-foreground')}><Folder size={12} />Not in a folder</button>
+              {folders.map(fd => <button key={fd} onClick={() => setFolder(fd)} className={cx('flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs ring-1 ring-inset', folder === fd ? 'bg-primary-soft ring-blue-ring text-primary' : 'ring-border text-foreground hover:text-foreground')}><Folder size={12} />{fd}</button>)}
+              {canEdit && <button onClick={() => setModal({ kind: 'folder', value: '' })} className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs text-muted-foreground hover:text-foreground"><FolderPlus size={12} />New folder</button>}
             </div>
           )}
           <div className="flex items-center gap-1 flex-wrap">
             {KINDS.map(([k, l, I]) => (
-              <button key={k} onClick={() => setKind(k)} className={cx('flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs', kind === k ? 'bg-white text-neutral-900' : 'text-neutral-400 hover:text-white')}><I size={12} />{l}</button>
+              <button key={k} onClick={() => setKind(k)} className={cx('flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs', kind === k ? 'bg-card text-text-figure shadow-button' : 'text-muted-foreground hover:text-foreground')}><I size={12} />{l}</button>
             ))}
-            <span className="ml-auto text-xs text-neutral-500">{list.length} item{list.length === 1 ? '' : 's'}{size ? ` · ${fmtSize(size)}` : ''}</span>
+            <span className="ml-auto text-xs text-muted-foreground">{list.length} item{list.length === 1 ? '' : 's'}{size ? ` · ${fmtSize(size)}` : ''}</span>
           </div>
         </div>
 
@@ -143,32 +143,32 @@ export default function FileManager() {
           {grid ? (
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
               {list.map(f => (
-                <div key={f.it.id} className="group rounded-2xl bg-[#181818] ring-1 ring-white/[.06] hover:ring-white/15 overflow-hidden transition">
+                <div key={f.it.id} className="group rounded-2xl bg-card ring-1 ring-border hover:ring-border-strong overflow-hidden transition">
                   <div onClick={() => open(f)} className="cursor-pointer">{thumb(f, 'h-28 w-full')}</div>
                   <div className="p-2.5">
                     <div className="flex items-start gap-1">
                       <div className="min-w-0 flex-1">
                         <div className="text-sm truncate" title={f.it.title}>{f.it.title}</div>
-                        <div className="text-[11px] text-neutral-500 truncate">{f.p.name}{f.it.folder ? ` / ${f.it.folder}` : ''}</div>
+                        <div className="text-xs text-muted-foreground truncate">{f.p.name}{f.it.folder ? ` / ${f.it.folder}` : ''}</div>
                       </div>
                       {actions(f)}
                     </div>
-                    <div className="text-[11px] text-neutral-600 mt-1">{f.it.file?.size ? fmtSize(f.it.file.size) + ' · ' : ''}{fmtRel(f.it.createdAt)}</div>
+                    <div className="text-xs text-text-tertiary mt-1">{f.it.file?.size ? fmtSize(f.it.file.size) + ' · ' : ''}{fmtRel(f.it.createdAt)}</div>
                   </div>
                 </div>
               ))}
             </div>
           ) : (
-            <div className="divide-y divide-white/[.05] rounded-2xl ring-1 ring-white/[.06] overflow-hidden">
+            <div className="divide-y divide-border rounded-2xl ring-1 ring-border overflow-hidden">
               {list.map(f => (
-                <div key={f.it.id} className="flex items-center gap-3 px-3 py-2 hover:bg-white/[.02]">
+                <div key={f.it.id} className="flex items-center gap-3 px-3 py-2 hover:bg-field-hover">
                   <button onClick={() => open(f)} className="shrink-0 w-9 h-9 rounded-lg overflow-hidden">{thumb(f, 'w-9 h-9')}</button>
                   <button onClick={() => open(f)} className="min-w-0 flex-1 text-left">
                     <div className="text-sm truncate">{f.it.title}</div>
-                    <div className="text-[11px] text-neutral-500 truncate">{f.p.name}{f.it.folder ? ` / ${f.it.folder}` : ''} · {f.it.category || 'Other'}</div>
+                    <div className="text-xs text-muted-foreground truncate">{f.p.name}{f.it.folder ? ` / ${f.it.folder}` : ''} · {f.it.category || 'Other'}</div>
                   </button>
-                  <span className="hidden sm:block text-xs text-neutral-500 w-20 text-right">{f.it.file?.size ? fmtSize(f.it.file.size) : f.kind === 'link' ? 'link' : ''}</span>
-                  <span className="hidden md:block text-xs text-neutral-600 w-24 text-right">{fmtRel(f.it.createdAt)}</span>
+                  <span className="hidden sm:block text-xs text-muted-foreground w-20 text-right">{f.it.file?.size ? fmtSize(f.it.file.size) : f.kind === 'link' ? 'link' : ''}</span>
+                  <span className="hidden md:block text-xs text-text-tertiary w-24 text-right">{fmtRel(f.it.createdAt)}</span>
                   {actions(f)}
                 </div>
               ))}

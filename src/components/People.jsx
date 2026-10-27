@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Moon, Sun, Sunset } from 'lucide-react';
+import { Moon, Sun, Sunset } from '@/lib/icons';
 import { useStore } from '../store';
 import { browserTz } from '../lib/api';
 import { personNow, overlapWindows, fmtWindows, tzCity } from '../lib/time';
@@ -32,9 +32,9 @@ export function useZones() {
 }
 
 const MOODS = {
-  work: { icon: Sun, cls: 'text-emerald-300', dot: 'bg-emerald-400', text: 'working hours' },
-  evening: { icon: Sunset, cls: 'text-amber-300', dot: 'bg-amber-400', text: 'outside working hours' },
-  night: { icon: Moon, cls: 'text-neutral-400', dot: 'bg-neutral-500', text: 'probably asleep' },
+  work: { icon: Sun, cls: 'text-pos', dot: 'bg-green', text: 'working hours' },
+  evening: { icon: Sunset, cls: 'text-warn-ink', dot: 'bg-amber', text: 'outside working hours' },
+  night: { icon: Moon, cls: 'text-muted-foreground', dot: 'bg-grey-400', text: 'probably asleep' },
 };
 function moodOf(now) {
   if (now.working) return MOODS.work;
@@ -51,11 +51,11 @@ export function ZoneChip({ name, zone, mine, compact }) {
     (same ? '' : windows.length ? ` Overlap with your hours: ${fmtWindows(windows)} your time.` : ' Your working hours don’t overlap — catch them early or late.');
   const Icon = mood.icon;
   return (
-    <span title={tip} className={cx('inline-flex items-center gap-1.5 whitespace-nowrap rounded-full bg-white/[.04] ring-1 ring-inset ring-white/[.06] px-2 py-0.5 text-[11px]', mood.cls)}>
+    <span title={tip} className={cx('inline-flex items-center gap-1.5 whitespace-nowrap rounded-full bg-field ring-1 ring-inset ring-border px-2 py-0.5 text-xs', mood.cls)}>
       <Icon size={11} />
-      <span className="text-neutral-300">{name.split(' ')[0]}</span>
+      <span className="text-foreground">{name.split(' ')[0]}</span>
       <span className="tabular-nums">{now.label}</span>
-      {!compact && <span className="text-neutral-500">{now.day}</span>}
+      {!compact && <span className="text-muted-foreground">{now.day}</span>}
     </span>
   );
 }
@@ -65,8 +65,8 @@ export function ZoneLine({ name, sub, zone, mine }) {
   useNow();
   if (!zone) return (
     <div className="flex items-center gap-2 text-sm">
-      <span className="flex-1 min-w-0 truncate text-neutral-300">{name}{sub && <span className="text-neutral-600"> · {sub}</span>}</span>
-      <span className="text-[11px] text-neutral-600">time zone unknown</span>
+      <span className="flex-1 min-w-0 truncate text-foreground">{name}{sub && <span className="text-text-tertiary"> · {sub}</span>}</span>
+      <span className="text-xs text-text-tertiary">time zone unknown</span>
     </div>
   );
   const now = personNow(zone), mood = moodOf(now), windows = overlapWindows(mine, zone);
@@ -75,12 +75,12 @@ export function ZoneLine({ name, sub, zone, mine }) {
     <div className="text-sm">
       <div className="flex items-center gap-2">
         <span className={cx('w-1.5 h-1.5 rounded-full shrink-0', mood.dot)} />
-        <span className="flex-1 min-w-0 truncate text-neutral-200">{name}{sub && <span className="text-neutral-500"> · {sub}</span>}</span>
+        <span className="flex-1 min-w-0 truncate text-foreground">{name}{sub && <span className="text-muted-foreground"> · {sub}</span>}</span>
         <span className={cx('text-xs tabular-nums', mood.cls)}>{now.label}</span>
       </div>
-      <div className="pl-3.5 text-[11px] text-neutral-500 leading-snug">
+      <div className="pl-3.5 text-xs text-muted-foreground leading-snug">
         {tzCity(zone.tz)} · {mood.text}{now.weekend ? ' (weekend)' : ''}
-        {!same && <><br />{windows.length ? <>Best time to reach: <span className="text-neutral-300">{fmtWindows(windows)}</span> your time</> : 'No overlap with your hours'}</>}
+        {!same && <><br />{windows.length ? <>Best time to reach: <span className="text-foreground">{fmtWindows(windows)}</span> your time</> : 'No overlap with your hours'}</>}
       </div>
     </div>
   );
