@@ -10,24 +10,28 @@
 // (deleted: true) that hides it everywhere and wins when tabs merge; its trail stays in the JSON.
 
 import { uid, now, norm, secureDigits, overlap, hashId } from './util';
-import { mergeProject, dedupeProjects, union, newer, byKey } from './merge';
-import { TYPES, SENSITIVE_CATS, REPLACED_STATUS, SOLVED_STATUS, isActive, DEFAULT_PERMS, MEMBER_ROLES } from './meta';
+import { mergeProject, union, newer, byKey } from './merge';
+import { TYPES, SENSITIVE_CATS, REPLACED_STATUS, SOLVED_STATUS, isActive, DEFAULT_PERMS, MEMBER_ROLES, PROJECT_STATUS } from './meta';
 
 export const defaultSettings = () => ({
   ownerName: 'You', workspaceName: 'My workspace', apiKey: '', model: 'gemini-3.5-flash-lite',
   useGemini: true, autoAnalyze: true, settingsAt: 0,
   // provider: 'rules' | 'cloudflare' | 'gemini' ('' = derive from the Gemini key, for older workspaces)
   provider: '', workerUrl: '', workerToken: '', cfModel: '',
+  // organization (Settings → Organization) and message templates (#shortcut in the composer)
+  org: { name: '', logo: '', tz: '', workStart: '09:00', workEnd: '18:00', color: '#0ea5e9' },
+  templates: [],
 });
 
 export function log(p, actor, action, ref = null, data = null) {
   p.log.push({ id: uid('e'), ts: now(), actor, action, ref, data });
 }
 
-export function newProject({ id, name, client = '', description = '', color = '#0ea5e9', spaceId = null, cover = null, avatar = null }) {
+export function newProject({ id, name, client = '', description = '', color = '#0ea5e9', spaceId = null, cover = null, avatar = null, deadline = '', status = 'in_progress' }) {
   const t = now();
   const p = {
     id: id || uid('p'), name, client, description, color, spaceId, cover, avatar, archived: false, createdAt: t, metaAt: t,
+    deadline, status: PROJECT_STATUS[status] ? status : 'in_progress', progressOverride: null, fileFolders: [],
     members: [], messages: [], items: [], suggestions: [], summaries: [], asks: [], log: [],
   };
   log(p, 'owner', 'project.create', null, { name });
@@ -92,7 +96,55 @@ export function addItem(p, actor, d) {
 
 /** Items that are not deleted. Views, AI context and counts use these. */
 export const liveItems = p => p.items.filter(i => !i.deleted);
-export const liveView = p => (p.items.some(i => i.deleted) ? { ...p, items: liveItems(p) } : p);
+/** The project as views and the AI see it: no deleted records, no hidden messages or suggestions about them. */
+export function liveView(p) {
+  const goneMsgs = p.messages.some(m => m.deleted);
+  if (!goneMsgs && !p.items.some(i => i.deleted)) return p;
+  const hidden = new Set(p.messages.filter(m => m.deleted).map(m => m.id));
+  return {
+    ...p, items: liveItems(p),
+    ...(goneMsgs ? { messages: p.messages.filter(m => !m.deleted), suggestions: p.suggestions.filter(s => !hidden.has(s.msg)) } : {}),
+  };
+}
+
+/* ---------------- project status & progress ---------------- */
+
+/** Share of the work done: tasks done + requirements delivered, out of everything not cancelled/dropped. */
+export function autoProgress(p) {
+  const its = liveItems(p);
+  const tasks = its.filter(i => i.type === 'task' && i.status !== 'cancelled');
+  const reqs = its.filter(i => i.type === 'requirement' && i.status !== 'dropped');
+  const total = tasks.length + reqs.length;
+  if (!total) return 0;
+  const done = tasks.filter(i => i.status === 'done').length + reqs.filter(i => i.status === 'delivered').length;
+  return Math.round((done / total) * 100);
+}
+/** → { value, auto, manual } — a manual override wins; a completed project is always 100. */
+export function projectProgress(p) {
+  const auto = autoProgress(p);
+  if (p.status === 'completed') return { value: 100, auto, manual: false };
+  const manual = Number.isFinite(p.progressOverride) && p.progressOverride !== null;
+  return { value: manual ? p.progressOverride : auto, auto, manual };
+}
+/** Days until the deadline (negative = overdue), or null without one. */
+export function daysLeft(p) {
+  if (!p.deadline) return null;
+  const [y, m, d] = p.deadline.split('-').map(Number);
+  const end = new Date(y, m - 1, d), today = new Date();
+  today.setHours(0, 0, 0, 0);
+  return Math.round((end - today) / 86400000);
+}
+export function timeLeftLabel(p) {
+  if (p.status === 'completed') return 'Completed';
+  if (p.status === 'cancelled') return 'Cancelled';
+  const n = daysLeft(p);
+  if (n === null) return 'No deadline';
+  if (n === 0) return 'Due today';
+  if (n < 0) return `${-n} day${n === -1 ? '' : 's'} overdue`;
+  if (n < 14) return `${n} day${n === 1 ? '' : 's'} left`;
+  const w = Math.round(n / 7);
+  return n < 60 ? `${w} weeks left` : `${Math.round(n / 30)} months left`;
+}
 
 /** Real delete for a record created by mistake (different from cancelling it). Leaves a tombstone. */
 export function deleteItem(p, actor, id, reason = '') {
@@ -114,7 +166,7 @@ export function setStatus(p, actor, id, status, { msg = null, note = '' } = {}) 
   it.updatedAt = t;
 }
 
-const EDITABLE = ['title', 'detail', 'value', 'category', 'priority', 'due', 'assignee', 'scope'];
+const EDITABLE = ['title', 'detail', 'value', 'category', 'priority', 'due', 'assignee', 'scope', 'folder'];
 export function editItem(p, actor, id, patch, { msg = null, note = '' } = {}) {
   const it = p.items.find(i => i.id === id);
   if (!it || it.deleted) return;
@@ -278,7 +330,7 @@ export function prepareSuggestions(p, ops, engine, { askId = null, attachment = 
     const assignee = String(raw.assignee || '');
     const s = {
       ts: t, updatedAt: t, msg, askId, op, type, targetId: target?.id || null,
-      title: String(raw.title || '').trim().slice(0, 200), detail: String(raw.detail || '').slice(0, 2000),
+      title: String(raw.title || '').replace(/\*\*|__|~~|`/g, '').trim().slice(0, 200), detail: String(raw.detail || '').slice(0, 2000),
       value: cleanValue(raw.value), category, status,
       priority: ['low', 'normal', 'high'].includes(raw.priority) ? raw.priority : 'normal',
       due: /^\d{4}-\d{2}-\d{2}$/.test(raw.due || '') ? raw.due : '',
@@ -398,6 +450,10 @@ export const maskText = (text, values) => values.reduce((t, v) => t.split(v).joi
 
 const touch = (m, t = now()) => { m.updatedAt = t; };
 export const activeMembers = p => (p.members || []).filter(m => !m.revokedAt);
+/** The signed-in invited person's own membership in a project. */
+export const myMember = (p, user) => (user ? (p.members || []).find(m => m.userId === user.id && !m.revokedAt) || null : null);
+/** Who sees AI suggestions and may act on them: the owner, and people given that permission. */
+export const canReview = (role, me) => role === 'owner' || !!me?.perms?.suggestions;
 /** The person shown as "the client": first active member with the client role, then any member. */
 export const primaryClient = p => { const a = activeMembers(p); return a.find(m => m.role === 'client') || a[0] || null; };
 
@@ -422,11 +478,12 @@ export function namesFor(p, ownerName = 'You') {
   };
 }
 
-export function addMember(p, actor, { id = uid('mb_'), name, role = 'client', designation = '', perms = DEFAULT_PERMS }) {
+/** Gives a person's account (userId) access to the project. Their label from the People list becomes the role. */
+export function addMember(p, actor, { id = uid('mb_'), userId = null, email = '', name, role = 'client', designation = '', perms = DEFAULT_PERMS }) {
   const t = now();
   const m = {
-    id, name: name.trim(), role: MEMBER_ROLES[role] ? role : 'other', designation: role === 'other' ? designation.trim() : '',
-    perms: { ...perms }, pin: secureDigits(4), token: uid() + uid(), createdAt: t, updatedAt: t, revokedAt: null,
+    id, userId, email, name: name.trim(), role: MEMBER_ROLES[role] ? role : 'other', designation: role === 'other' ? designation.trim() : '',
+    perms: { ...perms }, createdAt: t, updatedAt: t, revokedAt: null,
   };
   p.members.push(m);
   p.metaAt = t;
@@ -441,22 +498,14 @@ export function updateMember(p, actor, id, patch) {
   if (patch.role && MEMBER_ROLES[patch.role]) next.role = patch.role;
   if ('designation' in patch) next.designation = (next.role || m.role) === 'other' ? String(patch.designation || '').trim() : '';
   if (patch.perms) next.perms = { ...patch.perms };
+  if (patch.userId) next.userId = patch.userId;
+  if ('email' in patch) next.email = String(patch.email || '');
   const changed = Object.keys(next).filter(k => JSON.stringify(next[k]) !== JSON.stringify(m[k]));
   if (!changed.length) return;
   changed.forEach(k => { m[k] = next[k]; });
   touch(m);
   p.metaAt = now();
   log(p, actor, changed.includes('perms') && changed.length === 1 ? 'member.perms' : 'member.update', id, { name: m.name, fields: changed });
-}
-/** New PIN and link for one member; the old ones stop working. */
-export function resetMemberAccess(p, actor, id) {
-  const m = p.members.find(x => x.id === id);
-  if (!m || m.revokedAt) return;
-  const t = now();
-  Object.assign(m, { pin: secureDigits(4), token: uid() + uid() });
-  touch(m, t);
-  p.metaAt = t;
-  log(p, actor, 'member.reset', id, { name: m.name });
 }
 export function revokeMember(p, actor, id) {
   const m = p.members.find(x => x.id === id);
@@ -485,6 +534,10 @@ export function normalizeProject(p) {
     description: '', spaceId: null, archived: false, metaAt: 0, cover: null, avatar: null,
     messages: [], items: [], suggestions: [], summaries: [], asks: [], log: [], ...p,
   };
+  if (!PROJECT_STATUS[q.status]) q.status = q.archived ? 'completed' : 'in_progress';
+  if (typeof q.deadline !== 'string') q.deadline = '';
+  if (q.progressOverride === undefined) q.progressOverride = null;
+  if (!Array.isArray(q.fileFolders)) q.fileFolders = [];
   if (!Array.isArray(q.members)) q.members = migrateInvites(q);
   delete q.invite;
   delete q.inviteHistory;
@@ -492,18 +545,65 @@ export function normalizeProject(p) {
 }
 export function normalizeState(s) {
   s = s || {};
-  const projs = dedupeProjects((s.projects || []).map(normalizeProject));
-  return { version: 1, ...s, settings: { ...defaultSettings(), ...(s.settings || {}) }, spaces: s.spaces || [], projects: projs };
+  const d = defaultSettings(), settings = { ...d, ...(s.settings || {}) };
+  settings.org = { ...d.org, ...(s.settings?.org || {}) };
+  if (!Array.isArray(settings.templates)) settings.templates = [];
+  return { version: 1, ...s, settings, spaces: s.spaces || [], projects: (s.projects || []).map(normalizeProject) };
 }
 
-export { mergeProject, dedupeProjects };
+export { mergeProject };
 export function mergeState(a, b) {
   a = normalizeState(a); b = normalizeState(b);
   const settings = (b.settings.settingsAt || 0) > (a.settings.settingsAt || 0) ? b.settings : a.settings;
-  const pm = new Map();
-  for (const p of [...a.projects, ...b.projects]) {
-    pm.set(p.id, pm.has(p.id) ? mergeProject(pm.get(p.id), p) : p);
+  const pm = new Map(a.projects.map(p => [p.id, p]));
+  for (const p of b.projects) pm.set(p.id, pm.has(p.id) ? mergeProject(pm.get(p.id), p) : p);
+  return { ...a, settings, spaces: union(a.spaces, b.spaces, newer, 'createdAt'), projects: [...pm.values()].sort(byKey('createdAt')) };
+}
+
+/* ---------------- demo duplicates ---------------- */
+
+/** The two demo projects. Every browser used to build its own copy under these ids, dated from the day it was built. */
+export const DEMO_IDS = ['p1jftgiae4', 'ph35pwtae5'];
+const DAY = 86400000;
+
+/**
+ * Two demo copies merged into one project show every message twice, a few days apart. Keep the earliest copy
+ * of each message, hide the others (a tombstone, so they stay hidden when copies merge again), point records
+ * at the kept message and hide records / ignore suggestions that were made twice. Returns true if it changed p.
+ */
+export function hideDemoDuplicates(p) {
+  if (!DEMO_IDS.includes(p.id)) return false;
+  const groups = new Map();
+  for (const m of p.messages) {
+    if (m.deleted) continue;
+    const k = [m.from, m.memberId || '', m.text, (m.attachments || []).map(a => a.name).join('|')].join('\u0001');
+    (groups.get(k) || groups.set(k, []).get(k)).push(m);
   }
-  const deduped = dedupeProjects([...pm.values()]);
-  return { ...a, settings, spaces: union(a.spaces, b.spaces, newer, 'createdAt'), projects: deduped.sort(byKey('createdAt')) };
+  const keep = new Map(); // hidden message id → kept message id
+  for (const list of groups.values()) {
+    if (list.length < 2) continue;
+    list.sort((a, b) => a.ts - b.ts);
+    for (const m of list.slice(1)) {
+      const off = (m.ts - list[0].ts) % DAY;
+      if (off < 120000 || DAY - off < 120000) keep.set(m.id, list[0].id); // same time of day, whole days apart
+    }
+  }
+  if (!keep.size) return false;
+  const t = now();
+  for (const m of p.messages) if (keep.has(m.id)) Object.assign(m, { deleted: true, deletedAt: t, deletedReason: 'duplicate demo message' });
+  const seen = new Set(p.items.filter(i => !i.deleted && !keep.has(i.sourceMsg)).map(i => `${i.type}|${norm(i.title)}`));
+  for (const it of p.items) {
+    if (it.deleted || !keep.has(it.sourceMsg)) continue;
+    const k = `${it.type}|${norm(it.title)}`;
+    if (seen.has(k)) Object.assign(it, { deleted: true, deletedAt: t, deletedBy: 'system', updatedAt: t });
+    else { it.sourceMsg = keep.get(it.sourceMsg); it.updatedAt = t; seen.add(k); }
+  }
+  const pending = new Set(p.suggestions.filter(s => !keep.has(s.msg)).map(s => `${s.op}|${s.type}|${norm(s.title)}|${s.status || ''}`));
+  for (const s of p.suggestions) {
+    if (!keep.has(s.msg)) continue;
+    const k = `${s.op}|${s.type}|${norm(s.title)}|${s.status || ''}`;
+    if (pending.has(k) && s.state === 'pending') Object.assign(s, { state: 'ignored', updatedAt: t, reason: 'Duplicate of a demo suggestion' });
+    else { s.msg = keep.get(s.msg); s.updatedAt = t; pending.add(k); }
+  }
+  return true;
 }

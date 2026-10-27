@@ -30,14 +30,30 @@ npx wrangler d1 execute project-brain-db --remote --file=schema.sql
 npx wrangler deploy
 ```
 
-Invite links opened in another browser need to know where this Worker is. Set `VITE_WORKER_URL`
-(see `.env.example`) in `.env.local` or in the Pages build settings before `npm run build`.
+Gemini: set the key in the app (Settings → AI). It's stored encrypted on the server, never shown again (only the
+last 4 characters) and can be replaced or removed any time. Everyone you invite uses it through the server without
+seeing it, with `AI_DAILY_LIMIT` requests a day each (wrangler.toml); you have no limit. A `GEMINI_API_KEY` Worker
+secret still works as a fallback.
 
-Member portal: the PIN is checked here, never sent to the browser; a link locks for 15 minutes after
-5 wrong PINs. Owner pushes are merged with what's stored (never overwritten), so messages members post
-through the portal are kept. Vault records and API keys are never uploaded.
+Invitations: Cloudflare emails the invitation link (Cloudflare Email Service) once it's set up. That needs:
 
-Wrangler prints the Worker URL, e.g. `https://project-brain-ai.<your-subdomain>.workers.dev`.
+1. A domain added to Cloudflare, onboarded for sending: `npx wrangler email sending enable yourdomain.com`
+2. The Workers Paid plan (on Free, Cloudflare only emails addresses you've verified yourself)
+3. In `wrangler.toml`: uncomment the `[[send_email]]` binding named `EMAIL` and set `EMAIL_FROM`, then deploy
+
+Until then the app shows each invitation link for you to copy and send; the invite flow is the same either way.
+
+The app finds the Worker through `VITE_WORKER_URL` (see `.env.example`), set in `.env.local` or in the Pages
+build settings before `npm run build`.
+
+## Accounts
+
+The first time the app opens against this Worker it asks for the **setup code** — your `APP_TOKEN` — and creates
+the owner account (email + password). After that, everyone signs in with email + password. You invite people from
+Settings → People (or a project's Members) with a label (client, designer, developer, …); they get a link, set a
+password, and see only the projects you add them to, limited to what you switch on in each one — including
+whether they may review AI suggestions. Old PIN links no longer work; re-invite those people by email from the
+project's Members (their past messages stay attributed to them).
 
 ## Connect the app
 

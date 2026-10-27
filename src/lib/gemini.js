@@ -1,11 +1,19 @@
 // AI calls for Project Brain. Two providers:
-//   gemini     – Google Generative Language API, called from the browser with the user's key
-//   cloudflare – the user's own Worker in front of Workers AI (see /worker)
+//   gemini     – Google Generative Language API
+//   cloudflare – Workers AI (Llama)
+// With a sync server (lib/api) both run there with the server's keys, for the owner and everyone invited.
+// Without one (local-only mode) Gemini is called from the browser with the owner's own key.
 // Everything sent is redacted first (lib/redact): secrets become [SECRET_n] placeholders.
 
 import { GLOSSARY } from './shorthand';
 import { todayISO } from './util';
 import { createRedactor } from './redact';
+import { hasServer, api } from './api';
+
+/** What the server can run, from /v1/auth/me or the member workspace ({ gemini: has a key }). */
+let serverAi = { gemini: false };
+export const setServerAi = x => { serverAi = { ...serverAi, ...x }; };
+export const serverAiStatus = () => serverAi;
 
 const BASE = 'https://generativelanguage.googleapis.com/v1beta';
 const modelId = m => (m || '').trim().replace(/^models\//, '');
@@ -14,9 +22,10 @@ const modelId = m => (m || '').trim().replace(/^models\//, '');
 
 export const PROVIDERS = { rules: 'Built-in rules', cloudflare: 'Cloudflare AI', gemini: 'Gemini' };
 /** Older workspaces only had a Gemini key + toggle; derive the provider from that. */
-export const providerOf = s => s.provider || (s.apiKey && s.useGemini ? 'gemini' : 'rules');
+export const providerOf = s => s.provider || (hasServer() ? 'gemini' : s.apiKey && s.useGemini ? 'gemini' : 'rules');
 export function aiReady(s) {
   const pv = providerOf(s);
+  if (hasServer()) return pv === 'gemini' ? serverAi.gemini : pv === 'cloudflare';
   if (pv === 'gemini') return !!s.apiKey;
   if (pv === 'cloudflare') return !!(s.workerUrl && s.workerToken);
   return false;
@@ -75,12 +84,23 @@ async function callCloudflare(settings, prompt, temperature, schema) {
   return j.output;
 }
 
+/** The server runs the provider with its own keys. The owner's chosen provider/model are passed so a test works before saving. */
+async function callServer(settings, prompt, { temperature, schema, images, json, system }) {
+  const pv = providerOf(settings);
+  const r = await api('/v1/ai', {
+    method: 'POST',
+    json: { prompt, system, schema, images, json, temperature, provider: pv === 'rules' ? undefined : pv, model: pv === 'cloudflare' ? settings.cfModel || undefined : settings.model || undefined },
+  });
+  return r.output;
+}
+
 /** Ask the configured provider for JSON. Retries once when the reply isn't valid JSON. */
 export async function generate(settings, prompt, { temperature = 0.2, schema, images } = {}) {
   const pv = providerOf(settings);
   if (images?.length && pv !== 'gemini') throw new Error('only Gemini can look at images');
   const once = async text => {
-    const out = pv === 'cloudflare' ? await callCloudflare(settings, text, temperature, schema) : await callGemini(settings, text, temperature, images);
+    const out = hasServer() ? await callServer(settings, text, { temperature, schema, images, json: true, system: SYSTEM_JSON })
+      : pv === 'cloudflare' ? await callCloudflare(settings, text, temperature, schema) : await callGemini(settings, text, temperature, images);
     return out && typeof out === 'object' ? out : parseJSON(out ?? '');
   };
   try { return await once(prompt); } catch (e) {
@@ -92,6 +112,7 @@ export async function generate(settings, prompt, { temperature = 0.2, schema, im
 /** Free-form text generation (drafting messages, rephrasing selection). */
 export async function generateText(settings, prompt, { system = 'You are an expert communication assistant for project management. Keep tone natural, polite, and concise. Return ONLY the final message or rephrased text with no quotation marks, labels, or meta-commentary.', temperature = 0.4 } = {}) {
   const pv = providerOf(settings);
+  if (hasServer()) return String((await callServer(settings, prompt, { temperature, json: false, system })) || '').trim();
   if (pv === 'cloudflare') {
     if (!settings.workerUrl || !settings.workerToken) throw new Error('Worker URL and token are not set in Settings → AI');
     let r;
@@ -122,6 +143,7 @@ export async function generateText(settings, prompt, { system = 'You are an expe
 }
 
 export async function listModels(apiKey) {
+  if (hasServer()) return (await api('/v1/ai/models')).models;
   const r = await fetch(`${BASE}/models?pageSize=200`, { headers: { 'x-goog-api-key': apiKey.trim() } });
   const j = await r.json().catch(() => ({}));
   if (!r.ok) throw new Error(j.error?.message || `HTTP ${r.status}`);

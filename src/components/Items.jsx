@@ -1,3 +1,4 @@
+import LinkPreview from './LinkPreview';
 import { useMemo, useState } from 'react';
 import { Check, Plus, MessageSquareQuote, Calendar, Flag, Download, ExternalLink, ShieldCheck, Lock, Paperclip, ListTodo, ListChecks, GitBranch, Layers, Mic } from 'lucide-react';
 import { useStore } from '../store';
@@ -317,10 +318,11 @@ export function FilesView() {
           const isLink = f.kind === 'link';
           return (
             <div key={f.id} className={cx('rounded-2xl bg-[#181818] ring-1 ring-white/[.06] overflow-hidden hover:ring-white/15 transition group', !isActive(f) && 'opacity-60')}>
+              {isLink && /^https?:/.test(f.value || '') ? <LinkPreview href={f.value} className="mt-0 max-w-none rounded-none ring-0 bg-transparent" /> : (
               <div onClick={() => openItem(f.id)} className="h-28 bg-gradient-to-br from-cyan-500/10 to-transparent grid place-items-center cursor-pointer overflow-hidden">
                 {a?.kind === 'image' && hasFile(a) ? <ImageThumb a={a} className="w-full h-full cursor-zoom-in" imgClass="w-full h-full object-cover group-hover:scale-105 transition duration-500" />
                   : isLink ? <ExternalLink className="text-cyan-300/70" size={28} /> : f.kind === 'voice' ? <Mic className="text-cyan-300/70" size={28} /> : <Layers className="text-cyan-300/70" size={28} />}
-              </div>
+              </div>)}
               <div className="p-3">
                 <div className="text-sm font-medium truncate" title={f.title}>{f.title}</div>
                 <div className="text-xs text-neutral-500 mt-0.5 flex items-center gap-1.5">{f.category || 'Other'}{f.file?.size ? ' · ' + fmtSize(f.file.size) : ''}{!isActive(f) && <StatusBadge status={f.status} />}</div>

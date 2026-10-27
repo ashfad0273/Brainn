@@ -2,14 +2,19 @@ import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Paperclip, Mic, ArrowUp, Square, X, Download, FileText, Search, MoreHorizontal,
   Plus, Copy, Sparkles, ScanText, Check, Reply, Bold, Italic, Strikethrough,
-  Link as LinkIcon, ListOrdered, List, Quote, Code, Terminal, Smile, AtSign, Loader2
+  Link as LinkIcon, ListOrdered, List, Quote, Code, Terminal, Smile, AtSign, Loader2, Hash
 } from 'lucide-react';
 import { useStore } from '../store';
 import * as kv from '../lib/kv';
+import { api, hasServer } from '../lib/api';
+import { cleanHtml, getCaret, setCaret, textBeforeCaret, eraseBeforeCaret } from '../lib/rich';
+import { MessageSuggestions, SuggestionCard, SuggestionTools } from './Suggestions';
+import LinkPreview, { linksIn } from './LinkPreview';
+import { ChatTimeBar } from './People';
 import { useP, Button, Menu, MenuItem, Badge, Empty } from './ui';
 import { ItemFormModal } from './Items';
 import ReadFileModal from './ReadFile';
-import { addMessage, secretValues, activeMembers } from '../lib/model';
+import { addMessage, secretValues, activeMembers, canReview } from '../lib/model';
 import { TYPES, TYPE_ORDER, COLOR, memberRole } from '../lib/meta';
 import { toAttachment } from '../lib/files';
 import { hasFile, useAttachmentUrl } from '../lib/blobs';
@@ -201,7 +206,7 @@ function Attachment({ a, m, readings }) {
   );
 }
 
-function Message({ m, secrets, linked, onRecord, onReply, hl, readings }) {
+function Message({ m, secrets, linked, onRecord, onReply, hl, readings, sugg = [] }) {
   const { role, me, names, openItem } = useP();
   const { toast } = useStore();
   const owner = role === 'owner';
@@ -252,6 +257,7 @@ function Message({ m, secrets, linked, onRecord, onReply, hl, readings }) {
           )}
         </div>
         {m.attachments.map(a => <Attachment key={a.id} a={a} m={m} readings={readings} />)}
+        {linksIn(m.text).map(href => <LinkPreview key={href} href={href} className={mine ? 'ml-auto' : ''} />)}
         {owner && linked.length > 0 && (
           <div className={cx('flex flex-wrap gap-1 mt-1.5', mine && 'justify-end')}>
             {linked.map(({ it, done }, i) => (
@@ -263,6 +269,7 @@ function Message({ m, secrets, linked, onRecord, onReply, hl, readings }) {
             {linked.length > 2 && !allLinks && <button onClick={() => setAllLinks(true)} className="md:hidden text-[10px] px-1.5 py-0.5 rounded-md bg-white/5 text-neutral-400">+{linked.length - 2} more</button>}
           </div>
         )}
+        <MessageSuggestions list={sugg} mine={mine} />
       </div>
     </div>
   );
@@ -345,8 +352,9 @@ const REPHRASE_OPTIONS = [
 
 function Composer({ onSend, files, setFiles, replyTo, setReplyTo }) {
   const { p, role, names } = useP();
-  const { state, toast } = useStore();
+  const { state, toast, user } = useStore();
   const [text, setText] = useState('');
+  const [tpl, setTpl] = useState(null); // { q, i } while typing #shortcut
   const [showFormat, setShowFormat] = useState(false);
   const [showEmoji, setShowEmoji] = useState(false);
   const [showMention, setShowMention] = useState(false);
@@ -360,113 +368,102 @@ function Composer({ onSend, files, setFiles, replyTo, setReplyTo }) {
   const fileRef = useRef(), editorRef = useRef(), syncTimer = useRef(null);
   const { rec, start, stop, cancel } = useRecorder(onSend);
 
-  // Sync editor innerHTML to text state and persist draft
+  /* ---- drafts: every keystroke is kept in this browser at once (survives a power cut), and on the
+     server shortly after (follows you to your phone). The caret position comes back too. ---- */
+  const draftKey = `pb-draft:${user?.id || 'local'}:${p.id}`;
+  const lastTs = useRef(0), remoteTimer = useRef(null), remoteBody = useRef(null);
+  const pushRemote = (keepalive = false) => {
+    clearTimeout(remoteTimer.current);
+    const body = remoteBody.current;
+    if (!body || !hasServer() || !user) return;
+    remoteBody.current = null;
+    api(`/v1/drafts/${p.id}`, { method: 'PUT', json: body, keepalive }).catch(() => { remoteBody.current = remoteBody.current || body; });
+  };
+  const saveDraft = () => {
+    const el = editorRef.current;
+    if (!el) return;
+    const html = el.innerHTML, md = htmlToMarkdown(html), ts = Date.now();
+    const caret = getCaret(el);
+    const d = { html: md.trim() ? html : '', text: md, replyTo, caret: caret ?? md.length, ts };
+    lastTs.current = ts;
+    try {
+      if (md.trim()) localStorage.setItem(draftKey, JSON.stringify(d));
+      else localStorage.removeItem(draftKey);
+    } catch { /* storage full or blocked */ }
+    remoteBody.current = d;
+    clearTimeout(remoteTimer.current);
+    remoteTimer.current = setTimeout(() => pushRemote(), 700);
+  };
+  const applyDraft = (d, focus) => {
+    const el = editorRef.current;
+    if (!el) return;
+    el.innerHTML = d.html ? cleanHtml(d.html) : markdownToHtml(d.text || '');
+    setText(d.text || htmlToMarkdown(el.innerHTML));
+    if (setReplyTo) setReplyTo(d.replyTo || null);
+    lastTs.current = Number(d.ts) || 0;
+    // put the caret back where it was (on phones only when the box is tapped, so the keyboard doesn't pop up)
+    if (focus && !matchMedia('(pointer: coarse)').matches) { el.focus(); setCaret(el, d.caret); }
+  };
+  const fetchRemote = focus => {
+    if (!hasServer() || !user) return;
+    api(`/v1/drafts/${p.id}`).then(r => {
+      const d = r.draft;
+      if (d && (Number(d.ts) || 0) > lastTs.current && !remoteBody.current) applyDraft(d, focus);
+    }).catch(() => {});
+  };
+
+  // Sync editor innerHTML to text state and persist the draft
   const syncContent = () => {
     const html = editorRef.current?.innerHTML || '';
     const md = htmlToMarkdown(html);
     setText(md);
 
     // AI shortcut trigger
-    if (md === '/' || md.startsWith('/')) {
-      setShowAi(true);
+    if (md === '/' || md.startsWith('/')) setShowAi(true);
+
+    // @mention and #template triggers, from the text right before the caret
+    const before = textBeforeCaret();
+    const atMatch = before?.text.match(/@([a-zA-Z0-9_\s]{0,24})$/);
+    if (atMatch) {
+      setMentionQuery(atMatch[1].trim().toLowerCase());
+      setShowMention(true);
+      setShowEmoji(false);
+      setShowAi(false);
+    } else {
+      setShowMention(false);
+      setMentionQuery('');
     }
+    const hash = (state.settings.templates || []).length && before?.text.match(/(?:^|\s)#([\w-]{0,30})$/);
+    setTpl(hash ? t => ({ q: hash[1].toLowerCase(), i: t?.q === hash[1].toLowerCase() ? t.i : 0 }) : null);
 
-    // Mention trigger detection from cursor position
-    const sel = window.getSelection();
-    if (sel && sel.rangeCount > 0) {
-      const range = sel.getRangeAt(0);
-      const textNode = range.startContainer;
-      if (textNode && textNode.nodeType === Node.TEXT_NODE) {
-        const textBefore = textNode.textContent.slice(0, range.startOffset);
-        const atMatch = textBefore.match(/@([a-zA-Z0-9_\s]{0,24})$/);
-        if (atMatch) {
-          setMentionQuery(atMatch[1].trim().toLowerCase());
-          setShowMention(true);
-          setShowEmoji(false);
-          setShowAi(false);
-        } else {
-          setShowMention(false);
-          setMentionQuery('');
-        }
-      } else {
-        setShowMention(false);
-        setMentionQuery('');
-      }
-    }
-
-    // 1. Instant local persistence (guaranteed survive instant electricity outage)
-    const t = Date.now();
-    try {
-      if (md.trim()) {
-        const draftObj = { html, text: md, replyTo, ts: t };
-        localStorage.setItem(`brain_draft_${p.id}`, JSON.stringify(draftObj));
-        kv.set(`draft:${p.id}`, draftObj).catch(() => {});
-      } else {
-        localStorage.removeItem(`brain_draft_${p.id}`);
-        kv.del(`draft:${p.id}`).catch(() => {});
-      }
-    } catch {}
-
-    // 2. Debounced cross-device sync to Cloudflare Worker
-    if (syncTimer.current) clearTimeout(syncTimer.current);
-    syncTimer.current = setTimeout(() => {
-      const { workerUrl, workerToken } = state.settings || {};
-      if (workerUrl && workerToken) {
-        fetch(workerUrl.replace(/\/+$/, '') + `/v1/draft/${p.id}`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${workerToken.trim()}` },
-          body: JSON.stringify({ html, text: md, replyTo, ts: t }),
-        }).catch(() => {});
-      }
-    }, 800);
+    saveDraft();
   };
 
-  // Restore draft on mount or project change
+  // Restore the draft on mount or project change: this browser's copy at once, the server's if it is newer
   useEffect(() => {
     if (!editorRef.current) return;
     editorRef.current.innerHTML = '';
     setText('');
-    let loadedLocal = false;
-    let localTs = 0;
-
-    // 1. Check local instant storage
+    lastTs.current = 0;
+    remoteBody.current = null;
     try {
-      const raw = localStorage.getItem(`brain_draft_${p.id}`);
-      if (raw) {
-        const d = JSON.parse(raw);
-        if (d?.html || d?.text) {
-          editorRef.current.innerHTML = d.html || markdownToHtml(d.text);
-          setText(d.text || htmlToMarkdown(d.html));
-          if (d.replyTo && setReplyTo) setReplyTo(d.replyTo);
-          loadedLocal = true;
-          localTs = Number(d.ts) || 0;
-        }
-      }
-    } catch {}
-
-    // 2. Fetch remote draft from worker (for cross-device phone/PC syncing)
-    const { workerUrl, workerToken } = state.settings || {};
-    if (workerUrl && workerToken) {
-      fetch(workerUrl.replace(/\/+$/, '') + `/v1/draft/${p.id}`, {
-        headers: { Authorization: `Bearer ${workerToken.trim()}` },
-      })
-        .then(r => r.json())
-        .then(res => {
-          const d = res?.draft;
-          if (d && (d.html || d.text)) {
-            const remoteTs = Number(d.ts) || 0;
-            if (!loadedLocal || remoteTs > localTs) {
-              if (editorRef.current) {
-                editorRef.current.innerHTML = d.html || markdownToHtml(d.text);
-                setText(d.text || htmlToMarkdown(d.html));
-                if (d.replyTo && setReplyTo) setReplyTo(d.replyTo);
-              }
-            }
-          }
-        })
-        .catch(() => {});
-    }
-  }, [p.id]);
+      const raw = localStorage.getItem(draftKey) || localStorage.getItem(`brain_draft_${p.id}`);
+      const d = raw && JSON.parse(raw);
+      if (d?.html || d?.text) applyDraft(d, true);
+    } catch { /* unreadable draft */ }
+    fetchRemote(true);
+    const flush = () => { if (document.visibilityState === 'hidden') pushRemote(true); };
+    const back = () => { if (document.visibilityState === 'visible') fetchRemote(false); };
+    document.addEventListener('visibilitychange', flush);
+    document.addEventListener('visibilitychange', back);
+    window.addEventListener('pagehide', flush);
+    return () => {
+      pushRemote(true); // leaving the project: send what's pending
+      document.removeEventListener('visibilitychange', flush);
+      document.removeEventListener('visibilitychange', back);
+      window.removeEventListener('pagehide', flush);
+    };
+  }, [p.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleSelectionChange = () => {
     const sel = window.getSelection();
@@ -622,18 +619,24 @@ Write a natural, concise, ready-to-send chat message. Do NOT include greetings l
     setShowAi(false);
     setShowEmoji(false);
     setShowMention(false);
-    // Clear draft locally and on Worker
-    try {
-      localStorage.removeItem(`brain_draft_${p.id}`);
-      kv.del(`draft:${p.id}`).catch(() => {});
-      const { workerUrl, workerToken } = state.settings || {};
-      if (workerUrl && workerToken) {
-        fetch(workerUrl.replace(/\/+$/, '') + `/v1/draft/${p.id}`, {
-          method: 'DELETE',
-          headers: { Authorization: `Bearer ${workerToken.trim()}` },
-        }).catch(() => {});
-      }
-    } catch {}
+    // the draft is sent: clear it here and on the server
+    setTpl(null);
+    clearTimeout(remoteTimer.current);
+    remoteBody.current = null;
+    lastTs.current = Date.now();
+    try { localStorage.removeItem(draftKey); localStorage.removeItem(`brain_draft_${p.id}`); } catch { /* blocked */ }
+    kv.del(`draft:${p.id}`).catch(() => {});
+    if (hasServer() && user) api(`/v1/drafts/${p.id}`, { method: 'DELETE' }).catch(() => {});
+  };
+
+  const templates = state.settings.templates || [];
+  const tplMatches = tpl ? templates.filter(t => t.shortcut.toLowerCase().startsWith(tpl.q) || (tpl.q && t.shortcut.toLowerCase().includes(tpl.q))).slice(0, 8) : [];
+  const insertTemplate = t => {
+    editorRef.current?.focus();
+    eraseBeforeCaret((tpl?.q.length || 0) + 1);
+    document.execCommand('insertHTML', false, cleanHtml(t.html || markdownToHtml(t.text || '')) + '&nbsp;');
+    setTpl(null);
+    syncContent();
   };
 
   const add = async list => {
@@ -730,6 +733,22 @@ Write a natural, concise, ready-to-send chat message. Do NOT include greetings l
         </div>
       )}
 
+      {/* #template popover */}
+      {tpl && tplMatches.length > 0 && !rec && (
+        <div className="absolute left-10 md:left-24 bottom-full mb-2 z-20 bg-[#1e1e1e] ring-1 ring-white/15 rounded-2xl p-2 shadow-2xl anim-up w-80 max-w-[calc(100vw-2rem)]">
+          <div className="px-2 py-1 text-[11px] font-medium text-neutral-500 uppercase tracking-wider flex items-center gap-1"><Hash size={11} />Templates <span className="ml-auto normal-case tracking-normal text-neutral-600">↑↓ · Enter</span></div>
+          <div className="space-y-0.5 max-h-60 overflow-y-auto">
+            {tplMatches.map((t, i) => (
+              <button key={t.id} type="button" onMouseDown={e => { e.preventDefault(); insertTemplate(t); }}
+                className={cx('w-full text-left px-2.5 py-1.5 rounded-lg text-xs', i === tpl.i % tplMatches.length ? 'bg-white/10' : 'hover:bg-white/5')}>
+                <div className="font-medium text-sky-300">#{t.shortcut}</div>
+                <div className="text-neutral-400 truncate">{t.text || htmlToMarkdown(t.html)}</div>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Mention Member Popover */}
       {showMention && !rec && (
         <div className="absolute left-10 md:left-24 bottom-full mb-2 z-20 bg-[#1e1e1e] ring-1 ring-white/15 rounded-2xl p-2 shadow-2xl anim-up w-56">
@@ -807,9 +826,17 @@ Write a natural, concise, ready-to-send chat message. Do NOT include greetings l
               tabIndex={0}
               onInput={syncContent}
               onSelect={handleSelectionChange}
-              onKeyUp={e => { handleSelectionChange(); syncContent(); }}
-              onMouseUp={handleSelectionChange}
+              onKeyUp={e => { handleSelectionChange(); if (!['ArrowDown', 'ArrowUp', 'Enter', 'Tab', 'Escape'].includes(e.key) || !tpl) syncContent(); }}
+              onMouseUp={() => { handleSelectionChange(); saveDraft(); }}
               onKeyDown={e => {
+                if (tpl && tplMatches.length && ['ArrowDown', 'ArrowUp', 'Enter', 'Tab', 'Escape'].includes(e.key)) {
+                  e.preventDefault();
+                  if (e.key === 'Escape') setTpl(null);
+                  else if (e.key === 'ArrowDown') setTpl(t => ({ ...t, i: t.i + 1 }));
+                  else if (e.key === 'ArrowUp') setTpl(t => ({ ...t, i: t.i - 1 + tplMatches.length }));
+                  else insertTemplate(tplMatches[tpl.i % tplMatches.length]);
+                  return;
+                }
                 if ((e.metaKey || e.ctrlKey) && e.key === 'b') { e.preventDefault(); formatDoc('bold'); }
                 else if ((e.metaKey || e.ctrlKey) && e.key === 'i') { e.preventDefault(); formatDoc('italic'); }
                 else if ((e.metaKey || e.ctrlKey) && e.key === 'k') { e.preventDefault(); formatLink(); }
@@ -824,7 +851,7 @@ Write a natural, concise, ready-to-send chat message. Do NOT include greetings l
                   add(e.clipboardData.files);
                 }
               }}
-              data-placeholder={aiLoading ? 'AI is drafting message…' : 'Message (type / for AI writing, @ to mention someone)'}
+              data-placeholder={aiLoading ? 'AI is drafting message…' : `Message (/ for AI writing, @ to mention${templates.length ? ', # for templates' : ''})`}
               className="w-full bg-transparent outline-none py-1.5 px-2 text-[15px] text-white min-h-[42px] max-h-48 overflow-y-auto leading-relaxed empty:before:content-[attr(data-placeholder)] empty:before:text-neutral-500 empty:before:pointer-events-none focus:outline-none [&_strong]:font-semibold [&_strong]:text-white [&_em]:italic [&_em]:text-neutral-200 [&_del]:line-through [&_del]:opacity-75 [&_code]:px-1.5 [&_code]:py-0.5 [&_code]:rounded [&_code]:bg-black/40 [&_code]:font-mono [&_code]:text-[0.88em] [&_code]:text-sky-300 [&_a]:underline [&_a]:text-sky-300 [&_pre]:p-2 [&_pre]:rounded-lg [&_pre]:bg-black/50 [&_pre]:font-mono [&_pre]:text-[13px] [&_pre]:text-sky-200 [&_blockquote]:border-l-2 [&_blockquote]:border-sky-400 [&_blockquote]:pl-2 [&_blockquote]:italic [&_blockquote]:text-neutral-300"
             />
           )}
@@ -913,7 +940,9 @@ export default function Chat({ focus }) {
     };
   }, []);
 
-  useEffect(() => { end.current?.scrollIntoView({ block: 'end' }); }, [p.messages.length]);
+  // new messages, and new suggestions under them, scroll into view
+  const pendingNow = p.suggestions.filter(s => s.state === 'pending').length;
+  useEffect(() => { end.current?.scrollIntoView({ block: 'end' }); }, [p.messages.length, pendingNow]);
   useEffect(() => {
     if (!focus) return;
     setQ('');
@@ -949,6 +978,20 @@ export default function Chat({ focus }) {
   }, [p.items]);
   const readings = useMemo(() => Object.fromEntries(p.items.filter(i => i.reading && i.file?.attachmentId).map(i => [i.file.attachmentId, true])), [p.items]);
   const secrets = useMemo(() => secretValues(p), [p]);
+
+  // suggestions sit under the message they came from; the rest (assistant, files) at the end
+  const review = canReview(role, me);
+  const { byMsg, loose } = useMemo(() => {
+    const byMsg = {}, loose = [];
+    if (!review) return { byMsg, loose };
+    const ids = new Set(p.messages.map(m => m.id));
+    for (const s of p.suggestions) {
+      if (s.state !== 'pending') continue;
+      if (s.msg && ids.has(s.msg)) (byMsg[s.msg] ||= []).push(s);
+      else loose.push(s);
+    }
+    return { byMsg, loose };
+  }, [p.suggestions, p.messages, review]);
 
   const ql = q.trim().toLowerCase();
   const list = ql ? p.messages.filter(m => (m.text || '').toLowerCase().includes(ql) || m.attachments.some(a => a.name.toLowerCase().includes(ql))) : p.messages;
@@ -1000,8 +1043,12 @@ export default function Chat({ focus }) {
           </div>
         ) : (
           <>
-            <div className="flex-1 text-xs text-neutral-500">{p.messages.length} messages · full history, nothing is ever lost</div>
-            {owner && pendingCount > 0 && <Badge tone="sky" className="xl:hidden"><Sparkles size={11} />{pendingCount} to review</Badge>}
+            <div className="flex-1 min-w-0 flex items-center gap-3">
+              <span className="text-xs text-neutral-500 whitespace-nowrap hidden lg:inline">{p.messages.length} messages</span>
+              <ChatTimeBar p={p} me={me} />
+            </div>
+            {review && pendingCount > 0 && <Badge tone="sky"><Sparkles size={11} />{pendingCount} to review</Badge>}
+            {review && <SuggestionTools />}
             <Button variant="ghost" size="sm" onClick={() => setSearching(true)}><Search size={14} />Search</Button>
           </>
         )}
@@ -1018,12 +1065,18 @@ export default function Chat({ focus }) {
           return (
             <Fragment key={m.id}>
               {sep && <div className="flex items-center justify-center gap-3 py-2 md:py-3 px-2"><div className="hidden md:block h-px flex-1 bg-white/5" /><span className="text-[11px] uppercase tracking-wide text-neutral-400 md:text-neutral-500 bg-[#1d1d1d] md:bg-transparent rounded-full px-2.5 py-0.5 md:p-0">{day}</span><div className="hidden md:block h-px flex-1 bg-white/5" /></div>}
-              <Message m={m} secrets={secrets} linked={bySource[m.id] || []} readings={readings} hl={hl?.id === m.id ? hl.span : null}
+              <Message m={m} secrets={secrets} linked={bySource[m.id] || []} readings={readings} hl={hl?.id === m.id ? hl.span : null} sugg={byMsg[m.id] || []}
                 onRecord={(type, msg) => setRecord({ type, msg })}
                 onReply={target => setReplyTo({ id: target.id, name: names.msg(target), text: (target.text || target.attachments?.[0]?.name || 'Voice note').slice(0, 140) })} />
             </Fragment>
           );
         })}
+        {loose.length > 0 && !ql && (
+          <div className="max-w-md mx-auto py-3 space-y-1.5">
+            <div className="text-[11px] text-sky-300/80 flex items-center gap-1.5 px-1"><Sparkles size={11} />{loose.length} more suggestion{loose.length > 1 ? 's' : ''} (from the assistant or files)</div>
+            {loose.map(s => <SuggestionCard key={s.id} s={s} />)}
+          </div>
+        )}
         <div ref={end} />
       </div>
 

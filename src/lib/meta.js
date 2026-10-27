@@ -45,11 +45,20 @@ export const SOLVED_STATUS = { task: 'done', requirement: 'delivered', decision:
 
 export const PROJECT_COLORS = ['#f59e0b', '#0ea5e9', '#8b5cf6', '#10b981', '#f43f5e', '#14b8a6', '#6366f1', '#ec4899'];
 
-export const DEFAULT_PERMS = { tasks: true, requirements: false, decisions: false, files: true, summary: false };
+/** suggestions: may see the AI suggestions in this project and accept / edit / ignore them. */
+export const DEFAULT_PERMS = { tasks: true, requirements: false, decisions: false, files: true, summary: false, suggestions: false };
 
-/** Roles a project member can have. "other" uses the member's own designation. */
+/** Labels a person gets when invited. "other" (older members only) uses the member's own designation. */
 export const MEMBER_ROLES = {
-  client: 'Client', developer: 'Developer', designer: 'Designer', motion: 'Motion designer',
-  video: 'Video editor', brand: 'Brand designer', other: 'Other',
+  client: 'Client', designer: 'Designer', developer: 'Developer', video: 'Video editor',
+  motion: 'Motion designer', graphics: 'Graphics designer', brand: 'Brand designer', other: 'Other',
+};
+export const INVITE_LABELS = ['client', 'designer', 'developer', 'video', 'motion', 'graphics', 'brand'];
+
+export const PROJECT_STATUS = {
+  in_progress: { label: 'In progress', tone: 'sky', dot: 'bg-sky-400' },
+  on_hold: { label: 'On hold', tone: 'amber', dot: 'bg-amber-400' },
+  completed: { label: 'Completed', tone: 'emerald', dot: 'bg-emerald-400' },
+  cancelled: { label: 'Cancelled', tone: 'neutral', dot: 'bg-neutral-500' },
 };
 export const memberRole = m => (m.role === 'other' ? m.designation?.trim() || 'Member' : MEMBER_ROLES[m.role] || 'Member');

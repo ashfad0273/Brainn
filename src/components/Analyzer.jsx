@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useStore } from '../store';
 import { analyze } from '../lib/brain';
 import { engineName } from '../lib/gemini';
+import { myMember } from '../lib/model';
 
 /**
  * Only one open tab reads new messages: the one holding the "analyzer" lock. Otherwise two owner
@@ -19,9 +20,12 @@ function useLeader() {
   return leader;
 }
 
-/** Runs in the owner's tab: reads every new message (batched per project) and proposes records. */
+/**
+ * Runs in the owner's tab — and for people allowed to review suggestions, in theirs (for those projects):
+ * reads every new message (batched per project) and proposes records.
+ */
 export default function Analyzer() {
-  const { state, stateRef, mutate, toast } = useStore();
+  const { state, stateRef, mutate, toast, mode, user } = useStore();
   const busy = useRef(new Set());
   const timers = useRef({});
   const leader = useLeader();
@@ -29,11 +33,12 @@ export default function Analyzer() {
   useEffect(() => {
     if (!leader || !state?.settings.autoAnalyze) return;
     for (const p of state.projects) {
-      if (p.archived || !p.messages.some(m => !m.analyzed && !busy.current.has(m.id))) continue;
+      if (mode === 'member' && !myMember(p, user)?.perms?.suggestions) continue;
+      if (p.archived || !p.messages.some(m => !m.analyzed && !m.deleted && !busy.current.has(m.id))) continue;
       clearTimeout(timers.current[p.id]);
       timers.current[p.id] = setTimeout(async () => {
         const cur = stateRef.current.projects.find(x => x.id === p.id);
-        const ids = cur.messages.filter(m => !m.analyzed && !busy.current.has(m.id)).map(m => m.id);
+        const ids = cur.messages.filter(m => !m.analyzed && !m.deleted && !busy.current.has(m.id)).map(m => m.id);
         if (!ids.length) return;
         ids.forEach(i => busy.current.add(i));
         try {
@@ -47,7 +52,7 @@ export default function Analyzer() {
         }
       }, 900);
     }
-  }, [state, stateRef, mutate, toast, leader]);
+  }, [state, stateRef, mutate, toast, leader, mode, user]);
 
   return null;
 }

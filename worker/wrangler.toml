@@ -25,4 +25,18 @@ MAX_SYNC_BYTES = "8000000"
 # Largest attachment upload when an R2 bucket is bound as BUCKET; without R2, files go to D1 (max ~1.9 MB).
 MAX_BLOB_BYTES = "25000000"
 
-# The shared token is a secret, not a var:  npx wrangler secret put APP_TOKEN
+# Invitation emails via Cloudflare Email Service: the address they come from (on your onboarded domain).
+# EMAIL_FROM = "invites@yourdomain.com"
+
+# Invited people's AI requests per day (the owner has no limit).
+AI_DAILY_LIMIT = "200"
+
+# Secrets (not vars):
+#   npx wrangler secret put APP_TOKEN        signs sessions; also the one-time setup code for the owner account
+#   npx wrangler secret put GEMINI_API_KEY   optional: normally the Gemini key is set in the app (Settings → AI)
+
+# Invitation emails (Cloudflare Email Service). Uncomment once your domain is onboarded:
+#   npx wrangler email sending enable yourdomain.com
+# Emailing people outside your own verified addresses needs the Workers Paid plan.
+# [[send_email]]
+# name = "EMAIL"

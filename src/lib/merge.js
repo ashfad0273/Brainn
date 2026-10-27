@@ -14,7 +14,9 @@ const first = x => x;
 const tombstoneFirst = (x, y) => (x.deleted && !y.deleted ? x : y.deleted && !x.deleted ? y : newer(x, y));
 /** A decision on a suggestion beats "pending"; otherwise the newer copy wins. */
 const decided = (x, y) => (x.state === 'pending' && y.state !== 'pending' ? y : y.state === 'pending' && x.state !== 'pending' ? x : newer(x, y));
-const META = ['name', 'client', 'description', 'color', 'spaceId', 'archived', 'cover', 'avatar', 'metaAt'];
+/** A hidden (tombstoned) message stays hidden; otherwise the analysed copy wins. */
+const messagePick = (x, y) => (x.deleted && !y.deleted ? x : y.deleted && !x.deleted ? y : x.analyzed ? x : y);
+const META = ['name', 'client', 'description', 'color', 'spaceId', 'archived', 'cover', 'avatar', 'status', 'deadline', 'progressOverride', 'fileFolders', 'metaAt'];
 const LISTS = ['members', 'messages', 'items', 'suggestions', 'summaries', 'asks', 'log'];
 
 /** Fill in missing lists so a partial copy (e.g. a member's message) can be merged. */
@@ -38,30 +40,12 @@ export function mergeProject(a, b) {
   const out = { ...a };
   META.forEach(k => { out[k] = src[k]; });
   out.members = union(a.members, b.members, newer, 'createdAt');
-  out.messages = union(a.messages, b.messages, (x, y) => (x.analyzed ? x : y), 'ts');
+  out.messages = union(a.messages, b.messages, messagePick, 'ts');
   out.items = union(a.items, b.items, tombstoneFirst, 'createdAt');
   out.suggestions = union(a.suggestions, b.suggestions, decided, 'ts');
   out.summaries = union(a.summaries, b.summaries, first, 'ts');
   out.asks = union(a.asks, b.asks, first, 'ts');
   out.log = union(a.log, b.log, first, 'ts');
   return out;
-}
-
-/** Merge projects that share the same name+client (case-insensitive). Keeps one canonical record. */
-export function dedupeProjects(projects) {
-  const byKey = new Map();
-  for (const p of (projects || [])) {
-    if (!p) continue;
-    const k = (p.name || '').toLowerCase().trim() + '|' + (p.client || '').toLowerCase().trim();
-    if (byKey.has(k)) {
-      const existing = byKey.get(k);
-      const merged = mergeProject(existing, p);
-      merged.id = existing.id;
-      byKey.set(k, merged);
-    } else {
-      byKey.set(k, p);
-    }
-  }
-  return [...byKey.values()];
 }
 

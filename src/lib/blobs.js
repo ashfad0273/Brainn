@@ -4,18 +4,18 @@
 import { useEffect, useState } from 'react';
 import * as kv from './kv';
 import * as vault from './crypto';
+import { hasServer, serverUrl, authHeader } from './api';
 
 let key = null;
 export const setBlobKey = k => { key = k; };
-// Remote copy on the sync Worker: the owner uses their bearer token; a member portal uses its
-// session on the /v1/join routes. A member portal, while open, takes precedence.
-let owner = null, member = null;
-export const setBlobRemote = cfg => { owner = cfg?.workerUrl && cfg?.workerToken ? cfg : null; };
-export const setBlobMember = cfg => { member = cfg; };
+// Remote copy on the sync server: the owner's own route, or the invited person's route (they can only
+// add new files and fetch the ones their projects show them).
+let remoteMode = null; // 'owner' | 'member' | null
+export const setBlobRemote = mode => { remoteMode = mode; };
 function remote(id) {
-  if (member) return { url: `${member.base}/v1/join/${encodeURIComponent(member.token)}/blobs/${encodeURIComponent(id)}`, auth: 'Member ' + member.session, member: true };
-  if (owner) return { url: `${owner.workerUrl.replace(/\/+$/, '')}/v1/blobs/${encodeURIComponent(id)}`, auth: 'Bearer ' + owner.workerToken.trim() };
-  return null;
+  if (!remoteMode || !hasServer()) return null;
+  const member = remoteMode === 'member';
+  return { url: serverUrl(`/v1/${member ? 'm/' : ''}blobs/${encodeURIComponent(id)}`), auth: authHeader().Authorization, member };
 }
 const K = id => 'blob:' + id;
 
