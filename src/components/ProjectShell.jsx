@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Search, UserPlus, MoreHorizontal, Archive, ArchiveRestore, Download, Pencil, MessageSquare, ListTodo, ListChecks, GitBranch, Lock, Paperclip, Brain, History, Sparkles, X, Info, ChevronLeft, Plus, SlidersHorizontal } from '@/lib/icons';
+import { Check, Search, UserPlus, MoreHorizontal, Archive, ArchiveRestore, Download, Pencil, MessageSquare, ListTodo, ListChecks, GitBranch, Lock, Paperclip, Brain, History, Sparkles, X, Info, ChevronLeft, Plus, SlidersHorizontal } from '@/lib/icons';
 import { Popover, PopoverTrigger, PopoverPopup } from '@ume/ui/components/ui/popover';
 import { Sheet, SheetPopup } from '@ume/ui/components/ui/sheet';
-import { useIsMobileNav } from '@ume/ui/hooks/use-media-query';
+import { useIsMobileNav, useMediaQuery } from '@ume/ui/hooks/use-media-query';
 import { InitialsAvatar } from '@ume/ui/components/patterns/IconChip';
 import { useStore } from '../store';
 import { PCtx, useP, Button, Menu, MenuItem, Drawer } from './ui';
@@ -18,10 +18,10 @@ import MembersModal from './Invite';
 import { ProjectFormModal } from './Home';
 import { ProjectAvatar } from './ProjectArt';
 import ProjectOverview, { ProgressBar, timeTone } from './Overview';
-import { updateMeta, liveView, namesFor, activeMembers, myMember, canReview, projectHealth, projectProgress, timeLeftLabel } from '../lib/model';
+import { updateMeta, liveView, namesFor, activeMembers, myMember, canReview, setStatus as setItemStatus, projectHealth, projectProgress, timeLeftLabel } from '../lib/model';
 import { isActive, COLOR, memberRole } from '../lib/meta';
 import { markSeen } from '../lib/seen';
-import { cx, download } from '../lib/util';
+import { cx, download, todayISO } from '../lib/util';
 
 const TABS = {
   chat: ['Messages', MessageSquare, Chat], tasks: ['Tasks', ListTodo, TasksView], requirements: ['Requirements', ListChecks, RequirementsView],
@@ -44,8 +44,39 @@ function counts(p, role, me) {
 
 const dueDate = iso => { const [y, m, d] = iso.split('-').map(Number); return new Date(y, m - 1, d).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }); };
 
-/* Behind ⓘ: what the project is, where it stands and who's on it. Changing any of it is in More → Status & progress. */
-function InfoPanel({ onMessage, onInvite }) {
+/* Open tasks, soonest due first: tick one off or open it. */
+function NextTasks({ onAll }) {
+  const { p, role, mut, openItem } = useP();
+  const today = todayISO();
+  const open = p.items.filter(i => i.type === 'task' && isActive(i)).sort((a, b) => (a.due || '9999').localeCompare(b.due || '9999'));
+  return (
+    <>
+      <div className="mt-6 mb-1 flex items-center justify-between">
+        <span className="text-label-mono text-text-secondary">Next tasks</span>
+        {open.length > 4 && <button type="button" onClick={onAll} className="text-xs text-text-secondary outline-none hover:text-foreground focus-visible:underline">All {open.length}</button>}
+      </div>
+      {open.length ? (
+        <ul>
+          {open.slice(0, 4).map(t => (
+            <li key={t.id} className="flex min-h-11 items-start gap-3 py-2">
+              {role === 'owner'
+                ? <button type="button" onClick={() => mut(q => setItemStatus(q, 'owner', t.id, 'done'))} aria-label={`Mark “${t.title}” done`} title="Mark done" className="mt-0.5 grid size-4.5 shrink-0 place-items-center rounded-full border-[1.5px] border-border-strong text-transparent hover:border-green hover:text-green [&_svg]:size-3"><Check /></button>
+                : <span aria-hidden className="mt-0.5 size-4.5 shrink-0 rounded-full border-[1.5px] border-border-strong" />}
+              <button type="button" onClick={() => openItem(t.id)} className="min-w-0 flex-1 text-left outline-none focus-visible:underline">
+                <span className="block text-sm">{t.title}</span>
+                {t.due && <span className={cx('text-xs', t.due < today ? 'text-destructive-foreground' : t.due === today ? 'text-warn-ink' : 'text-text-secondary')}>{t.due < today ? 'Overdue' : t.due === today ? 'Due today' : `Due ${dueDate(t.due)}`}</span>}
+              </button>
+            </li>
+          ))}
+        </ul>
+      ) : <p className="py-2 text-sm text-muted-foreground">No open tasks.</p>}
+    </>
+  );
+}
+
+/* Behind ⓘ, or docked beside the card on a wide screen: what the project is, where it stands,
+   what's next and who's on it. Changing any of it is in More → Status & progress. */
+function InfoPanel({ onMessage, onInvite, onTasks, docked }) {
   const { p, names, role } = useP();
   const { state } = useStore();
   const health = projectHealth(p);
@@ -63,19 +94,23 @@ function InfoPanel({ onMessage, onInvite }) {
   );
   return (
     <div className="w-full">
-      <div className="flex items-center gap-3">
-        <ProjectAvatar p={p} className="size-11" rounded="rounded-[14px]" text="text-base" />
-        <div className="min-w-0">
-          <div className="truncate font-medium text-lg">{p.name}</div>
-          <div className="truncate text-xs text-text-secondary">{p.description || p.client || names.client}</div>
+      {/* Docked, the card's header already names the project; the description stays. */}
+      {docked ? (p.description && <p className="mb-5 text-sm text-text-secondary">{p.description}</p>) : (
+        <div className="mb-5 flex items-center gap-3">
+          <ProjectAvatar p={p} className="size-11" rounded="rounded-[14px]" text="text-base" />
+          <div className="min-w-0">
+            <div className="truncate font-medium text-lg">{p.name}</div>
+            <div className="truncate text-xs text-text-secondary">{p.description || p.client || names.client}</div>
+          </div>
         </div>
-      </div>
-      <div className="mt-5 grid grid-cols-3 gap-2">
+      )}
+      <div className="grid grid-cols-3 gap-2">
         {stat('Health', <><span aria-hidden className={cx('size-2 shrink-0 rounded-full', COLOR[health.tone].dot)} />{health.label}</>,
           <span className={cx('text-xs', REASON_TONE[health.tone] || 'text-text-secondary')}>{health.reason}</span>)}
-        {stat('Due', p.deadline ? dueDate(p.deadline) : 'No date', <span className={cx('truncate text-xs', timeTone(p))}>{timeLeftLabel(p)}</span>)}
+        {stat('Due', p.deadline ? dueDate(p.deadline) : 'No date', <span className={cx('text-xs', timeTone(p))}>{timeLeftLabel(p)}</span>)}
         {stat('Progress', <span className="tabular-nums">{progress}%</span>, <ProgressBar value={progress} color={p.color} className="mt-2 w-full" />)}
       </div>
+      <NextTasks onAll={onTasks} />
       <div className="mt-6 mb-1 text-label-mono text-text-secondary">People</div>
       <ul>
         {people.map(x => (
@@ -97,11 +132,14 @@ function InfoPanel({ onMessage, onInvite }) {
   );
 }
 
-/* ⓘ: a popover under the button on a desktop, a sheet from the bottom on a phone. */
-function InfoButton({ onInvite, onMessage }) {
+/* ⓘ: on a wide screen it opens and closes the docked panel; otherwise a popover under
+   the button, or a sheet from the bottom on a phone. */
+function InfoButton({ onInvite, onMessage, onTasks, wide, docked, onDock }) {
   const phone = useIsMobileNav();
   const [open, setOpen] = useState(false);
-  const panel = <InfoPanel onInvite={() => { setOpen(false); onInvite(); }} onMessage={() => { setOpen(false); onMessage(); }} />;
+  if (wide) return <button type="button" onClick={onDock} aria-pressed={docked} aria-label={docked ? 'Hide project details' : 'Show project details'} title={docked ? 'Hide details' : 'Show details'} className={iconButton(docked)}><Info aria-hidden /></button>;
+  const close = fn => () => { setOpen(false); fn(); };
+  const panel = <InfoPanel onInvite={close(onInvite)} onMessage={close(onMessage)} onTasks={close(onTasks)} />;
   const button = <button type="button" onClick={phone ? () => setOpen(true) : undefined} aria-label="Project info" title="Info" className={iconButton(open)}><Info aria-hidden /></button>;
   if (phone) return (
     <>
@@ -132,6 +170,11 @@ export function ProjectShell({ p: record, role, me = null, names, tabs, tab, set
   const [assistant, setAssistant] = useState(false);
   const [status, setStatus] = useState(false); // the status, progress and deadline controls
   const p = useMemo(() => liveView(record), [record]); // deleted items are hidden everywhere
+  // Wide screens keep the details docked beside the card; the choice is remembered on this device.
+  const wide = useMediaQuery({ min: 1440 });
+  const [dock, setDock] = useState(() => { try { return localStorage.getItem('brainn-details') !== '0'; } catch { return true; } });
+  const toggleDock = () => setDock(d => { try { localStorage.setItem('brainn-details', d ? '0' : '1'); } catch { /* not remembered */ } return !d; });
+  const docked = wide && dock;
   const elsewhere = useProjectList().reduce((n, x) => n + (x.p.id === p.id || x.p.archived ? 0 : x.unread), 0);
 
   /** Open the chat at a message; with a span, the exact passage is highlighted. */
@@ -153,47 +196,54 @@ export function ProjectShell({ p: record, role, me = null, names, tabs, tab, set
     <PCtx.Provider value={ctx}>
       <div className="flex h-dvh bg-background text-foreground">
         <Rail current={p.id} />
-        <div className="flex min-w-0 flex-1 flex-col overflow-hidden bg-card lg:my-2 lg:me-2 lg:rounded-[20px] lg:border lg:border-border lg:shadow-card">
-          <header className="flex items-center gap-1 ps-1.5 pe-2 pt-3 pb-2.5 lg:gap-2 lg:ps-5 lg:pe-4 lg:pt-3.5 lg:pb-3">
-            {/* Phones: back to the project list, with how many messages wait in the others. */}
-            <a href="#/projects" aria-label={elsewhere ? `Projects, ${elsewhere} unread` : 'Projects'} title="Projects" className="flex h-10 shrink-0 items-center gap-0.5 rounded-full ps-0.5 pe-2 outline-none hover:bg-field focus-visible:ring-2 focus-visible:ring-ring lg:hidden [&>svg]:size-6.5">
-              <ChevronLeft aria-hidden />{elsewhere > 0 && <UnreadBadge n={elsewhere} />}
-            </a>
-            <div className="min-w-0 flex-1">
-              <h1 className="truncate font-medium text-lg">{p.name}</h1>
-              <p className="flex min-w-0 items-center gap-1.5 text-xs text-text-secondary">
-                <span className="truncate">{p.client || names.client}</span>
-                <span aria-hidden>·</span><span className={cx('shrink-0', timeTone(p))}>{timeLeftLabel(p)}</span>
-                <span aria-hidden className="max-lg:hidden">·</span>
-                <span className="flex shrink-0 items-center gap-1.5 max-lg:hidden"><span aria-hidden className={cx('size-2 rounded-full', COLOR[health.tone].dot)} />{health.label}</span>
-              </p>
-            </div>
-            <button type="button" onClick={() => setSearch(true)} aria-label="Search this project" title="Search this project" className={cx(iconButton(false), 'max-lg:hidden')}><Search aria-hidden /></button>
-            <InfoButton onInvite={onInvite || (() => {})} onMessage={() => setTab('chat')} />
-            <Menu trigger={t => <button type="button" onClick={t} aria-label="More" title="More" className={iconButton(false)}><MoreHorizontal aria-hidden /></button>}>
-              <MenuItem icon={Search} onClick={() => setSearch(true)}>Search this project</MenuItem>
-              {role === 'owner' && <MenuItem icon={Sparkles} onClick={() => setAssistant(true)}>Assistant</MenuItem>}
-              <MenuItem icon={SlidersHorizontal} onClick={() => setStatus(true)}>Status & progress</MenuItem>
-              {tabs.filter(k => !PILL.includes(k)).map(k => { const [label, I] = TABS[k]; return <MenuItem key={k} icon={I} onClick={() => setTab(k)}>{label}</MenuItem>; })}
-              {actions}
-            </Menu>
-          </header>
+        <div className="flex min-w-0 flex-1 overflow-hidden bg-card lg:my-2 lg:me-2 lg:rounded-[20px] lg:border lg:border-border lg:shadow-card">
+          <div className="flex min-w-0 flex-1 flex-col">
+            <header className="flex items-center gap-1 ps-1.5 pe-2 pt-3 pb-2.5 lg:gap-2 lg:ps-5 lg:pe-4 lg:pt-3.5 lg:pb-3">
+              {/* Phones: back to the project list, with how many messages wait in the others. */}
+              <a href="#/projects" aria-label={elsewhere ? `Projects, ${elsewhere} unread` : 'Projects'} title="Projects" className="flex h-10 shrink-0 items-center gap-0.5 rounded-full ps-0.5 pe-2 outline-none hover:bg-field focus-visible:ring-2 focus-visible:ring-ring lg:hidden [&>svg]:size-6.5">
+                <ChevronLeft aria-hidden />{elsewhere > 0 && <UnreadBadge n={elsewhere} />}
+              </a>
+              <div className="min-w-0 flex-1">
+                <h1 className="truncate font-medium text-lg">{p.name}</h1>
+                <p className="flex min-w-0 items-center gap-1.5 text-xs text-text-secondary">
+                  <span className="truncate">{p.client || names.client}</span>
+                  <span aria-hidden>·</span><span className={cx('shrink-0', timeTone(p))}>{timeLeftLabel(p)}</span>
+                  <span aria-hidden className="max-lg:hidden">·</span>
+                  <span className="flex shrink-0 items-center gap-1.5 max-lg:hidden"><span aria-hidden className={cx('size-2 rounded-full', COLOR[health.tone].dot)} />{health.label}</span>
+                </p>
+              </div>
+              <button type="button" onClick={() => setSearch(true)} aria-label="Search this project" title="Search this project" className={cx(iconButton(false), 'max-lg:hidden')}><Search aria-hidden /></button>
+              <InfoButton onInvite={onInvite || (() => {})} onMessage={() => setTab('chat')} onTasks={() => setTab('tasks')} wide={wide} docked={docked} onDock={toggleDock} />
+              <Menu trigger={t => <button type="button" onClick={t} aria-label="More" title="More" className={iconButton(false)}><MoreHorizontal aria-hidden /></button>}>
+                <MenuItem icon={Search} onClick={() => setSearch(true)}>Search this project</MenuItem>
+                {role === 'owner' && <MenuItem icon={Sparkles} onClick={() => setAssistant(true)}>Assistant</MenuItem>}
+                <MenuItem icon={SlidersHorizontal} onClick={() => setStatus(true)}>Status & progress</MenuItem>
+                {tabs.filter(k => !PILL.includes(k)).map(k => { const [label, I] = TABS[k]; return <MenuItem key={k} icon={I} onClick={() => setTab(k)}>{label}</MenuItem>; })}
+                {actions}
+              </Menu>
+            </header>
 
-          <nav aria-label="Project" className={tabRow}>
-            {tabs.filter(k => PILL.includes(k) || k === tab).map(k => {
-              const [label, I] = TABS[k];
-              const on = tab === k;
-              return (
-                <button key={k} type="button" onClick={() => setTab(k)} aria-current={on ? 'page' : undefined} className={tabPill(on)}>
-                  <I aria-hidden />{label}{n[k] > 0 && <span className="font-normal text-muted-foreground tabular-nums">{n[k]}</span>}
-                </button>
-              );
-            })}
-          </nav>
+            <nav aria-label="Project" className={tabRow}>
+              {tabs.filter(k => PILL.includes(k) || k === tab).map(k => {
+                const [label, I] = TABS[k];
+                const on = tab === k;
+                return (
+                  <button key={k} type="button" onClick={() => setTab(k)} aria-current={on ? 'page' : undefined} className={tabPill(on)}>
+                    <I aria-hidden />{label}{n[k] > 0 && <span className="font-normal text-muted-foreground tabular-nums">{n[k]}</span>}
+                  </button>
+                );
+              })}
+            </nav>
 
-          <main className="flex min-h-0 flex-1">
-            <div className={cx('flex min-h-0 w-full', tab === 'chat' && 'mx-auto max-w-3xl')}><View focus={focus} /></div>
-          </main>
+            <main className="flex min-h-0 flex-1">
+              <div className={cx('flex min-h-0 w-full', tab === 'chat' && 'mx-auto max-w-3xl')}><View focus={focus} /></div>
+            </main>
+          </div>
+          {docked && (
+            <aside aria-label="Project details" className="w-84 shrink-0 overflow-y-auto border-s border-border px-5 pt-5 pb-6 thin-scrollbar autohide-scrollbar">
+              <InfoPanel docked onInvite={onInvite || (() => {})} onMessage={() => setTab('chat')} onTasks={() => setTab('tasks')} />
+            </aside>
+          )}
         </div>
       </div>
       {drawer && <ItemDrawer id={drawer} onClose={() => setDrawer(null)} />}
