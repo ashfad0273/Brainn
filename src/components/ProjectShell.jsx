@@ -6,7 +6,7 @@ import { useIsMobileNav } from '@ume/ui/hooks/use-media-query';
 import { InitialsAvatar } from '@ume/ui/components/patterns/IconChip';
 import { useStore } from '../store';
 import { PCtx, useP, Button, Menu, MenuItem, Drawer } from './ui';
-import { Rail, UnreadBadge, iconButton, useProjectList } from './Rail';
+import { Rail, UnreadBadge, iconButton, tabPill, tabRow, useProjectList } from './Rail';
 import Chat from './Chat';
 import { TasksView, RequirementsView, DecisionsView, VaultView, FilesView } from './Items';
 import ItemDrawer from './ItemDrawer';
@@ -179,14 +179,12 @@ export function ProjectShell({ p: record, role, me = null, names, tabs, tab, set
             </Menu>
           </header>
 
-          <nav aria-label="Project" className="flex shrink-0 gap-1 overflow-x-auto border-b border-border px-3 pb-3 [scrollbar-width:none] lg:px-4 [&::-webkit-scrollbar]:hidden">
+          <nav aria-label="Project" className={tabRow}>
             {tabs.filter(k => PILL.includes(k) || k === tab).map(k => {
               const [label, I] = TABS[k];
               const on = tab === k;
               return (
-                <button key={k} type="button" onClick={() => setTab(k)} aria-current={on ? 'page' : undefined}
-                  className={cx('flex h-9 shrink-0 items-center gap-2 rounded-full ps-3 pe-3.5 text-sm outline-none transition-[scale] duration-fast ease-out active:scale-[0.97] focus-visible:ring-2 focus-visible:ring-ring [&_svg]:size-4.5',
-                    on ? 'bg-field font-medium text-foreground' : 'text-text-secondary hover:bg-field hover:text-foreground')}>
+                <button key={k} type="button" onClick={() => setTab(k)} aria-current={on ? 'page' : undefined} className={tabPill(on)}>
                   <I aria-hidden />{label}{n[k] > 0 && <span className="font-normal text-muted-foreground tabular-nums">{n[k]}</span>}
                 </button>
               );

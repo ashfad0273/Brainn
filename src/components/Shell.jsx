@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { ErrorBoundary } from '@ume/ui/components/session/ErrorBoundary';
 import { Building2, Database, Hash, Search, ShieldCheck, Sparkles, User, Users } from '@/lib/icons';
 import { useStore } from '../store';
-import { Rail, BottomNav, GlobalSearch, ThemeButton, Mark, PAGES, hashPath, isOn, iconButton } from './Rail';
+import { Rail, BottomNav, GlobalSearch, ThemeButton, Mark, PAGES, hashPath, isOn, iconButton, tabPill } from './Rail';
 import { hasServer } from '../lib/api';
 import { cx } from '../lib/util';
 
@@ -50,6 +50,44 @@ export default function BrainShell({ children, wide }) {
         <main className={cx('mx-auto w-full px-4 pb-28 sm:px-6 lg:pt-8 lg:pb-12', wide ? 'max-w-6xl' : 'max-w-4xl')}>
           {/* One boundary per page, keyed by the path, so a broken page doesn't poison the others. */}
           <ErrorBoundary key={path}><div className="anim-fade">{children}</div></ErrorBoundary>
+        </main>
+      </div>
+      <BottomNav />
+    </div>
+  );
+}
+
+/** A page in one card beside the rail, like an open project: its title, its tabs, then the page
+    in a narrow column. `tabs` are [key, label, icon]; on a phone the title moves to the phone bar. */
+const column = 'mx-auto w-full max-w-2xl px-4 sm:px-6';
+
+export function CardShell({ title, subtitle, tabs, tab, onTab, children }) {
+  const path = hashPath();
+  return (
+    <div className="flex h-dvh bg-background text-foreground">
+      <Rail />
+      <div className="flex min-w-0 flex-1 flex-col overflow-hidden lg:my-2 lg:me-2 lg:rounded-[20px] lg:border lg:border-border lg:bg-card lg:shadow-card">
+        <PhoneBar />
+        {/* The title, the tabs and the page share one column, so they line up. */}
+        <header className="max-lg:hidden">
+          <div className={cx(column, 'pt-8 pb-4')}>
+            <h1 className="font-medium text-xl">{title}</h1>
+            {subtitle && <p className="mt-0.5 text-sm text-text-secondary">{subtitle}</p>}
+          </div>
+        </header>
+        {tabs?.length > 1 && (
+          <div className="border-b border-border">
+            <nav aria-label={title} className={cx(column, 'flex gap-1 overflow-x-auto pb-3 [scrollbar-width:none] sm:-translate-x-3 [&::-webkit-scrollbar]:hidden')}>
+              {tabs.map(([k, label, I]) => (
+                <button key={k} type="button" onClick={() => onTab(k)} aria-current={tab === k ? 'page' : undefined} className={tabPill(tab === k)}><I aria-hidden />{label}</button>
+              ))}
+            </nav>
+          </div>
+        )}
+        <main className="min-h-0 flex-1 overflow-y-auto thin-scrollbar autohide-scrollbar">
+          <div className={cx(column, 'pt-6 pb-28 lg:pt-8 lg:pb-12')}>
+            <ErrorBoundary key={path}><div className="anim-fade">{children}</div></ErrorBoundary>
+          </div>
         </main>
       </div>
       <BottomNav />

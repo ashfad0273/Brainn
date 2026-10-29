@@ -74,6 +74,11 @@ export function ThemeButton() {
   return <button type="button" onClick={toggle} aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'} title={theme === 'dark' ? 'Light mode' : 'Dark mode'} className={iconButton(false)}><I aria-hidden /></button>;
 }
 
+/** A tab in a card's tab row (a project's, Settings'). */
+export const tabPill = on => cx('flex h-9 shrink-0 items-center gap-2 rounded-full ps-3 pe-3.5 text-sm outline-none transition-[scale] duration-fast ease-out active:scale-[0.97] focus-visible:ring-2 focus-visible:ring-ring [&_svg]:size-4.5',
+  on ? 'bg-field font-medium text-foreground' : 'text-text-secondary hover:bg-field hover:text-foreground');
+export const tabRow = 'flex shrink-0 gap-1 overflow-x-auto border-b border-border px-3 pb-3 [scrollbar-width:none] lg:px-4 [&::-webkit-scrollbar]:hidden';
+
 const rowClass = on => cx('flex h-9.5 w-full items-center gap-2.5 rounded-xl px-2.5 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring [&>svg]:size-4.5 [&>svg]:shrink-0',
   on ? 'bg-sidebar-active font-medium text-foreground' : 'text-text-secondary hover:bg-field hover:text-foreground');
 

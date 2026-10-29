@@ -6,10 +6,10 @@ import {
 import { useStore } from '../store';
 import { useAuth } from './Auth';
 import { Field, Input, Select, Button, Toggle, Spinner, Badge } from './ui';
-import BrainShell, { PageHead, settingsTabs } from './Shell';
+import { CardShell, settingsTabs } from './Shell';
 import { useTheme } from '@ume/ui/hooks/use-theme';
 import { SegmentedControl } from '@ume/ui/components/ui/segmented-control';
-import { SettingsRow } from '@ume/ui/components/patterns/SettingsRow';
+import { SettingsRow, SettingsRows, SettingsSection } from '@ume/ui/components/patterns/SettingsRow';
 import { invitePerson, InviteResult, appUrl } from './Invite';
 import { testConnection, listModels, providerOf, PROVIDERS, badTokenChar, setServerAi } from '../lib/gemini';
 import { addMember, revokeMember, updateMember } from '../lib/model';
@@ -30,32 +30,38 @@ function StorageUsage() {
   const [est, setEst] = useState(null);
   useEffect(() => { navigator.storage?.estimate?.().then(setEst).catch(() => {}); }, []);
   const mb = n => (n / 1048576 >= 1024 ? (n / 1073741824).toFixed(2) + ' GB' : (n / 1048576).toFixed(1) + ' MB');
-  if (!est?.quota) return <p className="text-xs text-muted-foreground">Storage usage isn’t available in this browser.</p>;
-  const pct = Math.min(100, (est.usage / est.quota) * 100);
+  const pct = est?.quota ? Math.min(100, (est.usage / est.quota) * 100) : 0;
   return (
-    <div className="rounded-xl bg-field ring-1 ring-border p-3">
-      <div className="flex justify-between text-sm"><span className="text-foreground">Browser storage used</span><span className="text-muted-foreground tabular-nums">{mb(est.usage)} of {mb(est.quota)}</span></div>
-      <div className="h-1.5 rounded-full bg-field-hover mt-2 overflow-hidden"><div className={cx('h-full rounded-full', pct > 85 ? 'bg-rose' : 'bg-primary')} style={{ width: Math.max(pct, 1) + '%' }} /></div>
-      <p className="text-xs text-muted-foreground mt-2">Attached images and files are kept here at their original size.</p>
-    </div>
+    <SettingsRow label="Browser storage" help="Attached images and files are kept here at their original size.">
+      {est?.quota ? <>
+        <span className="text-sm tabular-nums text-text-secondary">{mb(est.usage)} of {mb(est.quota)}</span>
+        <div className="h-1.5 w-40 overflow-hidden rounded-full bg-field"><div className={cx('h-full rounded-full', pct > 85 ? 'bg-rose' : 'bg-primary')} style={{ width: Math.max(pct, 1) + '%' }} /></div>
+      </> : <span className="text-sm text-muted-foreground">Not available in this browser</span>}
+    </SettingsRow>
   );
 }
+
+/* The tab's Save, under its rows. */
+const SaveRow = ({ children }) => <div className="flex flex-wrap justify-end gap-2 pt-4">{children}</div>;
 
 function TzSelect({ value, onChange }) {
   const zones = allZones();
   return (
-    <Select value={value} onChange={e => onChange(e.target.value)}>
-      <option value="">Automatic ({tzCity(browserTz()) || 'this device'})</option>
-      {zones.map(z => <option key={z} value={z}>{z.replace(/_/g, ' ')}</option>)}
-    </Select>
+    // data-slot: a SettingsRow gives a field its own full-width line on phones.
+    <div data-slot="input-control" className="w-full sm:w-64">
+      <Select value={value} onChange={e => onChange(e.target.value)}>
+        <option value="">Automatic ({tzCity(browserTz()) || 'this device'})</option>
+        {zones.map(z => <option key={z} value={z}>{z.replace(/_/g, ' ')}</option>)}
+      </Select>
+    </div>
   );
 }
 
 const Hours = ({ start, end, onChange }) => (
   <div className="flex items-center gap-2">
-    <Input type="time" value={start} onChange={e => onChange({ start: e.target.value, end })} />
+    <Input type="time" className="w-32" value={start} onChange={e => onChange({ start: e.target.value, end })} aria-label="From" />
     <span className="text-muted-foreground text-sm">to</span>
-    <Input type="time" value={end} onChange={e => onChange({ start, end: e.target.value })} />
+    <Input type="time" className="w-32" value={end} onChange={e => onChange({ start, end: e.target.value })} aria-label="Until" />
   </div>
 );
 
@@ -121,22 +127,33 @@ function OrgTab() {
   const ref = useRef();
   const save = () => { setSettings({ org: { ...o, name: o.name.trim() || 'My workspace' }, workspaceName: o.name.trim() || 'My workspace' }); toast('Organization saved'); };
   return <>
-    <Field label="Organization name" hint="Shown in the sidebar, on the sign-in page and in invitation emails."><Input value={o.name} onChange={e => setO(x => ({ ...x, name: e.target.value }))} /></Field>
-    <Field label="Logo">
-      <input ref={ref} type="file" accept="image/*" hidden onChange={async e => { const f = e.target.files[0]; e.target.value = ''; if (f) { try { setO(x => ({ ...x, logo: '' })); const logo = await logoDataUrl(f); setO(x => ({ ...x, logo })); } catch { toast('Could not read that image', 'error'); } } }} />
-      <div className="flex items-center gap-3">
-        <button type="button" onClick={() => ref.current.click()} className="w-14 h-14 rounded-2xl ring-1 ring-inset ring-border hover:ring-border-strong bg-background grid place-items-center overflow-hidden text-muted-foreground">
-          {o.logo ? <img src={o.logo} alt="" className="w-full h-full object-cover" /> : <ImagePlus size={18} />}
-        </button>
-        {o.logo && <Button variant="ghost" size="sm" onClick={() => setO(x => ({ ...x, logo: '' }))}><X size={13} />Remove</Button>}
-      </div>
-    </Field>
-    <Field label="Time zone" hint="Your team’s time — used for the “their local time / best time to reach” indicators."><TzSelect value={o.tz || ''} onChange={tz => setO(x => ({ ...x, tz }))} /></Field>
-    <Field label="Working hours"><Hours start={o.workStart || '09:00'} end={o.workEnd || '18:00'} onChange={h => setO(x => ({ ...x, workStart: h.start, workEnd: h.end }))} /></Field>
-    <Field label="Brand color" hint="Used on the sign-in page and in invitation emails.">
-      <div className="flex items-center gap-2"><input type="color" value={o.color || '#0ea5e9'} onChange={e => setO(x => ({ ...x, color: e.target.value }))} className="w-10 h-9 rounded-lg bg-transparent" /><span className="text-sm text-muted-foreground font-mono">{o.color}</span></div>
-    </Field>
-    <Button variant="primary" onClick={save}>Save</Button>
+    <SettingsRows>
+      <SettingsRow label="Organization name" help="Shown in the sidebar, on the sign-in page and in invitation emails." htmlFor="org-name">
+        <Input id="org-name" className="sm:w-64" value={o.name} onChange={e => setO(x => ({ ...x, name: e.target.value }))} />
+      </SettingsRow>
+      <SettingsRow label="Logo" help="A square image works best. It replaces the B in the sidebar.">
+        <input ref={ref} type="file" accept="image/*" hidden onChange={async e => { const f = e.target.files[0]; e.target.value = ''; if (f) { try { setO(x => ({ ...x, logo: '' })); const logo = await logoDataUrl(f); setO(x => ({ ...x, logo })); } catch { toast('Could not read that image', 'error'); } } }} />
+        <div className="flex items-center gap-2">
+          {o.logo && <Button variant="ghost" size="sm" onClick={() => setO(x => ({ ...x, logo: '' }))}>Remove</Button>}
+          <button type="button" onClick={() => ref.current.click()} aria-label={o.logo ? 'Change logo' : 'Add a logo'} className="grid size-12 place-items-center overflow-hidden rounded-xl border border-dashed border-border-strong text-icon-muted outline-none hover:border-foreground hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring">
+            {o.logo ? <img src={o.logo} alt="" className="size-full object-cover" /> : <ImagePlus size={18} />}
+          </button>
+        </div>
+      </SettingsRow>
+      <SettingsRow label="Time zone" help="Your team’s time, for the “their local time” and “best time to reach” hints.">
+        <TzSelect value={o.tz || ''} onChange={tz => setO(x => ({ ...x, tz }))} />
+      </SettingsRow>
+      <SettingsRow label="Working hours" help="When your team usually replies.">
+        <Hours start={o.workStart || '09:00'} end={o.workEnd || '18:00'} onChange={h => setO(x => ({ ...x, workStart: h.start, workEnd: h.end }))} />
+      </SettingsRow>
+      <SettingsRow label="Brand color" help="Used on the sign-in page and in invitation emails.">
+        <label className="flex h-11 items-center gap-2.5 rounded-xl border border-input bg-card ps-2 pe-3 shadow-xs hover:border-border-strong">
+          <input type="color" value={o.color || '#0ea5e9'} onChange={e => setO(x => ({ ...x, color: e.target.value }))} className="size-7 cursor-pointer rounded-md bg-transparent" aria-label="Brand color" />
+          <span className="font-mono text-sm text-text-secondary uppercase">{o.color || '#0ea5e9'}</span>
+        </label>
+      </SettingsRow>
+    </SettingsRows>
+    <SaveRow><Button variant="primary" onClick={save}>Save</Button></SaveRow>
   </>;
 }
 
@@ -356,21 +373,24 @@ function AccountTab() {
     } catch (e) { toast(e.message, 'error'); } finally { setBusy(false); }
   };
   return <>
-    <Field label="Email"><Input value={u.email} readOnly className="text-muted-foreground" /></Field>
-    <Field label="Your name"><Input value={d.name} onChange={e => setD(x => ({ ...x, name: e.target.value }))} /></Field>
-    {mode !== 'member' && <Field label="Name on your chat messages" hint="What clients and your team see next to your messages."><Input value={d.chatName} onChange={e => setD(x => ({ ...x, chatName: e.target.value }))} /></Field>}
-    <Field label="Your time zone" hint="Picked up automatically when you sign in, unless you choose one here."><TzSelect value={d.tz} onChange={tz => setD(x => ({ ...x, tz }))} /></Field>
-    <Field label="Your working hours"><Hours start={d.workStart} end={d.workEnd} onChange={h => setD(x => ({ ...x, workStart: h.start, workEnd: h.end }))} /></Field>
-    <Button variant="primary" onClick={save} disabled={busy}>Save</Button>
-    <div className="pt-4 mt-2 border-t border-border space-y-3">
-      <div className="text-sm font-medium">Change password</div>
-      <Field label="Current password"><Input type="password" autoComplete="current-password" value={pw.password} onChange={e => setPw(x => ({ ...x, password: e.target.value }))} /></Field>
-      <div className="grid sm:grid-cols-2 gap-3">
-        <Field label="New password"><Input type="password" autoComplete="new-password" value={pw.newPassword} onChange={e => setPw(x => ({ ...x, newPassword: e.target.value }))} /></Field>
-        <Field label="Repeat"><Input type="password" autoComplete="new-password" value={pw.again} onChange={e => setPw(x => ({ ...x, again: e.target.value }))} /></Field>
-      </div>
-      <Button onClick={changePw} disabled={busy || !pw.newPassword}>Change password</Button>
-    </div>
+    <SettingsSection title="Account">
+      <SettingsRows>
+        <SettingsRow label="Email" help="You sign in with this."><span className="text-sm text-text-secondary">{u.email}</span></SettingsRow>
+        <SettingsRow label="Your name" htmlFor="acc-name"><Input id="acc-name" className="sm:w-64" value={d.name} onChange={e => setD(x => ({ ...x, name: e.target.value }))} /></SettingsRow>
+        {mode !== 'member' && <SettingsRow label="Name on your messages" help="What clients and your team see next to your messages." htmlFor="acc-chat"><Input id="acc-chat" className="sm:w-64" value={d.chatName} onChange={e => setD(x => ({ ...x, chatName: e.target.value }))} /></SettingsRow>}
+        <SettingsRow label="Your time zone" help="Picked up when you sign in, unless you choose one."><TzSelect value={d.tz} onChange={tz => setD(x => ({ ...x, tz }))} /></SettingsRow>
+        <SettingsRow label="Your working hours"><Hours start={d.workStart} end={d.workEnd} onChange={h => setD(x => ({ ...x, workStart: h.start, workEnd: h.end }))} /></SettingsRow>
+      </SettingsRows>
+      <SaveRow><Button variant="primary" onClick={save} disabled={busy}>Save</Button></SaveRow>
+    </SettingsSection>
+    <SettingsSection title="Password" description="Changing it signs your other devices out.">
+      <SettingsRows>
+        <SettingsRow label="Current password" htmlFor="pw-now"><Input id="pw-now" className="sm:w-64" type="password" autoComplete="current-password" value={pw.password} onChange={e => setPw(x => ({ ...x, password: e.target.value }))} /></SettingsRow>
+        <SettingsRow label="New password" htmlFor="pw-new"><Input id="pw-new" className="sm:w-64" type="password" autoComplete="new-password" value={pw.newPassword} onChange={e => setPw(x => ({ ...x, newPassword: e.target.value }))} /></SettingsRow>
+        <SettingsRow label="Repeat new password" htmlFor="pw-again"><Input id="pw-again" className="sm:w-64" type="password" autoComplete="new-password" value={pw.again} onChange={e => setPw(x => ({ ...x, again: e.target.value }))} /></SettingsRow>
+      </SettingsRows>
+      <SaveRow><Button onClick={changePw} disabled={busy || !pw.newPassword}>Change password</Button></SaveRow>
+    </SettingsSection>
   </>;
 }
 
@@ -530,59 +550,60 @@ export default function SettingsPage({ tab: wanted }) {
     } catch (e) { toast('Import failed: ' + e.message, 'error'); }
   };
 
+  const section = rows => <SettingsSection>{rows}</SettingsSection>;
   return (
-    <BrainShell>
-      <PageHead title="Settings" subtitle="Your workspace, AI, account and data.">
-        {/* The tabs; each is its own address (#/settings/:tab), so a tab can be linked to. */}
-        {tabs.length > 1 && (
-          <div className="scroll-fade-x -mx-4 overflow-x-auto px-4 sm:mx-0 sm:px-0">
-            <SegmentedControl fit aria-label="Settings" value={tab} onValueChange={k => { location.hash = `#/settings/${k}`; }}
-              options={tabs.map(([k, l]) => ({ value: k, label: l }))} />
+    <CardShell title="Settings" subtitle="Your workspace, AI, account and data." tabs={tabs} tab={tab} onTab={k => { location.hash = `#/settings/${k}`; }}>
+      <div className="flex flex-col gap-10">
+        {tab === 'org' && section(<OrgTab />)}
+        {tab === 'people' && <div className="space-y-4"><PeopleTab /></div>}
+        {tab === 'templates' && <div className="space-y-4"><TemplatesTab /></div>}
+        {tab === 'ai' && <div className="space-y-4"><AiTab /></div>}
+
+        {tab === 'profile' && (auth ? <>
+          {section(<SettingsRows><ThemeRow /></SettingsRows>)}
+          <AccountTab />
+          <SettingsSection title="Sign out">
+            <SettingsRows><SettingsRow label="Sign out of Brainn" help="On this device only."><Button variant="danger" onClick={auth.signOut}><LogOut />Sign out</Button></SettingsRow></SettingsRows>
+          </SettingsSection>
+        </> : section(<>
+          <SettingsRows>
+            <ThemeRow />
+            <SettingsRow label="Your name" help="Shown on your messages." htmlFor="owner-name"><Input id="owner-name" className="sm:w-64" value={owner} onChange={e => setOwner(e.target.value)} /></SettingsRow>
+          </SettingsRows>
+          <SaveRow><Button variant="primary" onClick={() => { setSettings({ ownerName: owner.trim() || 'You' }); toast('Saved'); }}>Save</Button></SaveRow>
+        </>))}
+
+        {tab === 'security' && section(<>
+          <div className={cx('mb-4 flex gap-3 rounded-2xl p-4 text-sm', encrypted ? 'bg-pos-soft text-pos' : 'bg-warn-soft text-warn-ink')}>
+            {encrypted ? <ShieldCheck size={18} className="shrink-0" /> : <Lock size={18} className="shrink-0" />}
+            {encrypted ? 'This browser’s copy is encrypted at rest with AES-256-GCM. The passphrase is never stored: if you lose it, the local copy can’t be recovered.' : 'This browser’s copy isn’t encrypted. Anyone with access to this browser profile can read it.'}
           </div>
-        )}
-      </PageHead>
-      <div>
-        <div className="max-w-3xl space-y-4">
-          {tab === 'org' && <OrgTab />}
-          {tab === 'people' && <PeopleTab />}
-          {tab === 'templates' && <TemplatesTab />}
-          {tab === 'ai' && <AiTab />}
+          <SettingsRows>
+            <SettingsRow label={encrypted ? 'New passphrase' : 'Passphrase'} help="At least 8 characters." htmlFor="pass-a"><Input id="pass-a" className="sm:w-64" type="password" value={pass.a} onChange={e => setPass(x => ({ ...x, a: e.target.value }))} autoComplete="new-password" /></SettingsRow>
+            <SettingsRow label="Repeat passphrase" htmlFor="pass-b"><Input id="pass-b" className="sm:w-64" type="password" value={pass.b} onChange={e => setPass(x => ({ ...x, b: e.target.value }))} autoComplete="new-password" /></SettingsRow>
+          </SettingsRows>
+          <SaveRow>
+            {encrypted && <Button variant="danger" onClick={async () => { await disableEncryption(); toast('Encryption turned off'); }}>Turn off encryption</Button>}
+            {encrypted && <Button onClick={lock}>Lock now</Button>}
+            <Button variant="primary" onClick={encrypt} disabled={busy === 'enc'}>{busy === 'enc' ? <Spinner /> : encrypted ? 'Change passphrase' : 'Encrypt workspace'}</Button>
+          </SaveRow>
+          {hasServer() && <p className="mt-4 text-xs text-muted-foreground">The server keeps its own copy so invited people and your other devices can see projects. Vault records never leave this browser.</p>}
+        </>)}
 
-          {tab === 'profile' && <ThemeRow />}
-          {tab === 'profile' && (auth ? <AccountTab /> : <>
-            <Field label="Your name" hint="Shown on your messages."><Input value={owner} onChange={e => setOwner(e.target.value)} /></Field>
-            <Button variant="primary" onClick={() => { setSettings({ ownerName: owner.trim() || 'You' }); toast('Saved'); }}>Save</Button>
-          </>)}
-
-          {tab === 'profile' && auth && <div className="border-t border-border pt-4"><Button variant="danger" onClick={auth.signOut}><LogOut />Sign out</Button></div>}
-
-          {tab === 'security' && <>
-            <div className={cx('rounded-xl p-3 text-sm flex gap-2', encrypted ? 'bg-pos-soft text-pos' : 'bg-warn-soft text-warn-ink')}>
-              {encrypted ? <ShieldCheck size={18} /> : <Lock size={18} />}
-              {encrypted ? 'This browser’s copy is encrypted at rest with AES-256-GCM. The passphrase is never stored — if you lose it, the local copy cannot be recovered.' : 'This browser’s copy is not encrypted. Anyone with access to this browser profile can read it.'}
-            </div>
-            <Field label={encrypted ? 'New passphrase' : 'Passphrase'}><Input type="password" value={pass.a} onChange={e => setPass(x => ({ ...x, a: e.target.value }))} autoComplete="new-password" /></Field>
-            <Field label="Repeat passphrase"><Input type="password" value={pass.b} onChange={e => setPass(x => ({ ...x, b: e.target.value }))} autoComplete="new-password" /></Field>
-            <div className="flex flex-wrap gap-2">
-              <Button variant="primary" onClick={encrypt} disabled={busy === 'enc'}>{busy === 'enc' ? <Spinner /> : encrypted ? 'Change passphrase' : 'Encrypt workspace'}</Button>
-              {encrypted && <Button onClick={lock}>Lock now</Button>}
-              {encrypted && <Button variant="danger" onClick={async () => { await disableEncryption(); toast('Encryption turned off'); }}>Turn off encryption</Button>}
-            </div>
-            {hasServer() && <p className="text-xs text-muted-foreground">The server keeps its own copy so invited people and your other devices can see projects; vault records never leave this browser.</p>}
-          </>}
-
-          {tab === 'data' && <>
-            <p className="text-sm text-muted-foreground">Nothing is ever deleted; exports are complete records you can keep or move to another browser.</p>
-            <div className="flex flex-wrap gap-2">
-              <Button onClick={() => download(`project-brain-${new Date().toISOString().slice(0, 10)}.json`, JSON.stringify({ ...state, settings: { ...state.settings, apiKey: '', workerToken: '' } }, null, 2))}>Export workspace</Button>
-              <Button onClick={() => fileRef.current.click()}>Import & merge</Button>
+        {tab === 'data' && section(<>
+          <SettingsRows>
+            <SettingsRow label="Export workspace" help="A complete record to keep or move to another browser. Keys and tokens are left out.">
+              <Button onClick={() => download(`project-brain-${new Date().toISOString().slice(0, 10)}.json`, JSON.stringify({ ...state, settings: { ...state.settings, apiKey: '', workerToken: '' } }, null, 2))}>Export</Button>
+            </SettingsRow>
+            <SettingsRow label="Import and merge" help="Adds records by ID. Existing history is never replaced.">
+              <Button onClick={() => fileRef.current.click()}>Import</Button>
               <input ref={fileRef} type="file" accept="application/json,.json" hidden onChange={e => { e.target.files[0] && importFile(e.target.files[0]); e.target.value = ''; }} />
-            </div>
+            </SettingsRow>
             <StorageUsage />
-            <p className="text-xs text-muted-foreground">Exports leave out keys and tokens. Importing merges records by ID — existing history is never replaced.</p>
-          </>}
-        </div>
+          </SettingsRows>
+          <p className="mt-4 text-xs text-muted-foreground">Nothing is ever deleted.</p>
+        </>)}
       </div>
-    </BrainShell>
+    </CardShell>
   );
 }
