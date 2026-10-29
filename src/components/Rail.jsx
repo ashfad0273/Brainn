@@ -37,14 +37,16 @@ export const UnreadBadge = ({ n }) => (
 );
 
 /** "Lucas: Can we also show…", the latest message as one line, or '' before the first one. */
-function lastLine(p, ownerName) {
+/** The latest message: who said it, the text (secrets masked, markdown stripped) and whether it's yours. */
+function lastMessage(p, ownerName, mine) {
   const m = p.messages[p.messages.length - 1];
-  if (!m) return '';
+  if (!m) return null;
   const text = maskText(m.text, secretValues(p)).replace(/\*\*|~~|`/g, '') || m.attachments.map(a => a.name).join(', ') || 'Voice note';
-  return `${namesFor(p, ownerName).msg(m).split(' ')[0]}: ${text}`;
+  return { who: namesFor(p, ownerName).msg(m), text, mine: mine(m), ts: m.ts };
 }
 
-/** Every project, most recent conversation first, with its unread count and latest message. */
+/** Every project, most recent conversation first, with its unread count and latest message
+    (`msg`, and `last` as one line: "Lucas: Can we also…", or '' before the first message). */
 export function useProjectList() {
   const { state, mode, user } = useStore();
   const seen = useSeen();
@@ -53,7 +55,8 @@ export function useProjectList() {
     const p = liveView(record);
     const me = mode === 'member' ? myMember(p, user) : null;
     const mine = me ? m => m.memberId === me.id : m => m.from === 'owner';
-    return { p, unread: unreadCount(p, seen[p.id], mine), last: lastLine(p, ownerName), ts: p.messages[p.messages.length - 1]?.ts || p.createdAt };
+    const msg = lastMessage(p, ownerName, mine);
+    return { p, unread: unreadCount(p, seen[p.id], mine), msg, last: msg ? `${msg.who.split(' ')[0]}: ${msg.text}` : '', ts: msg?.ts || p.createdAt };
   }).sort((a, b) => b.ts - a.ts), [state.projects, seen, mode, user, ownerName]);
 }
 

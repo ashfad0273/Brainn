@@ -114,11 +114,11 @@ export function PageHead({ title, subtitle, actions, children }) {
   );
 }
 
-/** The card from the layout: a title row with an icon or action, a hairline, then the body. */
-export function Panel({ title, icon: I, action, href, className, bodyClassName, children }) {
+/** The card from the layout: a title row with an icon or action, a hairline (unless `quiet`), then the body. */
+export function Panel({ title, icon: I, action, href, quiet, className, bodyClassName, children }) {
   return (
     <section className={cx('flex min-h-0 flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-card', className)}>
-      <header className="flex items-center gap-3 border-b border-border px-5 py-4">
+      <header className={cx('flex items-center gap-3 px-5', quiet ? 'pt-4 pb-1' : 'border-b border-border py-4')}>
         <h2 className="min-w-0 flex-1 truncate font-medium">{href ? <a href={href} className="outline-none hover:underline focus-visible:underline">{title}</a> : title}</h2>
         {action}
         {I && <I aria-hidden className="size-5 shrink-0 text-icon-muted" />}
