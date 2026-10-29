@@ -73,10 +73,12 @@ export const buttonVariants = cva(
         "icon-xs": "size-7 rounded-full [&_svg:not([class*='size-'])]:size-3.5",
       },
       variant: {
+        /* Brainn: the icon takes the label's colour; a muted grey icon on the solid
+           fill looked washed out, most of all on an icon-only button. */
         primary:
-          "border-btn-primary bg-btn-primary text-btn-primary-fg hover:bg-btn-primary/88 [&_svg]:text-icon-muted *:data-[slot=button-loading-indicator]:text-btn-primary-fg",
+          "border-btn-primary bg-btn-primary text-btn-primary-fg hover:bg-btn-primary/88 [&_svg]:text-btn-primary-fg *:data-[slot=button-loading-indicator]:text-btn-primary-fg",
         default:
-          "border-btn-primary bg-btn-primary text-btn-primary-fg hover:bg-btn-primary/88 [&_svg]:text-icon-muted *:data-[slot=button-loading-indicator]:text-btn-primary-fg",
+          "border-btn-primary bg-btn-primary text-btn-primary-fg hover:bg-btn-primary/88 [&_svg]:text-btn-primary-fg *:data-[slot=button-loading-indicator]:text-btn-primary-fg",
         brand:
           "border-transparent bg-primary text-primary-foreground shadow-button hover:bg-primary/90 focus-visible:ring-0 focus-visible:ring-offset-0 focus-ring-brand *:data-[slot=button-loading-indicator]:text-primary-foreground",
         soft:

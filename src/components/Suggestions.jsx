@@ -9,7 +9,7 @@ import { engineName } from '../lib/gemini';
 import { TYPES, STATUS, COLOR, isActive } from '../lib/meta';
 import { cx, fmtDue, fmtRel, isOverdue } from '../lib/util';
 
-const opLabel = s => {
+export const opLabel = s => {
   const t = TYPES[s.type].label.toLowerCase();
   if (s.op === 'create') return s.type === 'file' ? 'New link' : s.replaces ? `New ${t} (replaces old)` : `New ${t}`;
   if (s.op === 'update') return `Update ${t}`;
