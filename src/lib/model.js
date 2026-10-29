@@ -146,6 +146,30 @@ export function timeLeftLabel(p) {
   return n < 60 ? `${w} weeks left` : `${Math.round(n / 30)} months left`;
 }
 
+/** How a project is doing, from its deadline, progress, tasks and risks → { label, tone, reason }.
+    tone is a Brainn tone (emerald, amber, rose, sky, neutral). */
+export function projectHealth(p) {
+  if (p.status === 'completed') return { label: 'Delivered', tone: 'emerald', reason: 'Project completed' };
+  if (p.status === 'cancelled') return { label: 'Cancelled', tone: 'neutral', reason: 'Project cancelled' };
+  if (p.status === 'on_hold') return { label: 'On hold', tone: 'neutral', reason: 'Paused for now' };
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const iso = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+  const open = p.items.filter(i => !i.deleted && isActive(i));
+  const overdue = open.filter(i => i.type === 'task' && i.due && i.due < iso).length;
+  const blocked = open.filter(i => i.type === 'task' && i.status === 'blocked').length;
+  const risks = open.filter(i => i.type === 'risk').length;
+  const left = daysLeft(p), progress = projectProgress(p).value;
+  const plural = (n, w) => `${n} ${w}${n === 1 ? '' : 's'}`;
+  if (left !== null && left < 0) return { label: 'Off track', tone: 'rose', reason: 'Deadline passed' };
+  if (overdue >= 2) return { label: 'Off track', tone: 'rose', reason: `${plural(overdue, 'task')} overdue` };
+  if (left !== null && left <= 3 && progress < 70) return { label: 'Off track', tone: 'rose', reason: `${progress}% done, ${plural(left, 'day')} left` };
+  if (overdue) return { label: 'At risk', tone: 'amber', reason: '1 task overdue' };
+  if (blocked) return { label: 'At risk', tone: 'amber', reason: `${plural(blocked, 'task')} blocked` };
+  if (left !== null && left <= 7 && progress < 50) return { label: 'At risk', tone: 'amber', reason: `${progress}% done, ${plural(left, 'day')} left` };
+  if (risks) return { label: 'At risk', tone: 'amber', reason: `${plural(risks, 'open risk')}` };
+  return { label: 'On track', tone: 'emerald', reason: `${progress}% done` };
+}
+
 /** Real delete for a record created by mistake (different from cancelling it). Leaves a tombstone. */
 export function deleteItem(p, actor, id, reason = '') {
   const it = p.items.find(i => i.id === id);

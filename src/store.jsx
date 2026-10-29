@@ -8,11 +8,11 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import * as kv from './lib/kv';
 import * as vault from './lib/crypto';
 import { setBlobKey, setBlobRemote, reencryptAll, isQuotaError } from './lib/blobs';
-import { mergeState, normalizeState, normalizeProject, mergeProject, defaultSettings, hideDemoDuplicates } from './lib/model';
+import { mergeState, normalizeState, normalizeProject, mergeProject, defaultSettings, hideDemoDuplicates, DEMO_IDS } from './lib/model';
 import { withoutVault } from './lib/merge';
 import { api } from './lib/api';
 import { setServerAi } from './lib/gemini';
-import { buildSeed } from './seed';
+import { buildSeed, loadDemoApps } from './seed';
 import { uid, clone, now } from './lib/util';
 import { notify } from '@ume/ui/lib/toast';
 
@@ -75,8 +75,11 @@ function LocalStore({ mode, user, children }) {
         // a signed-in owner starts empty and pulls from the server; only local-only mode gets the demo
         if (!blob) { setState(synced ? normalizeState({}) : buildSeed()); setPhase('ready'); return; }
         if (blob.enc) { lockOut(blob.salt); return; }
-        const s = normalizeState(blob.data);
+        let s = normalizeState(blob.data);
         lastJson.current = JSON.stringify(s);
+        // a local demo workspace (it still has the first demo projects) picks up demo apps added since it was made
+        const extra = !synced && s.projects.some(p => DEMO_IDS.includes(p.id)) && loadDemoApps(s);
+        if (extra) s = mergeState(s, extra);
         setState(cleanDemo(s));
         setPhase('ready');
       } catch (e) {

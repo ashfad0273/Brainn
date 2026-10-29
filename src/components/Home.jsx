@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react';
-import { Plus, Search, FolderPlus, FolderOpen, Layers, MessageSquare, ListTodo, Sparkles, Archive, ImagePlus, X } from '@/lib/icons';
+import { Plus, Search, FolderPlus, FolderOpen, Layers, Calendar, ListTodo, Sparkles, Archive, ImagePlus, X } from '@/lib/icons';
 import { useStore } from '../store';
 import { Button, Modal, Field, Input, Textarea, Select, Empty, Badge } from './ui';
 import { IconChip, InitialsAvatar } from '@ume/ui/components/patterns/IconChip';
@@ -7,12 +7,13 @@ import BrainShell, { PageHead } from './Shell';
 import { FilterBar, FilterClear, FilterSection } from '@ume/ui/components/patterns/FilterBar';
 import { ChoiceMenu, ChoiceList } from '@ume/ui/components/patterns/ChoiceMenu';
 import SearchModal from './Search';
-import { newProject, namesFor, updateMeta, secretValues, maskText, liveItems, liveView, primaryClient, myMember, canReview } from '../lib/model';
-import { StatusPill } from './Overview';
+import { newProject, namesFor, projectHealth, projectProgress, timeLeftLabel, updateMeta, secretValues, maskText, liveItems, liveView, primaryClient, myMember, canReview } from '../lib/model';
+import { ProgressBar, timeTone } from './Overview';
+import { fmtDate } from '@ume/ui/lib/format';
 import { putBlob, isQuotaError } from '../lib/blobs';
 import { optimizeImageIfNeeded } from '../lib/files';
 import { ProjectAvatar, ProjectCover } from './ProjectArt';
-import { PROJECT_COLORS, PROJECT_STATUS } from '../lib/meta';
+import { COLOR, PROJECT_COLORS, PROJECT_STATUS } from '../lib/meta';
 import { cx, fmtRel, uid, now, todayISO } from '../lib/util';
 
 // Brainn tone → Ume hue, for the status swatches.
@@ -94,48 +95,56 @@ export function ProjectFormModal({ project, onClose, spaceId }) {
   );
 }
 
-/** A project, as a card: its name and a way into its chat, a hairline, then its latest messages. */
+/** A project, as a card: its name, then how it's doing, when it's due, and the last thing said. */
 function ProjectCard({ p: record, i, ownerName }) {
   const { mode, user } = useStore();
   const p = liveView(record);
-  const names = namesFor(p, ownerName);
   const pending = canReview(mode === 'member' ? 'client' : 'owner', myMember(p, user)) ? p.suggestions.filter(s => s.state === 'pending').length : 0;
-  const secrets = secretValues(p);
-  const recent = p.messages.slice(-3).reverse();
+  const health = projectHealth(p);
+  const progress = projectProgress(p).value;
+  const last = p.messages[p.messages.length - 1];
+  const who = last && namesFor(p, ownerName).msg(last);
+  const lastText = last && (maskText(last.text, secretValues(p)).replace(/\*\*|~~|`/g, '') || last.attachments.map(a => a.name).join(', ') || 'Voice note');
   return (
-    <a href={`#/p/${p.id}/chat`} className="anim-up group flex h-96 flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-card outline-none transition-[scale] duration-fast ease-out hover:border-border-strong focus-visible:ring-2 focus-visible:ring-ring active:scale-[0.99]" style={{ animationDelay: i * 40 + 'ms' }}>
+    <a href={`#/p/${p.id}/chat`} className="anim-up group flex flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-card outline-none transition-[scale] duration-fast ease-out hover:border-border-strong focus-visible:ring-2 focus-visible:ring-ring active:scale-[0.99]" style={{ animationDelay: i * 40 + 'ms' }}>
       <header className="flex items-center gap-3 border-b border-border px-5 py-4">
         <ProjectAvatar p={p} className="size-7" rounded="rounded-lg" text="text-xs" />
         <span className="min-w-0 flex-1">
           <span className="block truncate font-medium">{p.name}</span>
+          <span className="block truncate text-xs text-muted-foreground">{p.client || primaryClient(p)?.name || 'No client yet'}</span>
         </span>
         {p.archived && <Badge tone="amber">Archived</Badge>}
         {pending > 0 && <Badge tone="sky" title={`${pending} suggestion${pending === 1 ? '' : 's'} to review`}><Sparkles />{pending}</Badge>}
-        <MessageSquare aria-hidden className="size-5 shrink-0 text-icon-muted group-hover:text-foreground" />
       </header>
-      {recent.length ? (
-        <ul className="flex min-h-0 flex-1 flex-col gap-4 overflow-hidden px-5 py-4">
-          {recent.map(m => {
-            const text = maskText(m.text, secrets).replace(/\*\*|~~|`/g, '') || m.attachments.map(a => a.name).join(', ') || 'Voice note';
-            const who = names.msg(m);
-            return (
-              <li key={m.id} className="flex gap-3">
-                <InitialsAvatar name={who} size="sm" />
-                <span className="min-w-0 flex-1">
-                  <span className="flex items-baseline gap-2"><span className="truncate font-medium text-sm">{who}</span><span className="shrink-0 text-xs text-muted-foreground">{fmtRel(m.ts)}</span></span>
-                  <span className="line-clamp-2 text-sm text-text-secondary">{text}</span>
-                </span>
-              </li>
-            );
-          })}
-        </ul>
-      ) : (
-        <p className="grid flex-1 place-items-center px-5 text-sm text-muted-foreground">No messages yet.</p>
-      )}
-      <footer className="flex items-center gap-2 border-t border-border px-5 py-3 text-xs text-muted-foreground">
-        <span className="truncate">{p.client || primaryClient(p)?.name || 'No client yet'}</span>
-        <span className="ms-auto shrink-0"><StatusPill status={p.status} /></span>
-      </footer>
+
+      <div className="grid grid-cols-2 divide-x divide-border border-b border-border">
+        <div className="px-5 py-4">
+          <div className="text-label-mono text-muted-foreground">Health</div>
+          <div className="mt-2 flex items-center gap-2 font-medium text-sm">
+            <span aria-hidden className={cx('size-2 rounded-full', COLOR[health.tone].dot)} />{health.label}
+          </div>
+          <div className="mt-0.5 truncate text-xs text-muted-foreground">{health.reason}</div>
+          <ProgressBar value={progress} color={p.color} className="mt-3" />
+        </div>
+        <div className="px-5 py-4">
+          <div className="text-label-mono text-muted-foreground">Deadline</div>
+          <div className="mt-2 flex items-center gap-2 font-medium text-sm"><Calendar aria-hidden className="size-4 text-icon-muted" />{p.deadline ? fmtDate(p.deadline) : 'Not set'}</div>
+          <div className={cx('mt-0.5 truncate text-xs', timeTone(p))}>{timeLeftLabel(p)}</div>
+        </div>
+      </div>
+
+      <div className="flex-1 px-5 py-4">
+        <div className="text-label-mono text-muted-foreground">Last message</div>
+        {last ? (
+          <div className="mt-2 flex gap-3">
+            <InitialsAvatar name={who} size="sm" />
+            <span className="min-w-0 flex-1">
+              <span className="flex items-baseline gap-2"><span className="truncate font-medium text-sm">{who}</span><span className="shrink-0 text-xs text-muted-foreground">{fmtRel(last.ts)}</span></span>
+              <span className="line-clamp-2 text-sm text-text-secondary">{lastText}</span>
+            </span>
+          </div>
+        ) : <p className="mt-2 text-sm text-muted-foreground">No messages yet.</p>}
+      </div>
     </a>
   );
 }
@@ -206,7 +215,7 @@ export default function Home() {
       <div className="grid gap-5 sm:grid-cols-2">
         {list.map((p, i) => <ProjectCard key={p.id} p={p} i={i} ownerName={state.settings.ownerName || 'You'} />)}
         {view === 'active' && !member && (
-          <button onClick={() => setModal('project')} className="anim-up grid h-96 place-items-center rounded-2xl border border-dashed border-border-strong text-text-secondary outline-none transition-[scale] duration-fast ease-out hover:bg-card hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring active:scale-[0.99]">
+          <button onClick={() => setModal('project')} className="anim-up grid min-h-72 place-items-center rounded-2xl border border-dashed border-border-strong text-text-secondary outline-none transition-[scale] duration-fast ease-out hover:bg-card hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring active:scale-[0.99]">
             <span className="flex flex-col items-center gap-3"><IconChip icon={Plus} hue="brand" /><span className="font-medium text-sm">New project</span></span>
           </button>
         )}
