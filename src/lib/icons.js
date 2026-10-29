@@ -4,7 +4,7 @@
    Icon Studio overrides. */
 import { Icons } from '@ume/ui/lib/icons';
 import {
-  RiArrowGoBackLine, RiAtLine, RiAttachment2, RiBold, RiBracesLine, RiBrainLine, RiChat3Line, RiChatQuoteLine, RiDashboardLine, RiEqualizerLine,
+  RiAddLine, RiArrowGoBackLine, RiAtLine, RiAttachment2, RiBold, RiBracesLine, RiBrainLine, RiChat3Line, RiChatQuoteLine, RiDashboardLine, RiEqualizerLine,
   RiCheckDoubleLine, RiCodeLine, RiDoubleQuotesL, RiEmotionLine, RiFileList3Line, RiFileTextLine, RiFilmLine,
   RiFlagLine, RiFolderAddLine, RiFolderLine, RiFolderOpenLine, RiFolderReceivedLine, RiFullscreenLine,
   RiGitBranchLine, RiGitMergeLine, RiGlobalLine, RiHashtag, RiImageAddLine, RiImageLine, RiInboxUnarchiveLine,
@@ -14,6 +14,8 @@ import {
   RiZoomInLine, RiZoomOutLine,
 } from '@remixicon/react';
 
+// The plain plus (Icons.add can be swapped for a circled one in Icon Studio).
+export const Add = RiAddLine;
 export const AlertTriangle = Icons.warning;
 export const TriangleAlert = Icons.warning;
 export const Archive = Icons.archive;

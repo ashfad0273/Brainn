@@ -1096,12 +1096,14 @@
    class. Never for user data or prose (names, emails, notes, helper and
    error text, toasts): those stay `text-xs` in Plex Sans (Label). tailwind-merge
    treats it as a font size (src/lib/utils.ts), so a later text-sm wins. */
+/* Brainn: the label is Open Runde, not Plex Mono, so a panel reads as one face;
+   uppercase sans wants a little more tracking. Code stays in --font-mono. */
 @utility text-label-mono {
-  font-family: var(--font-mono);
+  font-family: var(--font-sans);
   font-weight: 500;
   font-size: var(--text-xs);
   line-height: var(--text-xs--line-height);
-  letter-spacing: 0.01em;
+  letter-spacing: 0.04em;
   text-transform: uppercase;
   /* Preflight resets text-transform on buttons; a sort button inside a
      label-styled table header should still read as the label. */
@@ -1124,11 +1126,11 @@
 /* The Figma "Label Mono Large" text style: IBM Plex Mono Medium 15/20, +1%,
    uppercase. Table column headers use Label Mono (13px) instead. */
 @utility text-label-mono-lg {
-  font-family: var(--font-mono);
+  font-family: var(--font-sans);
   font-weight: 500;
   font-size: var(--text-sm);
   line-height: 1.25rem;
-  letter-spacing: 0.01em;
+  letter-spacing: 0.04em;
   text-transform: uppercase;
   & :where(button) {
     text-transform: inherit;

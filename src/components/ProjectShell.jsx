@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Check, RefreshCw, Undo2, Search, UserPlus, MoreHorizontal, Archive, ArchiveRestore, Download, Pencil, MessageSquare, ListTodo, ListChecks, GitBranch, Lock, Paperclip, Brain, History, Sparkles, X, Info, ChevronLeft, Plus, SlidersHorizontal } from '@/lib/icons';
+import { Add, Check, RefreshCw, Undo2, Search, UserPlus, MoreHorizontal, Archive, ArchiveRestore, Download, Pencil, MessageSquare, ListTodo, ListChecks, GitBranch, Lock, Paperclip, Brain, History, Sparkles, X, Info, ChevronLeft, SlidersHorizontal } from '@/lib/icons';
 import { Popover, PopoverTrigger, PopoverPopup } from '@ume/ui/components/ui/popover';
 import { Sheet, SheetPopup } from '@ume/ui/components/ui/sheet';
 import { useIsMobileNav, useMediaQuery } from '@ume/ui/hooks/use-media-query';
@@ -45,33 +45,52 @@ function counts(p, role, me) {
 
 const dueDate = iso => { const [y, m, d] = iso.split('-').map(Number); return new Date(y, m - 1, d).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }); };
 
+/* A titled block of the details panel; blocks are split by a hairline. */
+function Block({ title, action, children }) {
+  return (
+    <section className="border-t border-border pt-4 pb-1 first:border-t-0 first:pt-0">
+      {title && (
+        <div className="mb-1.5 flex items-center justify-between">
+          <h3 className="text-label-mono text-text-secondary">{title}</h3>
+          {action}
+        </div>
+      )}
+      {children}
+    </section>
+  );
+}
+
+/* One property: the name on the left, the value on the right, on one line. */
+const Prop = ({ label, children }) => (
+  <div className="flex min-h-9 items-center gap-3 text-sm">
+    <span className="w-20 shrink-0 text-text-secondary">{label}</span>
+    <span className="flex min-w-0 flex-1 items-center gap-2">{children}</span>
+  </div>
+);
+
 /* Open tasks, soonest due first: tick one off or open it. */
 function NextTasks({ onAll }) {
   const { p, role, mut, openItem } = useP();
   const today = todayISO();
   const open = p.items.filter(i => i.type === 'task' && isActive(i)).sort((a, b) => (a.due || '9999').localeCompare(b.due || '9999'));
   return (
-    <>
-      <div className="mt-6 mb-1 flex items-center justify-between">
-        <span className="text-label-mono text-text-secondary">Next tasks</span>
-        {open.length > 4 && <button type="button" onClick={onAll} className="text-xs text-text-secondary outline-none hover:text-foreground focus-visible:underline">All {open.length}</button>}
-      </div>
+    <Block title="Next tasks" action={open.length > 4 && <button type="button" onClick={onAll} className="text-xs text-text-secondary outline-none hover:text-foreground focus-visible:underline">All {open.length}</button>}>
       {open.length ? (
-        <ul>
+        <ul className="-mx-2">
           {open.slice(0, 4).map(t => (
-            <li key={t.id} className="flex min-h-11 items-start gap-3 py-2">
+            <li key={t.id} className="flex items-start gap-2.5 rounded-xl px-2 py-2 hover:bg-field-hover">
               {role === 'owner'
-                ? <button type="button" onClick={() => mut(q => setItemStatus(q, 'owner', t.id, 'done'))} aria-label={`Mark “${t.title}” done`} title="Mark done" className="mt-0.5 grid size-4.5 shrink-0 place-items-center rounded-full border-[1.5px] border-border-strong text-transparent hover:border-green hover:text-green [&_svg]:size-3"><Check /></button>
-                : <span aria-hidden className="mt-0.5 size-4.5 shrink-0 rounded-full border-[1.5px] border-border-strong" />}
-              <button type="button" onClick={() => openItem(t.id)} className="min-w-0 flex-1 text-left outline-none focus-visible:underline">
-                <span className="block text-sm">{t.title}</span>
-                {t.due && <span className={cx('text-xs', t.due < today ? 'text-destructive-foreground' : t.due === today ? 'text-warn-ink' : 'text-text-secondary')}>{t.due < today ? 'Overdue' : t.due === today ? 'Due today' : `Due ${dueDate(t.due)}`}</span>}
+                ? <button type="button" onClick={() => mut(q => setItemStatus(q, 'owner', t.id, 'done'))} aria-label={`Mark “${t.title}” done`} title="Mark done" className="mt-px grid size-4.5 shrink-0 place-items-center rounded-full border-[1.5px] border-border-strong text-transparent hover:border-green hover:text-green [&_svg]:size-3"><Check /></button>
+                : <span aria-hidden className="mt-px size-4.5 shrink-0 rounded-full border-[1.5px] border-border-strong" />}
+              <button type="button" onClick={() => openItem(t.id)} className="flex min-w-0 flex-1 items-baseline gap-2 text-left outline-none focus-visible:underline">
+                <span className="min-w-0 flex-1 truncate text-sm">{t.title}</span>
+                {t.due && <span className={cx('shrink-0 text-xs', t.due < today ? 'text-destructive-foreground' : t.due === today ? 'text-warn-ink' : 'text-text-secondary')}>{t.due < today ? 'Overdue' : t.due === today ? 'Today' : dueDate(t.due)}</span>}
               </button>
             </li>
           ))}
         </ul>
-      ) : <p className="py-2 text-sm text-muted-foreground">No open tasks.</p>}
-    </>
+      ) : <p className="py-1.5 text-sm text-muted-foreground">No open tasks.</p>}
+    </Block>
   );
 }
 
@@ -86,49 +105,55 @@ function InfoPanel({ onMessage, onInvite, onTasks, docked }) {
   // Before anyone is invited, the client named on the project still shows, so you can see who it's for.
   const people = [{ id: 'owner', name: state.settings.ownerName || names.owner, role: 'Owner' }, ...members.map(m => ({ id: m.id, name: m.name, role: memberRole(m) })),
     ...(!members.length && p.client ? [{ id: 'client', name: p.client, role: 'Client' }] : [])];
-  const stat = (label, value, foot) => (
-    <div className="flex min-w-0 flex-col gap-0.5 rounded-2xl bg-muted p-3">
-      <span className="text-xs text-text-secondary">{label}</span>
-      <span className="flex items-center gap-1.5 truncate font-medium text-sm">{value}</span>
-      {foot}
-    </div>
-  );
   return (
-    <div className="w-full">
+    <div className="flex w-full flex-col gap-4">
       {/* Docked, the card's header already names the project; the description stays. */}
-      {docked ? (p.description && <p className="mb-5 text-sm text-text-secondary">{p.description}</p>) : (
-        <div className="mb-5 flex items-center gap-3">
-          <ProjectAvatar p={p} className="size-11" rounded="rounded-[14px]" text="text-base" />
-          <div className="min-w-0">
-            <div className="truncate font-medium text-lg">{p.name}</div>
-            <div className="truncate text-xs text-text-secondary">{p.description || p.client || names.client}</div>
+      {docked ? (p.description && <Block><p className="text-sm text-text-secondary">{p.description}</p></Block>) : (
+        <Block>
+          <div className="flex items-center gap-3">
+            <ProjectAvatar p={p} className="size-10" rounded="rounded-xl" text="text-sm" />
+            <div className="min-w-0">
+              <div className="truncate font-medium">{p.name}</div>
+              <div className="truncate text-xs text-text-secondary">{p.description || p.client || names.client}</div>
+            </div>
           </div>
-        </div>
+        </Block>
       )}
-      <div className="grid grid-cols-3 gap-2">
-        {stat('Health', <><span aria-hidden className={cx('size-2 shrink-0 rounded-full', COLOR[health.tone].dot)} />{health.label}</>,
-          <span className={cx('text-xs', REASON_TONE[health.tone] || 'text-text-secondary')}>{health.reason}</span>)}
-        {stat('Due', p.deadline ? dueDate(p.deadline) : 'No date', <span className={cx('text-xs', timeTone(p))}>{timeLeftLabel(p)}</span>)}
-        {stat('Progress', <span className="tabular-nums">{progress}%</span>, <ProgressBar value={progress} color={p.color} className="mt-2 w-full" />)}
-      </div>
+      <Block>
+        <Prop label="Health">
+          <span aria-hidden className={cx('size-2 shrink-0 rounded-full', COLOR[health.tone].dot)} />
+          <span className="shrink-0">{health.label}</span>
+          <span className={cx('truncate text-xs', REASON_TONE[health.tone] || 'text-text-secondary')}>{health.reason}</span>
+        </Prop>
+        <Prop label="Due">
+          <span className="shrink-0">{p.deadline ? dueDate(p.deadline) : 'No date'}</span>
+          {p.deadline && <span className={cx('truncate text-xs', timeTone(p))}>{timeLeftLabel(p)}</span>}
+        </Prop>
+        <Prop label="Progress">
+          <ProgressBar value={progress} color={p.color} className="flex-1" />
+          <span className="w-9 shrink-0 text-end tabular-nums">{progress}%</span>
+        </Prop>
+      </Block>
       <NextTasks onAll={onTasks} />
-      <div className="mt-6 mb-1 text-label-mono text-text-secondary">People</div>
-      <ul>
-        {people.map(x => (
-          <li key={x.id} className="flex min-h-13 items-center gap-3">
-            <InitialsAvatar name={x.name} size="sm" />
-            <div className="min-w-0 flex-1"><div className="truncate font-medium text-sm">{x.id === 'owner' && role === 'owner' ? 'You' : x.name}</div><div className="text-xs text-text-secondary">{x.role}</div></div>
-            {x.id !== 'owner' && <Button variant="ghost" size="iconSm" onClick={onMessage} aria-label={`Message ${x.name}`} title={`Message ${x.name}`}><MessageSquare /></Button>}
-          </li>
-        ))}
-        {role === 'owner' && (
-          <li>
-            <button type="button" onClick={onInvite} className="flex h-13 w-full items-center gap-3 rounded-xl text-sm text-text-secondary outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring">
-              <span className="grid size-7 place-items-center rounded-full border-[1.5px] border-dashed border-border-strong text-icon-muted [&_svg]:size-4"><Plus /></span>Invite someone
-            </button>
-          </li>
-        )}
-      </ul>
+      <Block title="People">
+        <ul className="-mx-2">
+          {people.map(x => (
+            <li key={x.id} className="group flex items-center gap-2.5 rounded-xl px-2 py-1.5 hover:bg-field-hover">
+              <InitialsAvatar name={x.name} size="sm" />
+              <span className="min-w-0 flex-1 truncate text-sm">{x.id === 'owner' && role === 'owner' ? 'You' : x.name}</span>
+              <span className="shrink-0 text-xs text-text-secondary">{x.role}</span>
+              {x.id !== 'owner' && <Button variant="ghost" size="iconSm" onClick={onMessage} aria-label={`Message ${x.name}`} title={`Message ${x.name}`} className="-me-1 pointer-fine:opacity-0 pointer-fine:group-hover:opacity-100 pointer-fine:focus-visible:opacity-100"><MessageSquare /></Button>}
+            </li>
+          ))}
+          {role === 'owner' && (
+            <li>
+              <button type="button" onClick={onInvite} className="flex w-full items-center gap-2.5 rounded-xl px-2 py-1.5 text-sm text-text-secondary outline-none hover:bg-field-hover hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring">
+                <span className="grid size-7 place-items-center rounded-full bg-field text-icon-muted [&_svg]:size-4"><Add /></span>Invite someone
+              </button>
+            </li>
+          )}
+        </ul>
+      </Block>
     </div>
   );
 }
@@ -246,7 +271,12 @@ export function ProjectShell({ p: record, role, me = null, names, tabs, tab, set
             </main>
           </div>
           {docked && (
-            <aside aria-label="Project details" className="w-84 shrink-0 overflow-y-auto border-s border-border px-5 pt-5 pb-6 thin-scrollbar autohide-scrollbar">
+            <aside aria-label="Project details" className="w-84 shrink-0 overflow-y-auto border-s border-border px-5 pb-6 thin-scrollbar autohide-scrollbar">
+              {/* Lines up with the card's own header row. */}
+              <div className="flex h-16 items-center justify-between">
+                <h2 className="font-medium">Details</h2>
+                <button type="button" onClick={toggleDock} aria-label="Hide details" title="Hide details" className={iconButton(false)}><X aria-hidden /></button>
+              </div>
               <InfoPanel docked onInvite={onInvite || (() => {})} onMessage={() => setTab('chat')} onTasks={() => setTab('tasks')} />
             </aside>
           )}

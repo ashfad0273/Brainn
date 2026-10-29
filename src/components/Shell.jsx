@@ -32,8 +32,11 @@ function PhoneBar() {
     <header className="flex items-center gap-3 px-4 pt-4 pb-3 lg:hidden">
       <a href="#/" aria-label="Dashboard" className="rounded-[10px] outline-none focus-visible:ring-2 focus-visible:ring-ring"><Mark org={state.settings.org || {}} /></a>
       <h1 className="min-w-0 flex-1 truncate font-medium text-lg">{page?.[1] || 'Brainn'}</h1>
-      <button type="button" onClick={() => setSearch(true)} aria-label="Search everything" title="Search everything" className={iconButton(false)}><Search aria-hidden /></button>
-      <ThemeButton />
+      {/* -me-2.5: the last icon's edge lines up with the page's edge below, not its 40px hit area. */}
+      <div className="-me-2.5 flex items-center">
+        <button type="button" onClick={() => setSearch(true)} aria-label="Search everything" title="Search everything" className={iconButton(false)}><Search aria-hidden /></button>
+        <ThemeButton />
+      </div>
       {search && <GlobalSearch onClose={() => setSearch(false)} />}
     </header>
   );

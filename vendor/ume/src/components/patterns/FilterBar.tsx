@@ -26,8 +26,10 @@ export function FiltersButton({
   ...props
 }: Omit<React.ComponentProps<typeof Button>, "children"> & { count?: number; children?: string }) {
   return (
+    /* Brainn: lg, so it matches a 36px search field and the page's main button. */
     <Button
       variant="outline"
+      size="lg"
       aria-label={count ? `${children}, ${count} on` : children}
       {...props}
     >

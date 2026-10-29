@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react';
-import { Plus, Search, FolderPlus, FolderOpen, Layers, ListTodo, Archive, ImagePlus, X } from '@/lib/icons';
+import { Add, Search, FolderPlus, FolderOpen, Layers, ListTodo, Archive, ImagePlus, X } from '@/lib/icons';
 import { useStore } from '../store';
 import { Button, Modal, Field, Input, Textarea, Select, Empty, Badge } from './ui';
 import { IconChip } from '@ume/ui/components/patterns/IconChip';
@@ -161,7 +161,7 @@ export default function Home() {
     <BrainShell>
       {/* One row: find a project, filter, add one. Everything else is in the Filters sheet. */}
       <div className="mb-5 flex items-center gap-2">
-        <Input className="min-w-0 flex-1 sm:max-w-72" leadingIcon={Search} value={q} onChange={e => setQ(e.target.value)} placeholder="Find a project" aria-label="Find a project" />
+        <Input className="h-9 min-w-0 flex-1 sm:max-w-72" leadingIcon={Search} value={q} onChange={e => setQ(e.target.value)} placeholder="Find a project" aria-label="Find a project" />
         <FilterBar
           phone
           className="ms-auto flex-nowrap"
@@ -178,7 +178,7 @@ export default function Home() {
             <FilterSection icon={ListTodo} title="Status" id="home-status"><ChoiceList aria-labelledby="home-status" options={statuses} all="Any status" value={status === 'all' ? null : status} onChange={pickStatus} /></FilterSection>
           </>}
         >{null}</FilterBar>
-        {!member && <Button variant="primary" onClick={() => setModal('project')}><Plus /><span className="max-sm:sr-only">New project</span></Button>}
+        {!member && <Button variant="primary" size="lg" onClick={() => setModal('project')} aria-label="New project" className="max-sm:w-9 max-sm:px-0"><Add /><span className="max-sm:sr-only">New project</span></Button>}
       </div>
 
       {/* Desktop: a card per project. Phone: the list, like Slack, latest conversation first. */}
