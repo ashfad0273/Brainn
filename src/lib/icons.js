@@ -4,7 +4,7 @@
    Icon Studio overrides. */
 import { Icons } from '@ume/ui/lib/icons';
 import {
-  RiArrowGoBackLine, RiAtLine, RiAttachment2, RiBold, RiBracesLine, RiBrainLine, RiChat3Line, RiChatQuoteLine,
+  RiArrowGoBackLine, RiAtLine, RiAttachment2, RiBold, RiBracesLine, RiBrainLine, RiChat3Line, RiChatQuoteLine, RiDashboardLine,
   RiCheckDoubleLine, RiCodeLine, RiDoubleQuotesL, RiEmotionLine, RiFileList3Line, RiFileTextLine, RiFilmLine,
   RiFlagLine, RiFolderAddLine, RiFolderLine, RiFolderOpenLine, RiFolderReceivedLine, RiFullscreenLine,
   RiGitBranchLine, RiGitMergeLine, RiGlobalLine, RiHashtag, RiImageAddLine, RiImageLine, RiInboxUnarchiveLine,
@@ -32,11 +32,13 @@ export const CalendarClock = Icons.schedule;
 export const Check = Icons.check;
 export const CheckCheck = RiCheckDoubleLine;
 export const ChevronDown = Icons.chevronDown;
+export const ChevronLeft = Icons.chevronLeft;
 export const ChevronRight = Icons.chevronRight;
 export const CircleHelp = Icons.help;
 export const Clock = Icons.time;
 export const Code = RiCodeLine;
 export const Copy = Icons.copy;
+export const Dashboard = RiDashboardLine;
 export const Database = Icons.backup;
 export const Download = Icons.download;
 export const ExternalLink = Icons.external;

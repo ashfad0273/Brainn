@@ -129,7 +129,7 @@ export default function ProjectPage({ p, tab, deep }) {
 
   const header = (
     <>
-      <a href="#/" className="p-1.5 rounded-lg hover:bg-field-hover text-muted-foreground hover:text-foreground shrink-0" title="All projects"><ArrowLeft size={18} /></a>
+      <a href="#/projects" className="p-1.5 rounded-lg hover:bg-field-hover text-muted-foreground hover:text-foreground shrink-0" title="All projects"><ArrowLeft size={18} /></a>
       <ProjectAvatar p={p} className="w-8 h-8 md:w-9 md:h-9" rounded="rounded-full md:rounded-xl" />
       <div className="min-w-0 flex-1">
         <div className="font-medium truncate leading-tight text-sm md:text-base flex items-center gap-2"><span className="truncate">{p.name}</span><StatusPill status={p.status} className="hidden md:inline-flex" /></div>

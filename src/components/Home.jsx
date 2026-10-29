@@ -1,19 +1,18 @@
 import { useRef, useState } from 'react';
-import { Plus, Search, FolderPlus, FolderOpen, Layers, MessageSquare, ListTodo, Sparkles, Archive, ImagePlus, X, CalendarClock } from '@/lib/icons';
+import { Plus, Search, FolderPlus, FolderOpen, Layers, MessageSquare, ListTodo, Sparkles, Archive, ImagePlus, X } from '@/lib/icons';
 import { useStore } from '../store';
 import { Button, Modal, Field, Input, Textarea, Select, Empty, Badge } from './ui';
 import { IconChip, InitialsAvatar } from '@ume/ui/components/patterns/IconChip';
-import BrainShell from './Shell';
-import { PageTopbar } from '@ume/ui/components/shell/PageTopbar';
+import BrainShell, { PageHead } from './Shell';
 import { FilterBar, FilterClear, FilterSection } from '@ume/ui/components/patterns/FilterBar';
 import { ChoiceMenu, ChoiceList } from '@ume/ui/components/patterns/ChoiceMenu';
 import SearchModal from './Search';
-import { newProject, updateMeta, secretValues, maskText, liveItems, liveView, activeMembers, primaryClient, projectProgress, timeLeftLabel, myMember, canReview } from '../lib/model';
-import { StatusPill, ProgressBar, timeTone } from './Overview';
+import { newProject, namesFor, updateMeta, secretValues, maskText, liveItems, liveView, primaryClient, myMember, canReview } from '../lib/model';
+import { StatusPill } from './Overview';
 import { putBlob, isQuotaError } from '../lib/blobs';
 import { optimizeImageIfNeeded } from '../lib/files';
 import { ProjectAvatar, ProjectCover } from './ProjectArt';
-import { PROJECT_COLORS, PROJECT_STATUS, isActive } from '../lib/meta';
+import { PROJECT_COLORS, PROJECT_STATUS } from '../lib/meta';
 import { cx, fmtRel, uid, now, todayISO } from '../lib/util';
 
 // Brainn tone → Ume hue, for the status swatches.
@@ -95,54 +94,48 @@ export function ProjectFormModal({ project, onClose, spaceId }) {
   );
 }
 
-/** One project on the Projects page: who it's for, where it stands, what's waiting. */
-function ProjectCard({ p: record, i }) {
+/** A project, as a card: its name and a way into its chat, a hairline, then its latest messages. */
+function ProjectCard({ p: record, i, ownerName }) {
   const { mode, user } = useStore();
   const p = liveView(record);
-  const members = activeMembers(p);
-  const openTasks = p.items.filter(x => x.type === 'task' && isActive(x)).length;
+  const names = namesFor(p, ownerName);
   const pending = canReview(mode === 'member' ? 'client' : 'owner', myMember(p, user)) ? p.suggestions.filter(s => s.state === 'pending').length : 0;
-  const last = p.messages[p.messages.length - 1];
-  const prog = projectProgress(p);
-  const lastText = last && (maskText(last.text, secretValues(p)).replace(/\*\*|~~|`/g, '') || last.attachments.map(a => a.name).join(', '));
+  const secrets = secretValues(p);
+  const recent = p.messages.slice(-3).reverse();
   return (
-    <a href={`#/p/${p.id}/chat`} className="anim-up group flex flex-col rounded-2xl border border-border bg-card p-5 shadow-card outline-none transition-[scale] duration-fast ease-out hover:border-border-strong focus-visible:ring-2 focus-visible:ring-ring active:scale-[0.99]" style={{ animationDelay: i * 40 + 'ms' }}>
-      <div className="flex items-start gap-3">
-        <ProjectAvatar p={p} className="size-10" rounded="rounded-xl" text="text-sm" />
-        <div className="min-w-0 flex-1">
-          <h3 className="truncate font-medium text-foreground">{p.name}</h3>
-          <p className="truncate text-xs text-muted-foreground">{p.client || primaryClient(p)?.name || 'No client yet'}</p>
-        </div>
-        <div className="flex shrink-0 flex-col items-end gap-1">
-          <StatusPill status={p.status} />
-          {p.archived && <Badge tone="amber">Archived</Badge>}
-        </div>
-      </div>
-
-      <p className="mt-4 line-clamp-2 min-h-10 text-sm text-text-secondary">{lastText || 'No messages yet.'}</p>
-
-      <div className="mt-4">
-        <div className="mb-1.5 flex items-baseline justify-between">
-          <span className="text-label-mono text-muted-foreground">Progress</span>
-          <span className="text-xs font-medium tabular-nums text-text-figure">{prog.value}%</span>
-        </div>
-        <ProgressBar value={prog.value} color={p.color} />
-      </div>
-
-      <div className="mt-4 flex items-center gap-3 border-t border-border pt-4 text-xs text-muted-foreground">
-        <span className="flex items-center gap-1" title="Open tasks"><ListTodo size={14} />{openTasks}</span>
-        <span className="flex items-center gap-1" title="Messages"><MessageSquare size={14} />{p.messages.length}</span>
-        {pending > 0 && <Badge tone="sky"><Sparkles />{pending} to review</Badge>}
-        <span className="ms-auto flex items-center gap-2">
-          {members.length > 0 && (
-            <span className="flex -space-x-1.5">
-              {members.slice(0, 3).map(m => <InitialsAvatar key={m.id} name={m.name} size="sm" className="ring-2 ring-card" />)}
-              {members.length > 3 && <span className="grid size-7 place-items-center rounded-full bg-field text-xs font-medium ring-2 ring-card">+{members.length - 3}</span>}
-            </span>
-          )}
-          <span className={cx('flex items-center gap-1', timeTone(p))} title={last ? `Last message ${fmtRel(last.ts)}` : undefined}><CalendarClock size={14} />{timeLeftLabel(p)}</span>
+    <a href={`#/p/${p.id}/chat`} className="anim-up group flex h-96 flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-card outline-none transition-[scale] duration-fast ease-out hover:border-border-strong focus-visible:ring-2 focus-visible:ring-ring active:scale-[0.99]" style={{ animationDelay: i * 40 + 'ms' }}>
+      <header className="flex items-center gap-3 border-b border-border px-5 py-4">
+        <ProjectAvatar p={p} className="size-7" rounded="rounded-lg" text="text-xs" />
+        <span className="min-w-0 flex-1">
+          <span className="block truncate font-medium">{p.name}</span>
         </span>
-      </div>
+        {p.archived && <Badge tone="amber">Archived</Badge>}
+        {pending > 0 && <Badge tone="sky" title={`${pending} suggestion${pending === 1 ? '' : 's'} to review`}><Sparkles />{pending}</Badge>}
+        <MessageSquare aria-hidden className="size-5 shrink-0 text-icon-muted group-hover:text-foreground" />
+      </header>
+      {recent.length ? (
+        <ul className="flex min-h-0 flex-1 flex-col gap-4 overflow-hidden px-5 py-4">
+          {recent.map(m => {
+            const text = maskText(m.text, secrets).replace(/\*\*|~~|`/g, '') || m.attachments.map(a => a.name).join(', ') || 'Voice note';
+            const who = names.msg(m);
+            return (
+              <li key={m.id} className="flex gap-3">
+                <InitialsAvatar name={who} size="sm" />
+                <span className="min-w-0 flex-1">
+                  <span className="flex items-baseline gap-2"><span className="truncate font-medium text-sm">{who}</span><span className="shrink-0 text-xs text-muted-foreground">{fmtRel(m.ts)}</span></span>
+                  <span className="line-clamp-2 text-sm text-text-secondary">{text}</span>
+                </span>
+              </li>
+            );
+          })}
+        </ul>
+      ) : (
+        <p className="grid flex-1 place-items-center px-5 text-sm text-muted-foreground">No messages yet.</p>
+      )}
+      <footer className="flex items-center gap-2 border-t border-border px-5 py-3 text-xs text-muted-foreground">
+        <span className="truncate">{p.client || primaryClient(p)?.name || 'No client yet'}</span>
+        <span className="ms-auto shrink-0"><StatusPill status={p.status} /></span>
+      </footer>
     </a>
   );
 }
@@ -183,12 +176,10 @@ export default function Home() {
   const clearFilters = () => { setSpace('all'); setView('active'); setStatus('all'); };
 
   return (
-    <BrainShell onNewProject={() => setModal('project')}>
-      <PageTopbar
-        title="Your projects"
-        subtitle={member ? `Projects ${state.settings.ownerName} shared with you.` : 'Every client conversation, task, requirement and decision — remembered, linked, never lost.'}
+    <BrainShell>
+      <PageHead
         actions={<>
-          <Button onClick={() => setModal('search')} title="Search inside every project"><Search />Search everything</Button>
+          <Button variant="ghost" size="icon" onClick={() => setModal('search')} title="Search inside every project" aria-label="Search everything"><Search /></Button>
           {!member && <Button onClick={() => setModal('space')}><FolderPlus />New space</Button>}
           {!member && <Button variant="primary" onClick={() => setModal('project')}><Plus />New project</Button>}
         </>}
@@ -208,25 +199,20 @@ export default function Home() {
             <ChoiceMenu title="Status" options={statuses} all="Any status" value={status === 'all' ? null : status} onChange={pickStatus} />
             {filtersOn > 0 && <FilterClear onClick={clearFilters} />}
           </FilterBar>
-          <div className="ms-auto flex w-full gap-2 sm:w-auto">
-            <Input className="sm:w-56" leadingIcon={Search} value={q} onChange={e => setQ(e.target.value)} placeholder="Filter projects" aria-label="Filter projects" />
-            <Button className="lg:hidden" variant="ghost" size="icon" onClick={() => setModal('search')} title="Search inside every project" aria-label="Search everything"><Search /></Button>
-          </div>
+          <Input className="ms-auto w-full sm:w-56" leadingIcon={Search} value={q} onChange={e => setQ(e.target.value)} placeholder="Filter projects" aria-label="Filter projects" />
         </div>
-      </PageTopbar>
+      </PageHead>
 
-      <div className="px-4 py-6 sm:px-6">
-          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-            {list.map((p, i) => <ProjectCard key={p.id} p={p} i={i} />)}
-            {view === 'active' && !member && (
-              <button onClick={() => setModal('project')} className="anim-up grid min-h-56 place-items-center rounded-2xl border border-dashed border-border-strong text-text-secondary outline-none transition-[scale] duration-fast ease-out hover:bg-card hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring active:scale-[0.99]">
-                <span className="flex flex-col items-center gap-3"><IconChip icon={Plus} hue="brand" /><span className="font-medium text-sm">New project</span></span>
-              </button>
-            )}
-          </div>
-          {member && !list.length && view === 'active' && <Empty icon={Layers} title="No projects yet" text={`When ${state.settings.ownerName} gives you access to a project, it shows up here.`} />}
-          {view === 'archived' && !list.length && <Empty icon={Archive} title="No archived projects" text="Archive a finished project from its ⋯ menu. Its full history stays searchable." />}
+      <div className="grid gap-5 sm:grid-cols-2">
+        {list.map((p, i) => <ProjectCard key={p.id} p={p} i={i} ownerName={state.settings.ownerName || 'You'} />)}
+        {view === 'active' && !member && (
+          <button onClick={() => setModal('project')} className="anim-up grid h-96 place-items-center rounded-2xl border border-dashed border-border-strong text-text-secondary outline-none transition-[scale] duration-fast ease-out hover:bg-card hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring active:scale-[0.99]">
+            <span className="flex flex-col items-center gap-3"><IconChip icon={Plus} hue="brand" /><span className="font-medium text-sm">New project</span></span>
+          </button>
+        )}
       </div>
+      {member && !list.length && view === 'active' && <Empty icon={Layers} title="No projects yet" text={`When ${state.settings.ownerName} gives you access to a project, it shows up here.`} />}
+      {view === 'archived' && !list.length && <Empty icon={Archive} title="No archived projects" text="Archive a finished project from its ⋯ menu. Its full history stays searchable." />}
 
       {modal === 'project' && <ProjectFormModal spaceId={space === 'all' ? undefined : space} onClose={() => setModal(null)} />}
       {modal === 'search' && (

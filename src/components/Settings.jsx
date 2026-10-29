@@ -1,13 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
 import {
-  ShieldCheck, Eye, EyeOff, Lock, Plus, Trash2, Pencil,
+  ShieldCheck, Eye, EyeOff, Lock, LogOut, Plus, Trash2, Pencil,
   Bold, Italic, Strikethrough, List, ListOrdered, Copy, Ban, RotateCcw, ImagePlus, X,
 } from '@/lib/icons';
 import { useStore } from '../store';
 import { useAuth } from './Auth';
 import { Field, Input, Select, Button, Toggle, Spinner, Badge } from './ui';
-import BrainShell, { settingsTabs } from './Shell';
-import { PageTopbar } from '@ume/ui/components/shell/PageTopbar';
+import BrainShell, { PageHead, settingsTabs } from './Shell';
 import { useTheme } from '@ume/ui/hooks/use-theme';
 import { SegmentedControl } from '@ume/ui/components/ui/segmented-control';
 import { SettingsRow } from '@ume/ui/components/patterns/SettingsRow';
@@ -533,16 +532,16 @@ export default function SettingsPage({ tab: wanted }) {
 
   return (
     <BrainShell>
-      <PageTopbar title="Settings" subtitle="Your workspace, AI, account and data.">
+      <PageHead title="Settings" subtitle="Your workspace, AI, account and data.">
         {/* The tabs; each is its own address (#/settings/:tab), so a tab can be linked to. */}
         {tabs.length > 1 && (
-          <div className="scroll-fade-x -mx-4 overflow-x-auto px-4 sm:-mx-6 sm:px-6">
+          <div className="scroll-fade-x -mx-4 overflow-x-auto px-4 sm:mx-0 sm:px-0">
             <SegmentedControl fit aria-label="Settings" value={tab} onValueChange={k => { location.hash = `#/settings/${k}`; }}
               options={tabs.map(([k, l]) => ({ value: k, label: l }))} />
           </div>
         )}
-      </PageTopbar>
-      <div className="px-4 py-6 sm:px-6">
+      </PageHead>
+      <div>
         <div className="max-w-3xl space-y-4">
           {tab === 'org' && <OrgTab />}
           {tab === 'people' && <PeopleTab />}
@@ -554,6 +553,8 @@ export default function SettingsPage({ tab: wanted }) {
             <Field label="Your name" hint="Shown on your messages."><Input value={owner} onChange={e => setOwner(e.target.value)} /></Field>
             <Button variant="primary" onClick={() => { setSettings({ ownerName: owner.trim() || 'You' }); toast('Saved'); }}>Save</Button>
           </>)}
+
+          {tab === 'profile' && auth && <div className="border-t border-border pt-4"><Button variant="danger" onClick={auth.signOut}><LogOut />Sign out</Button></div>}
 
           {tab === 'security' && <>
             <div className={cx('rounded-xl p-3 text-sm flex gap-2', encrypted ? 'bg-pos-soft text-pos' : 'bg-warn-soft text-warn-ink')}>

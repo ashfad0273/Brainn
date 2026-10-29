@@ -5,6 +5,8 @@ import Home from './components/Home';
 import ProjectPage from './components/ProjectShell';
 import FileManager from './components/FileManager';
 import SettingsPage from './components/Settings';
+import Dashboard from './components/Dashboard';
+import CalendarPage from './components/Calendar';
 import Unlock from './components/Unlock';
 import Analyzer from './components/Analyzer';
 import { ErrorPage } from '@ume/ui/components/session/ErrorPage';
@@ -28,9 +30,11 @@ const Splash = ({ text }) => (
 export default function App() {
   const { phase, state } = useStore();
   const h = useHash();
-  // #/  ·  #/files  ·  #/settings/:tab  ·  #/p/:id/:tab[/m|i/:ref]  ·  #/join/:token (retired PIN links)
+  // #/ (Dashboard)  ·  #/projects  ·  #/calendar  ·  #/files  ·  #/settings/:tab  ·  #/p/:id/:tab[/m|i/:ref]  ·  #/join/:token (retired PIN links)
   const join = h.match(/^#\/join\/([\w-]+)/);
   const files = h.startsWith('#/files');
+  const projects = h.startsWith('#/projects');
+  const calendar = h.startsWith('#/calendar');
   const settings = h.match(/^#\/settings(?:\/(\w+))?/);
   const pm = h.match(/^#\/p\/([\w-]+)(?:\/(\w+))?(?:\/(m|i)\/([\w-]+))?/);
 
@@ -44,9 +48,9 @@ export default function App() {
     body = (
       <>
         {p ? <ProjectPage key={p.id} p={p} tab={pm[2] || 'chat'} deep={pm[3] ? { kind: pm[3], ref: pm[4] } : null} />
-          : pm ? <ErrorPage kind="not-found" frame="screen" onBack={() => history.back()} home={{ label: 'Go to projects', onClick: () => { location.hash = '#/'; } }} />
+          : pm ? <ErrorPage kind="not-found" frame="screen" onBack={() => history.back()} home={{ label: 'Go to projects', onClick: () => { location.hash = '#/projects'; } }} />
           : settings ? <SettingsPage tab={settings[1]} />
-          : files ? <FileManager /> : <Home />}
+          : files ? <FileManager /> : projects ? <Home /> : calendar ? <CalendarPage /> : <Dashboard />}
         <Analyzer />
       </>
     );

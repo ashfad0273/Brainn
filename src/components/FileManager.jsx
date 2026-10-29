@@ -4,8 +4,7 @@ import {
   Pencil, Trash2, FolderInput, ChevronRight, FileText, Image as ImageIcon, Mic, Film, Link2, Files, MoreHorizontal,
 } from '@/lib/icons';
 import { useStore } from '../store';
-import BrainShell from './Shell';
-import { PageTopbar } from '@ume/ui/components/shell/PageTopbar';
+import BrainShell, { PageHead } from './Shell';
 import { FilterClear } from '@ume/ui/components/patterns/FilterBar';
 import { ChoiceMenu } from '@ume/ui/components/patterns/ChoiceMenu';
 import { IconChip } from '@ume/ui/components/patterns/IconChip';
@@ -116,7 +115,7 @@ export default function FileManager() {
   const toggleView = () => setGrid(g => { try { localStorage.setItem('pb-files-view', g ? 'list' : 'grid'); } catch { /* private mode */ } return !g; });
 
   const crumbs = (
-    <nav aria-label="Folder" className="flex min-w-0 items-center gap-1">
+    <nav aria-label="Folder" className="flex min-w-0 items-center gap-1 font-medium text-xl">
       {project ? <button type="button" onClick={goRoot} className="shrink-0 text-text-secondary hover:text-foreground">Files</button> : 'Files'}
       {project && <><ChevronRight className="size-4 shrink-0 text-icon-muted" />{folder ? <button type="button" onClick={() => setFolder(null)} className="truncate text-text-secondary hover:text-foreground">{project.name}</button> : <span className="truncate">{project.name}</span>}</>}
       {project && folder && <><ChevronRight className="size-4 shrink-0 text-icon-muted" /><span className="truncate">{folder}</span></>}
@@ -127,10 +126,9 @@ export default function FileManager() {
 
   return (
     <BrainShell>
-      <PageTopbar
+      <PageHead
         title={crumbs}
         subtitle={project ? 'Files shared in this project’s chat, and anything you upload here.' : 'Every file and link shared in your projects.'}
-        keepActionsOnPhone
         actions={<>
           {project && canEdit && !folder && <Button className="max-sm:hidden" onClick={() => setModal({ kind: 'folder', value: '' })}><FolderPlus />New folder</Button>}
           <input ref={fileRef} type="file" multiple hidden onChange={e => { upload(e.target.files); e.target.value = ''; }} />
@@ -146,9 +144,9 @@ export default function FileManager() {
             <Button variant="ghost" size="icon" onClick={toggleView} title={grid ? 'List view' : 'Grid view'} aria-label={grid ? 'List view' : 'Grid view'}>{grid ? <ListIcon /> : <LayoutGrid />}</Button>
           </div>
         </div>
-      </PageTopbar>
+      </PageHead>
 
-      <div className="px-4 py-6 sm:px-6"
+      <div
         onDragOver={e => { if (project && e.dataTransfer.types.includes('Files')) e.preventDefault(); }}
         onDrop={e => { if (!project) return; e.preventDefault(); upload(e.dataTransfer.files); }}>
         {!shown && (flat
