@@ -1,25 +1,23 @@
 import { useRef, useState } from 'react';
-import { Plus, Search, FolderPlus, FolderOpen, Layers, Calendar, ListTodo, Sparkles, Archive, ImagePlus, X } from '@/lib/icons';
+import { Plus, Search, FolderPlus, FolderOpen, Layers, ListTodo, Archive, ImagePlus, X } from '@/lib/icons';
 import { useStore } from '../store';
 import { Button, Modal, Field, Input, Textarea, Select, Empty, Badge } from './ui';
-import { IconChip, InitialsAvatar } from '@ume/ui/components/patterns/IconChip';
-import BrainShell, { PageHead } from './Shell';
-import { FilterBar, FilterClear, FilterSection } from '@ume/ui/components/patterns/FilterBar';
-import { ChoiceMenu, ChoiceList } from '@ume/ui/components/patterns/ChoiceMenu';
-import SearchModal from './Search';
-import { newProject, namesFor, projectHealth, projectProgress, timeLeftLabel, updateMeta, secretValues, maskText, liveItems, liveView, primaryClient, myMember, canReview } from '../lib/model';
-import { ProgressBar, timeTone } from './Overview';
-import { fmtDate } from '@ume/ui/lib/format';
+import { IconChip } from '@ume/ui/components/patterns/IconChip';
+import BrainShell from './Shell';
+import { ProjectRow, useProjectList } from './Rail';
+import { FilterBar, FilterSection } from '@ume/ui/components/patterns/FilterBar';
+import { ChoiceList } from '@ume/ui/components/patterns/ChoiceMenu';
+import { newProject, namesFor, projectHealth, timeLeftLabel, updateMeta, secretValues, maskText, liveItems, liveView, primaryClient } from '../lib/model';
+import { timeTone } from './Overview';
 import { putBlob, isQuotaError } from '../lib/blobs';
 import { optimizeImageIfNeeded } from '../lib/files';
 import { ProjectAvatar, ProjectCover } from './ProjectArt';
 import { COLOR, PROJECT_COLORS, PROJECT_STATUS } from '../lib/meta';
-import { cx, fmtRel, uid, now, todayISO } from '../lib/util';
+import { cx, uid, now, todayISO } from '../lib/util';
 
 // Brainn tone → Ume hue, for the status swatches.
 const STATUS_HUE = { sky: 'sky', amber: 'amber', emerald: 'green', neutral: null };
 
-const TAB_FOR_TYPE = { task: 'tasks', requirement: 'requirements', decision: 'decisions', sensitive: 'vault', file: 'files', question: 'memory', risk: 'memory' };
 
 /** Picks an image, stores it as a blob and returns a small reference ({ id, stored, name, mime }). */
 function ImagePick({ label, value, onChange, wide }) {
@@ -95,56 +93,30 @@ export function ProjectFormModal({ project, onClose, spaceId }) {
   );
 }
 
-/** A project, as a card: its name, then how it's doing, when it's due, and the last thing said. */
+/** A project, as a card: who it's for, how it's doing and when it's due, and the last thing said. */
 function ProjectCard({ p: record, i, ownerName }) {
-  const { mode, user } = useStore();
   const p = liveView(record);
-  const pending = canReview(mode === 'member' ? 'client' : 'owner', myMember(p, user)) ? p.suggestions.filter(s => s.state === 'pending').length : 0;
   const health = projectHealth(p);
-  const progress = projectProgress(p).value;
   const last = p.messages[p.messages.length - 1];
-  const who = last && namesFor(p, ownerName).msg(last);
+  const who = last && namesFor(p, ownerName).msg(last).split(' ')[0];
   const lastText = last && (maskText(last.text, secretValues(p)).replace(/\*\*|~~|`/g, '') || last.attachments.map(a => a.name).join(', ') || 'Voice note');
   return (
-    <a href={`#/p/${p.id}/chat`} className="anim-up group flex flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-card outline-none transition-[scale] duration-fast ease-out hover:border-border-strong focus-visible:ring-2 focus-visible:ring-ring active:scale-[0.99]" style={{ animationDelay: i * 40 + 'ms' }}>
-      <header className="flex items-center gap-3 border-b border-border px-5 py-4">
-        <ProjectAvatar p={p} className="size-7" rounded="rounded-lg" text="text-xs" />
+    <a href={`#/p/${p.id}/chat`} className="anim-up flex flex-col gap-4 rounded-2xl border border-border bg-card p-5 shadow-card outline-none transition-[scale] duration-fast ease-out hover:border-border-strong focus-visible:ring-2 focus-visible:ring-ring active:scale-[0.99]" style={{ animationDelay: i * 40 + 'ms' }}>
+      <div className="flex items-center gap-3">
+        <ProjectAvatar p={p} className="size-10" rounded="rounded-xl" text="text-sm" />
         <span className="min-w-0 flex-1">
           <span className="block truncate font-medium">{p.name}</span>
-          <span className="block truncate text-xs text-muted-foreground">{p.client || primaryClient(p)?.name || 'No client yet'}</span>
+          <span className="block truncate text-sm text-text-secondary">{p.client || primaryClient(p)?.name || 'No client yet'}</span>
         </span>
         {p.archived && <Badge tone="amber">Archived</Badge>}
-        {pending > 0 && <Badge tone="sky" title={`${pending} suggestion${pending === 1 ? '' : 's'} to review`}><Sparkles />{pending}</Badge>}
-      </header>
-
-      <div className="grid grid-cols-2 divide-x divide-border border-b border-border">
-        <div className="px-5 py-4">
-          <div className="text-label-mono text-muted-foreground">Health</div>
-          <div className="mt-2 flex items-center gap-2 font-medium text-sm">
-            <span aria-hidden className={cx('size-2 rounded-full', COLOR[health.tone].dot)} />{health.label}
-          </div>
-          <div className="mt-0.5 truncate text-xs text-muted-foreground">{health.reason}</div>
-          <ProgressBar value={progress} color={p.color} className="mt-3" />
-        </div>
-        <div className="px-5 py-4">
-          <div className="text-label-mono text-muted-foreground">Deadline</div>
-          <div className="mt-2 flex items-center gap-2 font-medium text-sm"><Calendar aria-hidden className="size-4 text-icon-muted" />{p.deadline ? fmtDate(p.deadline) : 'Not set'}</div>
-          <div className={cx('mt-0.5 truncate text-xs', timeTone(p))}>{timeLeftLabel(p)}</div>
-        </div>
       </div>
-
-      <div className="flex-1 px-5 py-4">
-        <div className="text-label-mono text-muted-foreground">Last message</div>
-        {last ? (
-          <div className="mt-2 flex gap-3">
-            <InitialsAvatar name={who} size="sm" />
-            <span className="min-w-0 flex-1">
-              <span className="flex items-baseline gap-2"><span className="truncate font-medium text-sm">{who}</span><span className="shrink-0 text-xs text-muted-foreground">{fmtRel(last.ts)}</span></span>
-              <span className="line-clamp-2 text-sm text-text-secondary">{lastText}</span>
-            </span>
-          </div>
-        ) : <p className="mt-2 text-sm text-muted-foreground">No messages yet.</p>}
+      <div className="flex items-center gap-2 text-sm">
+        <span aria-hidden className={cx('size-2 shrink-0 rounded-full', COLOR[health.tone].dot)} />
+        <span className="font-medium">{health.label}</span>
+        <span className="text-text-tertiary">·</span>
+        <span className={cx('truncate', timeTone(p))}>{timeLeftLabel(p)}</span>
       </div>
+      <p className="truncate text-sm text-text-secondary">{last ? <><span className="font-medium text-foreground">{who}:</span> {lastText}</> : 'No messages yet.'}</p>
     </a>
   );
 }
@@ -158,6 +130,7 @@ export default function Home() {
   const [q, setQ] = useState('');
   const [modal, setModal] = useState(null);
   const [newSpace, setNewSpace] = useState('');
+  const rows = new Map(useProjectList().map(x => [x.p.id, x]));
 
   const inSpace = state.projects.filter(p => space === 'all' || p.spaceId === space);
   const list = inSpace.filter(p => (view === 'archived') === !!p.archived)
@@ -186,48 +159,39 @@ export default function Home() {
 
   return (
     <BrainShell>
-      <PageHead
-        actions={<>
-          <Button variant="ghost" size="icon" onClick={() => setModal('search')} title="Search inside every project" aria-label="Search everything"><Search /></Button>
-          {!member && <Button onClick={() => setModal('space')}><FolderPlus />New space</Button>}
-          {!member && <Button variant="primary" onClick={() => setModal('project')}><Plus />New project</Button>}
-        </>}
-      >
-        <div className="flex flex-wrap items-center gap-2">
-          <FilterBar
-            count={filtersOn}
-            onClear={clearFilters}
-            sheet={<>
-              {spaces.length > 0 && <FilterSection icon={FolderOpen} title="Space" id="home-space"><ChoiceList aria-labelledby="home-space" options={spaces} all="All spaces" value={space === 'all' ? null : space} onChange={pickSpace} /></FilterSection>}
-              <FilterSection icon={Layers} title="Showing" id="home-view"><ChoiceList aria-labelledby="home-view" options={views} value={view} onChange={setView} /></FilterSection>
-              <FilterSection icon={ListTodo} title="Status" id="home-status"><ChoiceList aria-labelledby="home-status" options={statuses} all="Any status" value={status === 'all' ? null : status} onChange={pickStatus} /></FilterSection>
-            </>}
-          >
-            <ChoiceMenu title="Space" options={spaces} all="All spaces" value={space === 'all' ? null : space} onChange={pickSpace} />
-            <ChoiceMenu title="Showing" options={views} value={view} onChange={setView} />
-            <ChoiceMenu title="Status" options={statuses} all="Any status" value={status === 'all' ? null : status} onChange={pickStatus} />
-            {filtersOn > 0 && <FilterClear onClick={clearFilters} />}
-          </FilterBar>
-          <Input className="ms-auto w-full sm:w-56" leadingIcon={Search} value={q} onChange={e => setQ(e.target.value)} placeholder="Filter projects" aria-label="Filter projects" />
-        </div>
-      </PageHead>
+      {/* One row: find a project, filter, add one. Everything else is in the Filters sheet. */}
+      <div className="mb-5 flex items-center gap-2">
+        <Input className="min-w-0 flex-1 sm:max-w-72" leadingIcon={Search} value={q} onChange={e => setQ(e.target.value)} placeholder="Find a project" aria-label="Find a project" />
+        <FilterBar
+          phone
+          className="ms-auto flex-nowrap"
+          count={filtersOn}
+          onClear={clearFilters}
+          sheet={<>
+            {!member && (
+              <FilterSection icon={FolderOpen} title="Space" id="home-space">
+                {spaces.length > 0 && <ChoiceList aria-labelledby="home-space" options={spaces} all="All spaces" value={space === 'all' ? null : space} onChange={pickSpace} />}
+                <Button variant="ghost" className="self-start" onClick={() => setModal('space')}><FolderPlus />New space</Button>
+              </FilterSection>
+            )}
+            <FilterSection icon={Layers} title="Showing" id="home-view"><ChoiceList aria-labelledby="home-view" options={views} value={view} onChange={setView} /></FilterSection>
+            <FilterSection icon={ListTodo} title="Status" id="home-status"><ChoiceList aria-labelledby="home-status" options={statuses} all="Any status" value={status === 'all' ? null : status} onChange={pickStatus} /></FilterSection>
+          </>}
+        >{null}</FilterBar>
+        {!member && <Button variant="primary" onClick={() => setModal('project')}><Plus /><span className="max-sm:sr-only">New project</span></Button>}
+      </div>
 
-      <div className="grid gap-5 sm:grid-cols-2">
+      {/* Desktop: a card per project. Phone: the list, like Slack, latest conversation first. */}
+      <div className="grid gap-5 sm:grid-cols-2 max-lg:hidden">
         {list.map((p, i) => <ProjectCard key={p.id} p={p} i={i} ownerName={state.settings.ownerName || 'You'} />)}
-        {view === 'active' && !member && (
-          <button onClick={() => setModal('project')} className="anim-up grid min-h-72 place-items-center rounded-2xl border border-dashed border-border-strong text-text-secondary outline-none transition-[scale] duration-fast ease-out hover:bg-card hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring active:scale-[0.99]">
-            <span className="flex flex-col items-center gap-3"><IconChip icon={Plus} hue="brand" /><span className="font-medium text-sm">New project</span></span>
-          </button>
-        )}
+      </div>
+      <div className="-mx-2.5 flex flex-col lg:hidden">
+        {list.map(p => rows.get(p.id) && <ProjectRow key={p.id} {...rows.get(p.id)} />)}
       </div>
       {member && !list.length && view === 'active' && <Empty icon={Layers} title="No projects yet" text={`When ${state.settings.ownerName} gives you access to a project, it shows up here.`} />}
       {view === 'archived' && !list.length && <Empty icon={Archive} title="No archived projects" text="Archive a finished project from its ⋯ menu. Its full history stays searchable." />}
 
       {modal === 'project' && <ProjectFormModal spaceId={space === 'all' ? undefined : space} onClose={() => setModal(null)} />}
-      {modal === 'search' && (
-        <SearchModal projects={state.projects.map(liveView)} names={{ owner: state.settings.ownerName }} onClose={() => setModal(null)}
-          onPick={r => { setModal(null); location.hash = r.kind === 'message' ? `#/p/${r.p.id}/chat/m/${r.id}` : r.kind === 'item' ? `#/p/${r.p.id}/${TAB_FOR_TYPE[r.it.type]}/i/${r.id}` : `#/p/${r.p.id}/memory`; }} />
-      )}
       {modal === 'space' && (
         <Modal title="New space" sub="Group projects — by client type, team, or however you work." onClose={() => setModal(null)}>
           <form onSubmit={addSpace} className="flex gap-2"><Input autoFocus value={newSpace} onChange={e => setNewSpace(e.target.value)} placeholder="e.g. Retainer clients" /><Button type="submit" variant="primary">Create</Button></form>

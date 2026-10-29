@@ -259,7 +259,7 @@ function Message({ m, secrets, linked, onRecord, onReply, hl, readings, sugg = [
         {m.attachments.map(a => <Attachment key={a.id} a={a} m={m} readings={readings} />)}
         {linksIn(m.text).map(href => <LinkPreview key={href} href={href} className={mine ? 'ml-auto' : ''} />)}
         {owner && linked.length > 0 && (
-          <div className={cx('flex flex-wrap gap-1 mt-1.5', mine && 'justify-end')}>
+          <div className={cx('flex flex-wrap gap-1 mt-1.5 pointer-fine:opacity-0 pointer-fine:group-hover:opacity-100 pointer-fine:focus-within:opacity-100', mine && 'justify-end')}>
             {linked.map(({ it, done }, i) => (
               <button key={it.id + done} onClick={() => openItem(it.id)} className={cx('text-xs md:text-xs px-1.5 md:px-2 py-0.5 rounded-md ring-1 ring-inset hover:-translate-y-px transition max-w-full truncate', COLOR[TYPES[it.type].color].badge, i >= 2 && !allLinks && 'hidden md:inline-block')}>
                 {done === 'updated' ? '↻ updated' : done === 'note' ? '✎ note' : done ? `✓ ${done}` : TYPES[it.type].label}:{it.title.length > 32 ? it.title.slice(0, 32) + '…' : it.title}
@@ -1043,13 +1043,10 @@ export default function Chat({ focus }) {
           </div>
         ) : (
           <>
-            <div className="flex-1 min-w-0 flex items-center gap-3">
-              <span className="text-xs text-muted-foreground whitespace-nowrap hidden lg:inline">{p.messages.length} messages</span>
-              <ChatTimeBar p={p} me={me} />
-            </div>
+            <div className="flex-1" />
             {review && pendingCount > 0 && <Badge tone="sky"><Sparkles size={11} />{pendingCount} to review</Badge>}
             {review && <SuggestionTools />}
-            <Button variant="ghost" size="sm" onClick={() => setSearching(true)}><Search size={14} />Search</Button>
+            <Button variant="ghost" size="iconSm" onClick={() => setSearching(true)} title="Search this conversation" aria-label="Search this conversation"><Search size={15} /></Button>
           </>
         )}
       </div>

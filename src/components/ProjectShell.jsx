@@ -1,10 +1,12 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Search, Users, UserPlus, MoreHorizontal, Archive, ArchiveRestore, Download, Pencil, Braces, MessageSquare, ListTodo, ListChecks, GitBranch, Lock, Paperclip, Brain, History, Sparkles, KeyRound, X, Info, Check, Plus, ChevronDown, Dashboard, Layers } from '@/lib/icons';
-import { useStore } from '../store';
-import { PCtx, useP, Button, Input, Menu, MenuItem, Drawer } from './ui';
-import { Panel } from './Shell';
+import { Search, UserPlus, MoreHorizontal, Archive, ArchiveRestore, Download, Pencil, MessageSquare, ListTodo, ListChecks, GitBranch, Lock, Paperclip, Brain, History, Sparkles, X, Info, ChevronLeft, Plus, SlidersHorizontal } from '@/lib/icons';
+import { Popover, PopoverTrigger, PopoverPopup } from '@ume/ui/components/ui/popover';
+import { Sheet, SheetPopup } from '@ume/ui/components/ui/sheet';
+import { useIsMobileNav } from '@ume/ui/hooks/use-media-query';
 import { InitialsAvatar } from '@ume/ui/components/patterns/IconChip';
-import { fmtDate } from '@ume/ui/lib/format';
+import { useStore } from '../store';
+import { PCtx, useP, Button, Menu, MenuItem, Drawer } from './ui';
+import { Rail, UnreadBadge, iconButton, useProjectList } from './Rail';
 import Chat from './Chat';
 import { TasksView, RequirementsView, DecisionsView, VaultView, FilesView } from './Items';
 import ItemDrawer from './ItemDrawer';
@@ -15,9 +17,10 @@ import Assistant from './Assistant';
 import MembersModal from './Invite';
 import { ProjectFormModal } from './Home';
 import { ProjectAvatar } from './ProjectArt';
-import ProjectOverview from './Overview';
-import { updateMeta, liveView, namesFor, activeMembers, myMember, canReview, addItem, setStatus, projectHealth } from '../lib/model';
+import ProjectOverview, { ProgressBar, timeTone } from './Overview';
+import { updateMeta, liveView, namesFor, activeMembers, myMember, canReview, projectHealth, projectProgress, timeLeftLabel } from '../lib/model';
 import { isActive, COLOR, memberRole } from '../lib/meta';
+import { markSeen } from '../lib/seen';
 import { cx, download } from '../lib/util';
 
 const TABS = {
@@ -25,7 +28,10 @@ const TABS = {
   decisions: ['Decisions', GitBranch, DecisionsView], vault: ['Vault', Lock, VaultView], files: ['Files', Paperclip, FilesView],
   memory: ['Memory', Brain, MemoryView], timeline: ['Timeline', History, TimelineView],
 };
+// The tab row holds the four tabs used every day; the rest open from the More menu.
+const PILL = ['chat', 'tasks', 'files', 'memory'];
 const TAB_FOR_TYPE = { task: 'tasks', requirement: 'requirements', decision: 'decisions', sensitive: 'vault', file: 'files', question: 'memory', risk: 'memory' };
+const REASON_TONE = { rose: 'text-destructive-foreground', amber: 'text-warn-ink' };
 
 function counts(p, role, me) {
   const a = t => p.items.filter(i => i.type === t && isActive(i)).length;
@@ -36,174 +42,164 @@ function counts(p, role, me) {
   };
 }
 
-/* Open tasks in a column beside the chat: tick one off, open it, or add one. */
-function TaskColumn({ setTab }) {
-  const { p, role, mut, openItem } = useP();
-  const [title, setTitle] = useState('');
-  const today = new Date().toISOString().slice(0, 10);
-  const open = p.items.filter(i => i.type === 'task' && isActive(i)).sort((a, b) => (a.due || '9999').localeCompare(b.due || '9999'));
-  const done = p.items.filter(i => i.type === 'task' && i.status === 'done').length;
-  const add = e => { e.preventDefault(); if (!title.trim()) return; mut(q => addItem(q, 'owner', { type: 'task', title: title.trim(), assignee: 'owner' })); setTitle(''); };
+const dueDate = iso => { const [y, m, d] = iso.split('-').map(Number); return new Date(y, m - 1, d).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }); };
+
+/* Behind ⓘ: what the project is, where it stands and who's on it. Changing any of it is in More → Status & progress. */
+function InfoPanel({ onMessage, onInvite }) {
+  const { p, names, role } = useP();
+  const { state } = useStore();
+  const health = projectHealth(p);
+  const progress = projectProgress(p).value;
+  const members = activeMembers(p);
+  // Before anyone is invited, the client named on the project still shows, so you can see who it's for.
+  const people = [{ id: 'owner', name: state.settings.ownerName || names.owner, role: 'Owner' }, ...members.map(m => ({ id: m.id, name: m.name, role: memberRole(m) })),
+    ...(!members.length && p.client ? [{ id: 'client', name: p.client, role: 'Client' }] : [])];
+  const stat = (label, value, foot) => (
+    <div className="flex min-w-0 flex-col gap-0.5 rounded-2xl bg-muted p-3">
+      <span className="text-xs text-text-secondary">{label}</span>
+      <span className="flex items-center gap-1.5 truncate font-medium text-sm">{value}</span>
+      {foot}
+    </div>
+  );
   return (
-    <div className="flex h-full flex-col">
-      <ul className="min-h-0 flex-1 divide-y divide-border overflow-y-auto thin-scrollbar autohide-scrollbar">
-        {open.map(t => (
-          <li key={t.id} className="flex items-start gap-3 px-5 py-3 hover:bg-field-hover">
-            {role === 'owner'
-              ? <button type="button" onClick={() => mut(q => setStatus(q, 'owner', t.id, 'done'))} aria-label={`Mark “${t.title}” done`} title="Mark done" className="mt-0.5 grid size-4.5 shrink-0 place-items-center rounded-full border border-border-strong text-transparent hover:border-green hover:text-green [&_svg]:size-3"><Check /></button>
-              : <span aria-hidden className="mt-0.5 size-4.5 shrink-0 rounded-full border border-border-strong" />}
-            <button type="button" onClick={() => openItem(t.id)} className="min-w-0 flex-1 text-left outline-none">
-              <span className="block text-sm">{t.title}</span>
-              {(t.due || t.status === 'blocked') && (
-                <span className={cx('text-xs', t.status === 'blocked' ? 'text-warn-ink' : t.due < today ? 'text-destructive-foreground' : t.due === today ? 'text-warn-ink' : 'text-muted-foreground')}>
-                  {t.status === 'blocked' ? 'Blocked' : t.due < today ? `Overdue · ${fmtDate(t.due)}` : t.due === today ? 'Due today' : `Due ${fmtDate(t.due)}`}
-                </span>
-              )}
-            </button>
+    <div className="w-full">
+      <div className="flex items-center gap-3">
+        <ProjectAvatar p={p} className="size-11" rounded="rounded-[14px]" text="text-base" />
+        <div className="min-w-0">
+          <div className="truncate font-medium text-lg">{p.name}</div>
+          <div className="truncate text-xs text-text-secondary">{p.description || p.client || names.client}</div>
+        </div>
+      </div>
+      <div className="mt-5 grid grid-cols-3 gap-2">
+        {stat('Health', <><span aria-hidden className={cx('size-2 shrink-0 rounded-full', COLOR[health.tone].dot)} />{health.label}</>,
+          <span className={cx('text-xs', REASON_TONE[health.tone] || 'text-text-secondary')}>{health.reason}</span>)}
+        {stat('Due', p.deadline ? dueDate(p.deadline) : 'No date', <span className={cx('truncate text-xs', timeTone(p))}>{timeLeftLabel(p)}</span>)}
+        {stat('Progress', <span className="tabular-nums">{progress}%</span>, <ProgressBar value={progress} color={p.color} className="mt-2 w-full" />)}
+      </div>
+      <div className="mt-6 mb-1 text-label-mono text-text-secondary">People</div>
+      <ul>
+        {people.map(x => (
+          <li key={x.id} className="flex min-h-13 items-center gap-3">
+            <InitialsAvatar name={x.name} size="sm" />
+            <div className="min-w-0 flex-1"><div className="truncate font-medium text-sm">{x.id === 'owner' && role === 'owner' ? 'You' : x.name}</div><div className="text-xs text-text-secondary">{x.role}</div></div>
+            {x.id !== 'owner' && <Button variant="ghost" size="iconSm" onClick={onMessage} aria-label={`Message ${x.name}`} title={`Message ${x.name}`}><MessageSquare /></Button>}
           </li>
         ))}
-        {!open.length && <li className="px-5 py-8 text-center text-sm text-muted-foreground">No open tasks.</li>}
+        {role === 'owner' && (
+          <li>
+            <button type="button" onClick={onInvite} className="flex h-13 w-full items-center gap-3 rounded-xl text-sm text-text-secondary outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring">
+              <span className="grid size-7 place-items-center rounded-full border-[1.5px] border-dashed border-border-strong text-icon-muted [&_svg]:size-4"><Plus /></span>Invite someone
+            </button>
+          </li>
+        )}
       </ul>
-      {role === 'owner' && (
-        <form onSubmit={add} className="border-t border-border p-3">
-          <Input size="sm" leadingIcon={Plus} value={title} onChange={e => setTitle(e.target.value)} placeholder="Add a task" aria-label="Add a task" />
-        </form>
-      )}
-      <button type="button" onClick={() => setTab('tasks')} className="border-t border-border px-5 py-3 text-left text-xs text-muted-foreground hover:text-foreground">{done} done · See all tasks</button>
     </div>
   );
 }
 
-/* Who the project is, where it stands and who's on it. */
-function InfoColumn() {
-  const { p, names } = useP();
-  const { state } = useStore();
-  const members = activeMembers(p);
-  const health = projectHealth(p);
-  const people = [{ id: 'owner', name: state.settings.ownerName || names.owner, role: 'Owner' }, ...members.map(m => ({ id: m.id, name: m.name, role: memberRole(m) }))];
+/* ⓘ: a popover under the button on a desktop, a sheet from the bottom on a phone. */
+function InfoButton({ onInvite, onMessage }) {
+  const phone = useIsMobileNav();
+  const [open, setOpen] = useState(false);
+  const panel = <InfoPanel onInvite={() => { setOpen(false); onInvite(); }} onMessage={() => { setOpen(false); onMessage(); }} />;
+  const button = <button type="button" onClick={phone ? () => setOpen(true) : undefined} aria-label="Project info" title="Info" className={iconButton(open)}><Info aria-hidden /></button>;
+  if (phone) return (
+    <>
+      {button}
+      <Sheet open={open} onOpenChange={setOpen}>
+        <SheetPopup side="bottom" showCloseButton={false} className="max-h-[86dvh]">
+          <div className="mx-auto mt-2 h-1 w-9 rounded-full bg-border-strong" />
+          <div className="overflow-y-auto px-5 pt-4 pb-[max(1.5rem,env(safe-area-inset-bottom))]">{panel}</div>
+        </SheetPopup>
+      </Sheet>
+    </>
+  );
   return (
-    <div className="h-full overflow-y-auto thin-scrollbar autohide-scrollbar">
-      <div className="px-5 pt-5">
-        <div className="flex -space-x-3">
-          <ProjectAvatar p={p} className="size-14 ring-4 ring-card" rounded="rounded-full" text="text-lg" />
-          {names.client && <InitialsAvatar name={names.client} size="lg" className="size-14 ring-4 ring-card" />}
-        </div>
-        <h2 className="mt-4 font-medium text-xl">{p.name}</h2>
-        <p className="mt-0.5 text-sm text-text-secondary">{p.client || names.client}{p.description ? ` · ${p.description}` : ''}</p>
-        <div className="mt-3 flex items-center gap-2 text-sm"><span aria-hidden className={cx('size-2 rounded-full', COLOR[health.tone].dot)} /><span className="font-medium">{health.label}</span><span className="truncate text-muted-foreground">{health.reason}</span></div>
-      </div>
-      <ProjectOverview hidePeople />
-      <div className="border-t border-border p-5">
-        <div className="mb-3 text-label-mono text-muted-foreground">People · {people.length}</div>
-        <div className="grid grid-cols-3 gap-y-4">
-          {people.map(x => (
-            <div key={x.id} className="flex min-w-0 flex-col items-center text-center">
-              <InitialsAvatar name={x.name} size="lg" />
-              <span className="mt-2 w-full truncate font-medium text-sm">{x.name.split(' ')[0]}</span>
-              <span className="w-full truncate text-xs text-muted-foreground">{x.role}</span>
-            </div>
-          ))}
-        </div>
-      </div>
-    </div>
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger render={button} />
+      <PopoverPopup align="end" sideOffset={8} className="w-96 rounded-[20px] [&_[data-slot=popover-viewport]]:p-5">{panel}</PopoverPopup>
+    </Popover>
   );
 }
 
-/* The project's name in the bar, and the way out: Dashboard, all projects, or straight to another one. */
-function ProjectSwitcher({ p }) {
-  const { state } = useStore();
-  const others = state.projects.filter(x => x.id !== p.id && !x.archived);
-  return (
-    <Menu align="left" trigger={t => (
-      <button type="button" onClick={t} className="flex h-10 min-w-0 items-center gap-2 rounded-full ps-1 pe-3 outline-none hover:bg-field focus-visible:ring-2 focus-visible:ring-ring" title="Switch project">
-        <ProjectAvatar p={p} className="size-8" rounded="rounded-full" text="text-xs" />
-        <span className="max-w-56 truncate font-medium text-sm max-sm:hidden">{p.name}</span>
-        <ChevronDown className="size-4 shrink-0 text-icon-muted" />
-      </button>
-    )}>
-      <MenuItem icon={Dashboard} onClick={() => { location.hash = '#/'; }}>Dashboard</MenuItem>
-      <MenuItem icon={Layers} onClick={() => { location.hash = '#/projects'; }}>All projects</MenuItem>
-      {others.length > 0 && <div className="px-2.5 pt-2.5 pb-1.5 text-label-mono text-text-secondary">Go to project</div>}
-      {others.map(x => <MenuItem key={x.id} icon={() => <ProjectAvatar p={x} className="size-5" rounded="rounded-md" text="text-xs" />} onClick={() => { location.hash = `#/p/${x.id}/chat`; }}>{x.name}</MenuItem>)}
-    </Menu>
-  );
-}
-
-const barButton = on => cx('relative grid size-10 shrink-0 place-items-center rounded-full outline-none transition-[scale] duration-fast ease-out active:scale-[0.97] focus-visible:ring-2 focus-visible:ring-ring [&_svg]:size-5',
-  on ? 'bg-field text-foreground' : 'text-icon-muted hover:bg-field hover:text-foreground');
-
-/** Shared frame for a project: the bar (the mark, the switcher, the tabs, actions), then the view. Used by owner and members. */
+/** Shared frame for a project: the rail, then one card with the name, the tabs and the view. Used by owner and members. */
 /** `mut` replaces the local-store mutation, e.g. for a member portal that writes through the server. */
-export function ProjectShell({ p: record, role, me = null, names, tabs, tab, setTab, actions, deep, searchProjects, mut = null }) {
+export function ProjectShell({ p: record, role, me = null, names, tabs, tab, setTab, actions, onInvite, deep, searchProjects, mut = null }) {
   const { mutate } = useStore();
   const [drawer, setDrawer] = useState(null);
   const [focus, setFocus] = useState(null);
   const [search, setSearch] = useState(false);
   const [assistant, setAssistant] = useState(false);
-  const [info, setInfo] = useState(false); // below lg the Info column is a drawer
+  const [status, setStatus] = useState(false); // the status, progress and deadline controls
   const p = useMemo(() => liveView(record), [record]); // deleted items are hidden everywhere
+  const elsewhere = useProjectList().reduce((n, x) => n + (x.p.id === p.id || x.p.archived ? 0 : x.unread), 0);
 
   /** Open the chat at a message; with a span, the exact passage is highlighted. */
-  const jumpTo = useCallback((id, span = null) => { setDrawer(null); setInfo(false); setFocus({ id, span, n: Date.now() }); setTab('chat'); }, [setTab]);
+  const jumpTo = useCallback((id, span = null) => { setDrawer(null); setStatus(false); setFocus({ id, span, n: Date.now() }); setTab('chat'); }, [setTab]);
   useEffect(() => {
     if (!deep) return;
     if (deep.kind === 'm') jumpTo(deep.ref);
     if (deep.kind === 'i') setDrawer(deep.ref);
   }, [deep?.kind, deep?.ref]); // eslint-disable-line react-hooks/exhaustive-deps
+  // Reading the chat catches you up on this project.
+  useEffect(() => { if (tab === 'chat') markSeen(p.id, p.messages[p.messages.length - 1]?.ts); }, [tab, p.id, p.messages.length]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const ctx = useMemo(() => ({ p, role, me, names, openItem: setDrawer, jumpTo, mut: mut || (fn => mutate(p.id, fn)), openSearch: () => setSearch(true) }), [p, role, me, names, jumpTo, mutate, mut]);
   const n = counts(p, role, me);
   const View = TABS[tab]?.[2] || Chat;
+  const health = projectHealth(p);
 
   return (
     <PCtx.Provider value={ctx}>
-      <div className="flex h-dvh flex-col bg-background text-foreground">
-        {/* Phones: mark, switcher and actions on one row, the tabs scroll on the next. */}
-        <header className="flex flex-wrap items-center gap-x-2 gap-y-3 px-4 py-4 sm:px-6 lg:grid lg:grid-cols-[1fr_auto_1fr] lg:py-5">
-          <div className="flex min-w-0 flex-1 items-center gap-2">
-            <a href="#/" aria-label="Dashboard" title="Dashboard" className="shrink-0 rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-ring">
-              <span aria-hidden className="grid size-10 place-items-center rounded-xl bg-foreground font-medium text-lg text-background">B</span>
+      <div className="flex h-dvh bg-background text-foreground">
+        <Rail current={p.id} />
+        <div className="flex min-w-0 flex-1 flex-col overflow-hidden bg-card lg:my-2 lg:me-2 lg:rounded-[20px] lg:border lg:border-border lg:shadow-card">
+          <header className="flex items-center gap-1 ps-1.5 pe-2 pt-3 pb-2.5 lg:gap-2 lg:ps-5 lg:pe-4 lg:pt-3.5 lg:pb-3">
+            {/* Phones: back to the project list, with how many messages wait in the others. */}
+            <a href="#/projects" aria-label={elsewhere ? `Projects, ${elsewhere} unread` : 'Projects'} title="Projects" className="flex h-10 shrink-0 items-center gap-0.5 rounded-full ps-0.5 pe-2 outline-none hover:bg-field focus-visible:ring-2 focus-visible:ring-ring lg:hidden [&>svg]:size-6.5">
+              <ChevronLeft aria-hidden />{elsewhere > 0 && <UnreadBadge n={elsewhere} />}
             </a>
-            <ProjectSwitcher p={p} />
-          </div>
-          <nav aria-label="Project" className="scroll-fade-x order-last -mx-4 flex w-[calc(100%+2rem)] items-center gap-1 overflow-x-auto px-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden lg:order-none lg:mx-0 lg:w-auto lg:px-0">
-            {tabs.map(k => {
+            <div className="min-w-0 flex-1">
+              <h1 className="truncate font-medium text-lg">{p.name}</h1>
+              <p className="flex min-w-0 items-center gap-1.5 text-xs text-text-secondary">
+                <span className="truncate">{p.client || names.client}</span>
+                <span aria-hidden>·</span><span className={cx('shrink-0', timeTone(p))}>{timeLeftLabel(p)}</span>
+                <span aria-hidden className="max-lg:hidden">·</span>
+                <span className="flex shrink-0 items-center gap-1.5 max-lg:hidden"><span aria-hidden className={cx('size-2 rounded-full', COLOR[health.tone].dot)} />{health.label}</span>
+              </p>
+            </div>
+            <button type="button" onClick={() => setSearch(true)} aria-label="Search this project" title="Search this project" className={cx(iconButton(false), 'max-lg:hidden')}><Search aria-hidden /></button>
+            <InfoButton onInvite={onInvite || (() => {})} onMessage={() => setTab('chat')} />
+            <Menu trigger={t => <button type="button" onClick={t} aria-label="More" title="More" className={iconButton(false)}><MoreHorizontal aria-hidden /></button>}>
+              <MenuItem icon={Search} onClick={() => setSearch(true)}>Search this project</MenuItem>
+              {role === 'owner' && <MenuItem icon={Sparkles} onClick={() => setAssistant(true)}>Assistant</MenuItem>}
+              <MenuItem icon={SlidersHorizontal} onClick={() => setStatus(true)}>Status & progress</MenuItem>
+              {tabs.filter(k => !PILL.includes(k)).map(k => { const [label, I] = TABS[k]; return <MenuItem key={k} icon={I} onClick={() => setTab(k)}>{label}</MenuItem>; })}
+              {actions}
+            </Menu>
+          </header>
+
+          <nav aria-label="Project" className="flex shrink-0 gap-1 overflow-x-auto border-b border-border px-3 pb-3 [scrollbar-width:none] lg:px-4 [&::-webkit-scrollbar]:hidden">
+            {tabs.filter(k => PILL.includes(k) || k === tab).map(k => {
               const [label, I] = TABS[k];
               const on = tab === k;
-              return on ? (
-                <button key={k} type="button" aria-current="page" className="flex h-10 shrink-0 items-center gap-2 rounded-full bg-field ps-3.5 pe-4 font-medium text-sm text-foreground [&_svg]:size-5">
-                  <I aria-hidden />{label}{n[k] > 0 && <span className="text-muted-foreground tabular-nums">{n[k]}</span>}
-                </button>
-              ) : (
-                <button key={k} type="button" onClick={() => setTab(k)} aria-label={n[k] ? `${label}, ${n[k]}` : label} title={label} className={barButton(false)}>
-                  <I aria-hidden />
-                  {k === 'chat' && n.chat > 0 && <span aria-hidden className="absolute top-2 right-2 size-2 rounded-full bg-primary ring-2 ring-background" />}
+              return (
+                <button key={k} type="button" onClick={() => setTab(k)} aria-current={on ? 'page' : undefined}
+                  className={cx('flex h-9 shrink-0 items-center gap-2 rounded-full ps-3 pe-3.5 text-sm outline-none transition-[scale] duration-fast ease-out active:scale-[0.97] focus-visible:ring-2 focus-visible:ring-ring [&_svg]:size-4.5',
+                    on ? 'bg-field font-medium text-foreground' : 'text-text-secondary hover:bg-field hover:text-foreground')}>
+                  <I aria-hidden />{label}{n[k] > 0 && <span className="font-normal text-muted-foreground tabular-nums">{n[k]}</span>}
                 </button>
               );
             })}
           </nav>
-          <div className="flex shrink-0 items-center gap-1 lg:justify-self-end">
-            <button type="button" onClick={() => setSearch(true)} aria-label="Search this project" title="Search this project" className={barButton(false)}><Search aria-hidden /></button>
-            {role === 'owner' && <button type="button" onClick={() => setAssistant(true)} aria-label="Project assistant" title="Project assistant" className={barButton(false)}><Sparkles aria-hidden /></button>}
-            {tab === 'chat' && <button type="button" onClick={() => setInfo(true)} aria-label="Project info" title="Project info" className={cx(barButton(false), 'lg:hidden')}><Info aria-hidden /></button>}
-            {actions}
-          </div>
-        </header>
 
-        <main className="min-h-0 flex-1 px-4 pb-4 sm:px-6 sm:pb-6">
-          {tab === 'chat' ? (
-            <div className="grid h-full gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,2fr)_minmax(0,1fr)]">
-              <Panel title="Tasks" icon={ListTodo} className="max-lg:hidden"><TaskColumn setTab={setTab} /></Panel>
-              <Panel title="Messages" icon={MessageSquare} bodyClassName="flex"><Chat focus={focus} /></Panel>
-              <Panel title="Info" icon={Info} className="max-lg:hidden"><InfoColumn /></Panel>
-            </div>
-          ) : (
-            <div className="flex h-full overflow-hidden rounded-2xl border border-border bg-card shadow-card"><View focus={focus} /></div>
-          )}
-        </main>
+          <main className="flex min-h-0 flex-1">
+            <div className={cx('flex min-h-0 w-full', tab === 'chat' && 'mx-auto max-w-3xl')}><View focus={focus} /></div>
+          </main>
+        </div>
       </div>
       {drawer && <ItemDrawer id={drawer} onClose={() => setDrawer(null)} />}
-      {info && <Drawer onClose={() => setInfo(false)}><div className="flex justify-end px-3 pt-3"><Button variant="ghost" size="icon" onClick={() => setInfo(false)} aria-label="Close"><X size={18} /></Button></div><InfoColumn /></Drawer>}
+      {status && <Drawer onClose={() => setStatus(false)}><ProjectOverview onClose={() => setStatus(false)} /></Drawer>}
       {assistant && (
         <Drawer onClose={() => setAssistant(false)}>
           <div className="flex justify-end px-3 pt-3"><Button variant="ghost" size="icon" onClick={() => setAssistant(false)} aria-label="Close"><X size={18} /></Button></div>
@@ -233,23 +229,18 @@ export default function ProjectPage({ p, tab, deep }) {
 
   const actions = owner && (
     <>
-      <button type="button" onClick={() => setModal('members')} aria-label={members.length ? `Members, ${members.length}` : 'Invite'} title={members.length ? 'Members' : 'Invite people'} className={barButton(false)}><UserPlus aria-hidden /></button>
-      <Menu trigger={t => <button type="button" onClick={t} aria-label="More" title="More" className={barButton(false)}><MoreHorizontal aria-hidden /></button>}>
-        <MenuItem icon={Pencil} onClick={() => setModal('edit')}>Edit project details & images</MenuItem>
-        <MenuItem icon={Users} onClick={() => setModal('members')}>Members</MenuItem>
-        <MenuItem icon={Braces} onClick={() => setTab('timeline')}>Timeline & raw JSON</MenuItem>
-        <MenuItem icon={Download} onClick={() => download(`${p.name.replace(/\W+/g, '-').toLowerCase()}-record.json`, JSON.stringify(p, null, 2))}>Export project record</MenuItem>
-        <MenuItem icon={KeyRound} onClick={() => { location.hash = '#/settings/ai'; }}>AI & settings</MenuItem>
-        {p.archived
-          ? <MenuItem icon={ArchiveRestore} onClick={() => { mutate(p.id, q => updateMeta(q, 'owner', { archived: false }, 'project.unarchive')); toast('Project restored'); }}>Restore from archive</MenuItem>
-          : <MenuItem icon={Archive} onClick={() => { mutate(p.id, q => updateMeta(q, 'owner', { archived: true }, 'project.archive')); toast('Archived — full history kept'); }}>Archive project</MenuItem>}
-      </Menu>
+      <MenuItem icon={UserPlus} onClick={() => setModal('members')}>{members.length ? `Members · ${members.length}` : 'Invite people'}</MenuItem>
+      <MenuItem icon={Pencil} onClick={() => setModal('edit')}>Edit project details</MenuItem>
+      <MenuItem icon={Download} onClick={() => download(`${p.name.replace(/\W+/g, '-').toLowerCase()}-record.json`, JSON.stringify(p, null, 2))}>Export project record</MenuItem>
+      {p.archived
+        ? <MenuItem icon={ArchiveRestore} onClick={() => { mutate(p.id, q => updateMeta(q, 'owner', { archived: false }, 'project.unarchive')); toast('Project restored'); }}>Restore from archive</MenuItem>
+        : <MenuItem icon={Archive} onClick={() => { mutate(p.id, q => updateMeta(q, 'owner', { archived: true }, 'project.archive')); toast('Archived — full history kept'); }}>Archive project</MenuItem>}
     </>
   );
 
   return (
     <>
-      <ProjectShell p={p} role={owner ? 'owner' : 'client'} me={me} names={names} tabs={tabs} tab={tabs.includes(tab) ? tab : 'chat'} setTab={setTab} actions={actions} deep={deep} searchProjects={owner ? undefined : [p]} />
+      <ProjectShell p={p} role={owner ? 'owner' : 'client'} me={me} names={names} tabs={tabs} tab={tabs.includes(tab) ? tab : 'chat'} setTab={setTab} actions={actions} onInvite={owner ? () => setModal('members') : undefined} deep={deep} searchProjects={owner ? undefined : [p]} />
       {modal === 'members' && <MembersModal p={p} onClose={() => setModal(null)} />}
       {modal === 'edit' && <ProjectFormModal project={p} onClose={() => setModal(null)} />}
     </>

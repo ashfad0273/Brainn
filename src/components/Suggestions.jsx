@@ -92,9 +92,11 @@ export function SuggestionCard({ s, inline }) {
 }
 
 /** The suggestions a message produced, right under it in the chat. */
+/** A message's suggestions: one quiet line until opened, then the cards. */
 export function MessageSuggestions({ list, mine }) {
   const { mut, me } = useP();
   const { toast } = useStore();
+  const [open, setOpen] = useState(false);
   if (!list.length) return null;
   const all = decision => {
     const ids = list.map(s => s.id);
@@ -104,13 +106,13 @@ export function MessageSuggestions({ list, mine }) {
   return (
     <div className={cx('mt-1.5 w-full max-w-md space-y-1.5', mine && 'ml-auto')}>
       <div className={cx('flex items-center gap-2 text-xs text-primary px-1', mine && 'justify-end')}>
-        <Sparkles size={11} />{list.length} suggestion{list.length > 1 ? 's' : ''} from this message
-        {list.length > 1 && <>
+        <button type="button" onClick={() => setOpen(o => !o)} aria-expanded={open} className="flex items-center gap-1 hover:underline"><Sparkles size={11} />{list.length} suggestion{list.length > 1 ? 's' : ''}</button>
+        {open && list.length > 1 && <>
           <button onClick={() => all('accept')} className="flex items-center gap-1 text-foreground hover:text-foreground"><CheckCheck size={12} />Accept all</button>
           <button onClick={() => all('ignore')} className="flex items-center gap-1 text-muted-foreground hover:text-foreground"><XCircle size={12} />Ignore all</button>
         </>}
       </div>
-      {list.map(s => <SuggestionCard key={s.id} s={s} inline />)}
+      {open && list.map(s => <SuggestionCard key={s.id} s={s} inline />)}
     </div>
   );
 }

@@ -1,16 +1,17 @@
+import { useState } from 'react';
 import { ErrorBoundary } from '@ume/ui/components/session/ErrorBoundary';
-import { useTheme } from '@ume/ui/hooks/use-theme';
-import { Building2, Calendar, Dashboard, Database, Files, Hash, Layers, Moon, Settings, ShieldCheck, Sparkles, Sun, User, Users } from '@/lib/icons';
+import { Building2, Database, Hash, Search, ShieldCheck, Sparkles, User, Users } from '@/lib/icons';
 import { useStore } from '../store';
+import { Rail, BottomNav, GlobalSearch, ThemeButton, Mark, PAGES, hashPath, isOn, iconButton } from './Rail';
 import { hasServer } from '../lib/api';
 import { cx } from '../lib/util';
 
-/* Brainn's frame: a top bar (the mark, the pages in one pill, theme and Settings)
-   over a centred column. Built here first, from Ume's tokens; it moves into Ume
-   once it settles. Routes are hash paths: #/ (Dashboard), #/projects, #/files,
-   #/calendar, #/settings/:tab. */
+/* Brainn's frame: the rail on a desktop, a title row and the bottom bar on a
+   phone (see Rail.jsx), with the page in a centred column. Built here first,
+   from Ume's tokens. Routes are hash paths: #/ (Dashboard), #/projects,
+   #/files, #/calendar, #/settings/:tab. */
 
-export const hashPath = () => location.hash.replace(/^#/, '') || '/';
+export { hashPath };
 
 /** The Settings tabs a person can open: [key, label, icon]. Members only have their account. */
 export function settingsTabs(member, auth) {
@@ -21,71 +22,42 @@ export function settingsTabs(member, auth) {
   ];
 }
 
-const PAGES = [
-  ['/', 'Dashboard', Dashboard],
-  ['/projects', 'Projects', Layers],
-  ['/files', 'Files', Files],
-  ['/calendar', 'Calendar', Calendar],
-];
-const isOn = (page, path) => (page === '/' ? path === '/' : path === page || path.startsWith(page + '/'));
-
-function Mark({ org }) {
-  if (org.logo) return <img src={org.logo} alt="" className="size-10 shrink-0 rounded-xl object-cover" />;
-  return <span aria-hidden className="grid size-10 shrink-0 place-items-center rounded-xl bg-foreground font-medium text-lg text-background">B</span>;
-}
-
-/* A round 40px icon button in the bar: muted at rest, the field grey on hover or while its page is open. */
-const iconButton = on => cx('grid size-10 shrink-0 place-items-center rounded-full outline-none transition-[scale] duration-fast ease-out active:scale-[0.97] focus-visible:ring-2 focus-visible:ring-ring [&_svg]:size-5',
-  on ? 'bg-field text-foreground' : 'text-icon-muted hover:bg-field hover:text-foreground');
-
-function TopBar() {
+/* Phones: the mark, the page's name, search and the theme. */
+function PhoneBar() {
   const { state } = useStore();
-  const { theme, toggle } = useTheme();
-  const org = state.settings.org || {};
+  const [search, setSearch] = useState(false);
   const path = hashPath();
-  const ThemeIcon = theme === 'dark' ? Sun : Moon;
+  const page = PAGES.find(([href]) => isOn(href, path));
   return (
-    <header className="grid grid-cols-[1fr_auto_1fr] items-center gap-3 px-4 py-5 sm:px-6">
-      <a href="#/" aria-label={`${org.name || state.settings.workspaceName || 'Brainn'}: Dashboard`} className="justify-self-start rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-ring">
-        <Mark org={org} />
-      </a>
-      <nav aria-label="Pages" className="flex items-center gap-1">
-        {PAGES.map(([href, label, I]) => {
-          const on = isOn(href, path);
-          // The open page is a pill with its name; the others are icons, named for screen readers and on hover.
-          return on ? (
-            <a key={href} href={`#${href}`} aria-current="page" className="flex h-10 items-center justify-center gap-2 rounded-full bg-field font-medium text-sm text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring max-sm:w-10 sm:ps-3.5 sm:pe-4 [&_svg]:size-5">
-              {/* phones: the icon alone, so the bar fits at 375px */}
-              <I aria-hidden /><span className="max-sm:sr-only">{label}</span>
-            </a>
-          ) : (
-            <a key={href} href={`#${href}`} aria-label={label} title={label} className={iconButton(false)}><I aria-hidden /></a>
-          );
-        })}
-      </nav>
-      <div className="flex items-center gap-1 justify-self-end">
-        <button type="button" onClick={toggle} aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'} title={theme === 'dark' ? 'Light mode' : 'Dark mode'} className={iconButton(false)}><ThemeIcon aria-hidden /></button>
-        <a href="#/settings" aria-label="Settings" title="Settings" aria-current={isOn('/settings', path) ? 'page' : undefined} className={iconButton(isOn('/settings', path))}><Settings aria-hidden /></a>
-      </div>
+    <header className="flex items-center gap-3 px-4 pt-4 pb-3 lg:hidden">
+      <a href="#/" aria-label="Dashboard" className="rounded-[10px] outline-none focus-visible:ring-2 focus-visible:ring-ring"><Mark org={state.settings.org || {}} /></a>
+      <h1 className="min-w-0 flex-1 truncate font-medium text-lg">{page?.[1] || 'Brainn'}</h1>
+      <button type="button" onClick={() => setSearch(true)} aria-label="Search everything" title="Search everything" className={iconButton(false)}><Search aria-hidden /></button>
+      <ThemeButton />
+      {search && <GlobalSearch onClose={() => setSearch(false)} />}
     </header>
   );
 }
 
-/** Every page but a project: the top bar, then the page in the centred column. */
+/** Every page but a project: the rail (or the phone's bars), then the page in the centred column. */
 export default function BrainShell({ children, wide }) {
   const path = hashPath();
   return (
-    <div className="min-h-dvh bg-background text-foreground">
-      <TopBar />
-      <main className={cx('mx-auto w-full px-4 pb-12 sm:px-6', wide ? 'max-w-6xl' : 'max-w-4xl')}>
-        {/* One boundary per page, keyed by the path, so a broken page doesn't poison the others. */}
-        <ErrorBoundary key={path}><div className="anim-fade">{children}</div></ErrorBoundary>
-      </main>
+    <div className="min-h-dvh bg-background text-foreground lg:flex">
+      <Rail />
+      <div className="min-w-0 flex-1">
+        <PhoneBar />
+        <main className={cx('mx-auto w-full px-4 pb-28 sm:px-6 lg:pt-8 lg:pb-12', wide ? 'max-w-6xl' : 'max-w-4xl')}>
+          {/* One boundary per page, keyed by the path, so a broken page doesn't poison the others. */}
+          <ErrorBoundary key={path}><div className="anim-fade">{children}</div></ErrorBoundary>
+        </main>
+      </div>
+      <BottomNav />
     </div>
   );
 }
 
-/** A page's own row under the top bar: its title (optional), its buttons, and a second row such as filters. */
+/** A page's own row at the top of the page: its title (optional), its buttons, and a second row such as filters. */
 export function PageHead({ title, subtitle, actions, children }) {
   return (
     <div className="mb-5 flex flex-col gap-3">

@@ -4,7 +4,7 @@
    Icon Studio overrides. */
 import { Icons } from '@ume/ui/lib/icons';
 import {
-  RiArrowGoBackLine, RiAtLine, RiAttachment2, RiBold, RiBracesLine, RiBrainLine, RiChat3Line, RiChatQuoteLine, RiDashboardLine,
+  RiArrowGoBackLine, RiAtLine, RiAttachment2, RiBold, RiBracesLine, RiBrainLine, RiChat3Line, RiChatQuoteLine, RiDashboardLine, RiEqualizerLine,
   RiCheckDoubleLine, RiCodeLine, RiDoubleQuotesL, RiEmotionLine, RiFileList3Line, RiFileTextLine, RiFilmLine,
   RiFlagLine, RiFolderAddLine, RiFolderLine, RiFolderOpenLine, RiFolderReceivedLine, RiFullscreenLine,
   RiGitBranchLine, RiGitMergeLine, RiGlobalLine, RiHashtag, RiImageAddLine, RiImageLine, RiInboxUnarchiveLine,
@@ -95,6 +95,7 @@ export const ScanText = RiScan2Line;
 export const Search = Icons.search;
 export const Send = Icons.send;
 export const Settings = Icons.settings;
+export const SlidersHorizontal = RiEqualizerLine;
 export const ShieldCheck = RiShieldCheckLine;
 export const Smile = RiEmotionLine;
 export const Sparkles = Icons.sparkle;
