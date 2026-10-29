@@ -1,7 +1,10 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { ArrowLeft, Search, Users, MoreHorizontal, Archive, ArchiveRestore, Download, Pencil, Braces, MessageSquare, ListTodo, ListChecks, GitBranch, Lock, Paperclip, Brain, History, Sparkles, KeyRound, X, LayoutGrid, PanelRight } from '@/lib/icons';
+import { Search, Users, UserPlus, MoreHorizontal, Archive, ArchiveRestore, Download, Pencil, Braces, MessageSquare, ListTodo, ListChecks, GitBranch, Lock, Paperclip, Brain, History, Sparkles, KeyRound, X, Info, Check, Plus, ChevronDown, Dashboard, Layers } from '@/lib/icons';
 import { useStore } from '../store';
-import { PCtx, Button, Menu, MenuItem, Drawer } from './ui';
+import { PCtx, useP, Button, Input, Menu, MenuItem, Drawer } from './ui';
+import { Panel } from './Shell';
+import { InitialsAvatar } from '@ume/ui/components/patterns/IconChip';
+import { fmtDate } from '@ume/ui/lib/format';
 import Chat from './Chat';
 import { TasksView, RequirementsView, DecisionsView, VaultView, FilesView } from './Items';
 import ItemDrawer from './ItemDrawer';
@@ -12,14 +15,13 @@ import Assistant from './Assistant';
 import MembersModal from './Invite';
 import { ProjectFormModal } from './Home';
 import { ProjectAvatar } from './ProjectArt';
-import ProjectOverview, { StatusPill } from './Overview';
-import { updateMeta, liveView, namesFor, activeMembers, myMember, canReview } from '../lib/model';
-import { aiOn, aiName } from '../lib/brain';
-import { isActive } from '../lib/meta';
+import ProjectOverview from './Overview';
+import { updateMeta, liveView, namesFor, activeMembers, myMember, canReview, addItem, setStatus, projectHealth } from '../lib/model';
+import { isActive, COLOR, memberRole } from '../lib/meta';
 import { cx, download } from '../lib/util';
 
 const TABS = {
-  chat: ['Chat', MessageSquare, Chat], tasks: ['Tasks', ListTodo, TasksView], requirements: ['Requirements', ListChecks, RequirementsView],
+  chat: ['Messages', MessageSquare, Chat], tasks: ['Tasks', ListTodo, TasksView], requirements: ['Requirements', ListChecks, RequirementsView],
   decisions: ['Decisions', GitBranch, DecisionsView], vault: ['Vault', Lock, VaultView], files: ['Files', Paperclip, FilesView],
   memory: ['Memory', Brain, MemoryView], timeline: ['Timeline', History, TimelineView],
 };
@@ -34,25 +36,115 @@ function counts(p, role, me) {
   };
 }
 
-/** Shared frame for a project: header, tabs, views, item drawer, search. Used by owner and members. */
+/* Open tasks in a column beside the chat: tick one off, open it, or add one. */
+function TaskColumn({ setTab }) {
+  const { p, role, mut, openItem } = useP();
+  const [title, setTitle] = useState('');
+  const today = new Date().toISOString().slice(0, 10);
+  const open = p.items.filter(i => i.type === 'task' && isActive(i)).sort((a, b) => (a.due || '9999').localeCompare(b.due || '9999'));
+  const done = p.items.filter(i => i.type === 'task' && i.status === 'done').length;
+  const add = e => { e.preventDefault(); if (!title.trim()) return; mut(q => addItem(q, 'owner', { type: 'task', title: title.trim(), assignee: 'owner' })); setTitle(''); };
+  return (
+    <div className="flex h-full flex-col">
+      <ul className="min-h-0 flex-1 divide-y divide-border overflow-y-auto thin-scrollbar autohide-scrollbar">
+        {open.map(t => (
+          <li key={t.id} className="flex items-start gap-3 px-5 py-3 hover:bg-field-hover">
+            {role === 'owner'
+              ? <button type="button" onClick={() => mut(q => setStatus(q, 'owner', t.id, 'done'))} aria-label={`Mark “${t.title}” done`} title="Mark done" className="mt-0.5 grid size-4.5 shrink-0 place-items-center rounded-full border border-border-strong text-transparent hover:border-green hover:text-green [&_svg]:size-3"><Check /></button>
+              : <span aria-hidden className="mt-0.5 size-4.5 shrink-0 rounded-full border border-border-strong" />}
+            <button type="button" onClick={() => openItem(t.id)} className="min-w-0 flex-1 text-left outline-none">
+              <span className="block text-sm">{t.title}</span>
+              {(t.due || t.status === 'blocked') && (
+                <span className={cx('text-xs', t.status === 'blocked' ? 'text-warn-ink' : t.due < today ? 'text-destructive-foreground' : t.due === today ? 'text-warn-ink' : 'text-muted-foreground')}>
+                  {t.status === 'blocked' ? 'Blocked' : t.due < today ? `Overdue · ${fmtDate(t.due)}` : t.due === today ? 'Due today' : `Due ${fmtDate(t.due)}`}
+                </span>
+              )}
+            </button>
+          </li>
+        ))}
+        {!open.length && <li className="px-5 py-8 text-center text-sm text-muted-foreground">No open tasks.</li>}
+      </ul>
+      {role === 'owner' && (
+        <form onSubmit={add} className="border-t border-border p-3">
+          <Input size="sm" leadingIcon={Plus} value={title} onChange={e => setTitle(e.target.value)} placeholder="Add a task" aria-label="Add a task" />
+        </form>
+      )}
+      <button type="button" onClick={() => setTab('tasks')} className="border-t border-border px-5 py-3 text-left text-xs text-muted-foreground hover:text-foreground">{done} done · See all tasks</button>
+    </div>
+  );
+}
+
+/* Who the project is, where it stands and who's on it. */
+function InfoColumn() {
+  const { p, names } = useP();
+  const { state } = useStore();
+  const members = activeMembers(p);
+  const health = projectHealth(p);
+  const people = [{ id: 'owner', name: state.settings.ownerName || names.owner, role: 'Owner' }, ...members.map(m => ({ id: m.id, name: m.name, role: memberRole(m) }))];
+  return (
+    <div className="h-full overflow-y-auto thin-scrollbar autohide-scrollbar">
+      <div className="px-5 pt-5">
+        <div className="flex -space-x-3">
+          <ProjectAvatar p={p} className="size-14 ring-4 ring-card" rounded="rounded-full" text="text-lg" />
+          {names.client && <InitialsAvatar name={names.client} size="lg" className="size-14 ring-4 ring-card" />}
+        </div>
+        <h2 className="mt-4 font-medium text-xl">{p.name}</h2>
+        <p className="mt-0.5 text-sm text-text-secondary">{p.client || names.client}{p.description ? ` · ${p.description}` : ''}</p>
+        <div className="mt-3 flex items-center gap-2 text-sm"><span aria-hidden className={cx('size-2 rounded-full', COLOR[health.tone].dot)} /><span className="font-medium">{health.label}</span><span className="truncate text-muted-foreground">{health.reason}</span></div>
+      </div>
+      <ProjectOverview hidePeople />
+      <div className="border-t border-border p-5">
+        <div className="mb-3 text-label-mono text-muted-foreground">People · {people.length}</div>
+        <div className="grid grid-cols-3 gap-y-4">
+          {people.map(x => (
+            <div key={x.id} className="flex min-w-0 flex-col items-center text-center">
+              <InitialsAvatar name={x.name} size="lg" />
+              <span className="mt-2 w-full truncate font-medium text-sm">{x.name.split(' ')[0]}</span>
+              <span className="w-full truncate text-xs text-muted-foreground">{x.role}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* The project's name in the bar, and the way out: Dashboard, all projects, or straight to another one. */
+function ProjectSwitcher({ p }) {
+  const { state } = useStore();
+  const others = state.projects.filter(x => x.id !== p.id && !x.archived);
+  return (
+    <Menu align="left" trigger={t => (
+      <button type="button" onClick={t} className="flex h-10 min-w-0 items-center gap-2 rounded-full ps-1 pe-3 outline-none hover:bg-field focus-visible:ring-2 focus-visible:ring-ring" title="Switch project">
+        <ProjectAvatar p={p} className="size-8" rounded="rounded-full" text="text-xs" />
+        <span className="max-w-56 truncate font-medium text-sm max-sm:hidden">{p.name}</span>
+        <ChevronDown className="size-4 shrink-0 text-icon-muted" />
+      </button>
+    )}>
+      <MenuItem icon={Dashboard} onClick={() => { location.hash = '#/'; }}>Dashboard</MenuItem>
+      <MenuItem icon={Layers} onClick={() => { location.hash = '#/projects'; }}>All projects</MenuItem>
+      {others.length > 0 && <div className="px-2.5 pt-2.5 pb-1.5 text-label-mono text-text-secondary">Go to project</div>}
+      {others.map(x => <MenuItem key={x.id} icon={() => <ProjectAvatar p={x} className="size-5" rounded="rounded-md" text="text-xs" />} onClick={() => { location.hash = `#/p/${x.id}/chat`; }}>{x.name}</MenuItem>)}
+    </Menu>
+  );
+}
+
+const barButton = on => cx('relative grid size-10 shrink-0 place-items-center rounded-full outline-none transition-[scale] duration-fast ease-out active:scale-[0.97] focus-visible:ring-2 focus-visible:ring-ring [&_svg]:size-5',
+  on ? 'bg-field text-foreground' : 'text-icon-muted hover:bg-field hover:text-foreground');
+
+/** Shared frame for a project: the bar (the mark, the switcher, the tabs, actions), then the view. Used by owner and members. */
 /** `mut` replaces the local-store mutation, e.g. for a member portal that writes through the server. */
-export function ProjectShell({ p: record, role, me = null, names, tabs, tab, setTab, header, deep, searchProjects, mut = null }) {
+export function ProjectShell({ p: record, role, me = null, names, tabs, tab, setTab, actions, deep, searchProjects, mut = null }) {
   const { mutate } = useStore();
   const [drawer, setDrawer] = useState(null);
   const [focus, setFocus] = useState(null);
   const [search, setSearch] = useState(false);
   const [assistant, setAssistant] = useState(false);
-  // the overview panel on the right: remembered open/closed on wide screens, a drawer on narrow ones
-  const [side, setSide] = useState(() => { try { return localStorage.getItem('pb-overview') !== '0'; } catch { return true; } });
-  const [sideDrawer, setSideDrawer] = useState(false);
-  const toggleSide = () => {
-    if (!matchMedia('(min-width: 1280px)').matches) return setSideDrawer(true);
-    setSide(v => { try { localStorage.setItem('pb-overview', v ? '0' : '1'); } catch { /* private mode */ } return !v; });
-  };
+  const [info, setInfo] = useState(false); // below lg the Info column is a drawer
   const p = useMemo(() => liveView(record), [record]); // deleted items are hidden everywhere
 
   /** Open the chat at a message; with a span, the exact passage is highlighted. */
-  const jumpTo = useCallback((id, span = null) => { setDrawer(null); setSideDrawer(false); setFocus({ id, span, n: Date.now() }); setTab('chat'); }, [setTab]);
+  const jumpTo = useCallback((id, span = null) => { setDrawer(null); setInfo(false); setFocus({ id, span, n: Date.now() }); setTab('chat'); }, [setTab]);
   useEffect(() => {
     if (!deep) return;
     if (deep.kind === 'm') jumpTo(deep.ref);
@@ -62,43 +154,56 @@ export function ProjectShell({ p: record, role, me = null, names, tabs, tab, set
   const ctx = useMemo(() => ({ p, role, me, names, openItem: setDrawer, jumpTo, mut: mut || (fn => mutate(p.id, fn)), openSearch: () => setSearch(true) }), [p, role, me, names, jumpTo, mutate, mut]);
   const n = counts(p, role, me);
   const View = TABS[tab]?.[2] || Chat;
-  const badge = (k, cls) => n[k] > 0 && <span className={cx('text-xs min-w-[18px] h-[18px] px-1 rounded-full grid place-items-center', k === 'chat' ? 'bg-primary text-primary-foreground' : 'bg-field-hover text-foreground', cls)}>{n[k]}</span>;
 
   return (
     <PCtx.Provider value={ctx}>
-      <div className="h-full flex flex-col">
-        <header className="shrink-0 border-b border-border bg-card">
-          <div className="h-12 md:h-14 flex items-center gap-1.5 md:gap-3 px-1.5 md:px-5">
-            {header}
-            <Button variant="ghost" size="sm" className="px-2 sm:px-2.5" onClick={() => setSearch(true)} title="Search this project"><Search size={15} /><span className="hidden sm:inline">Search</span></Button>
-            {role === 'owner' && <Button variant="ghost" size="sm" className="text-primary px-2 sm:px-2.5" onClick={() => setAssistant(true)} title="Project assistant"><Sparkles size={15} /><span className="hidden sm:inline">Assistant</span></Button>}
-            <Button variant="ghost" size="icon" onClick={toggleSide} title="Project overview" className={cx(side && 'xl:text-foreground xl:bg-field')}><PanelRight size={17} /></Button>
-            {/* phones: the tabs live in a menu so the chat keeps the whole screen */}
-            <div className="md:hidden">
-              <Menu trigger={t => <Button variant="ghost" size="icon" onClick={t} title="Sections"><LayoutGrid size={17} /></Button>}>
-                {tabs.map(k => { const [label, Icon] = TABS[k]; return <MenuItem key={k} icon={Icon} onClick={() => setTab(k)} hint={n[k] || ''}>{tab === k ? <b>{label}</b> : label}</MenuItem>; })}
-              </Menu>
-            </div>
+      <div className="flex h-dvh flex-col bg-background text-foreground">
+        {/* Phones: mark, switcher and actions on one row, the tabs scroll on the next. */}
+        <header className="flex flex-wrap items-center gap-x-2 gap-y-3 px-4 py-4 sm:px-6 lg:grid lg:grid-cols-[1fr_auto_1fr] lg:py-5">
+          <div className="flex min-w-0 flex-1 items-center gap-2">
+            <a href="#/" aria-label="Dashboard" title="Dashboard" className="shrink-0 rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-ring">
+              <span aria-hidden className="grid size-10 place-items-center rounded-xl bg-foreground font-medium text-lg text-background">B</span>
+            </a>
+            <ProjectSwitcher p={p} />
           </div>
-          <nav className={cx('gap-0.5 px-2 md:px-4 overflow-x-auto', tab === 'chat' ? 'hidden md:flex' : 'flex')}>
+          <nav aria-label="Project" className="scroll-fade-x order-last -mx-4 flex w-[calc(100%+2rem)] items-center gap-1 overflow-x-auto px-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden lg:order-none lg:mx-0 lg:w-auto lg:px-0">
             {tabs.map(k => {
-              const [label, Icon] = TABS[k];
-              return (
-                <button key={k} onClick={() => setTab(k)} className={cx('relative flex items-center gap-1.5 px-3 py-2 md:py-2.5 text-sm whitespace-nowrap transition', tab === k ? 'text-foreground' : 'text-muted-foreground hover:text-foreground')}>
-                  <Icon size={15} />{label}{badge(k)}
-                  {tab === k && <span className="absolute left-2 right-2 -bottom-px h-0.5 rounded-full bg-btn-primary" />}
+              const [label, I] = TABS[k];
+              const on = tab === k;
+              return on ? (
+                <button key={k} type="button" aria-current="page" className="flex h-10 shrink-0 items-center gap-2 rounded-full bg-field ps-3.5 pe-4 font-medium text-sm text-foreground [&_svg]:size-5">
+                  <I aria-hidden />{label}{n[k] > 0 && <span className="text-muted-foreground tabular-nums">{n[k]}</span>}
+                </button>
+              ) : (
+                <button key={k} type="button" onClick={() => setTab(k)} aria-label={n[k] ? `${label}, ${n[k]}` : label} title={label} className={barButton(false)}>
+                  <I aria-hidden />
+                  {k === 'chat' && n.chat > 0 && <span aria-hidden className="absolute top-2 right-2 size-2 rounded-full bg-primary ring-2 ring-background" />}
                 </button>
               );
             })}
           </nav>
+          <div className="flex shrink-0 items-center gap-1 lg:justify-self-end">
+            <button type="button" onClick={() => setSearch(true)} aria-label="Search this project" title="Search this project" className={barButton(false)}><Search aria-hidden /></button>
+            {role === 'owner' && <button type="button" onClick={() => setAssistant(true)} aria-label="Project assistant" title="Project assistant" className={barButton(false)}><Sparkles aria-hidden /></button>}
+            {tab === 'chat' && <button type="button" onClick={() => setInfo(true)} aria-label="Project info" title="Project info" className={cx(barButton(false), 'lg:hidden')}><Info aria-hidden /></button>}
+            {actions}
+          </div>
         </header>
-        <div className="flex-1 min-h-0 flex">
-          <View focus={focus} />
-          {side && <aside className="w-[300px] shrink-0 border-l border-border bg-card overflow-auto hidden xl:block"><ProjectOverview /></aside>}
-        </div>
+
+        <main className="min-h-0 flex-1 px-4 pb-4 sm:px-6 sm:pb-6">
+          {tab === 'chat' ? (
+            <div className="grid h-full gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,2fr)_minmax(0,1fr)]">
+              <Panel title="Tasks" icon={ListTodo} className="max-lg:hidden"><TaskColumn setTab={setTab} /></Panel>
+              <Panel title="Messages" icon={MessageSquare} bodyClassName="flex"><Chat focus={focus} /></Panel>
+              <Panel title="Info" icon={Info} className="max-lg:hidden"><InfoColumn /></Panel>
+            </div>
+          ) : (
+            <div className="flex h-full overflow-hidden rounded-2xl border border-border bg-card shadow-card"><View focus={focus} /></div>
+          )}
+        </main>
       </div>
       {drawer && <ItemDrawer id={drawer} onClose={() => setDrawer(null)} />}
-      {sideDrawer && <Drawer onClose={() => setSideDrawer(false)}><ProjectOverview onClose={() => setSideDrawer(false)} /></Drawer>}
+      {info && <Drawer onClose={() => setInfo(false)}><div className="flex justify-end px-3 pt-3"><Button variant="ghost" size="icon" onClick={() => setInfo(false)} aria-label="Close"><X size={18} /></Button></div><InfoColumn /></Drawer>}
       {assistant && (
         <Drawer onClose={() => setAssistant(false)}>
           <div className="flex justify-end px-3 pt-3"><Button variant="ghost" size="icon" onClick={() => setAssistant(false)} aria-label="Close"><X size={18} /></Button></div>
@@ -121,48 +226,30 @@ export default function ProjectPage({ p, tab, deep }) {
   const me = owner ? null : myMember(p, user);
   const names = useMemo(() => namesFor(p, state.settings.ownerName || 'You'), [p, state.settings.ownerName]);
   const setTab = useCallback(t => { location.hash = `#/p/${p.id}/${t}`; }, [p.id]);
-  const gem = aiOn(state.settings);
   const members = activeMembers(p);
   const perms = me?.perms || {};
   const tabs = owner ? Object.keys(TABS)
     : ['chat', perms.tasks && 'tasks', perms.requirements && 'requirements', perms.decisions && 'decisions', perms.files && 'files', perms.summary && 'memory'].filter(Boolean);
 
-  const header = (
+  const actions = owner && (
     <>
-      <a href="#/projects" className="p-1.5 rounded-lg hover:bg-field-hover text-muted-foreground hover:text-foreground shrink-0" title="All projects"><ArrowLeft size={18} /></a>
-      <ProjectAvatar p={p} className="w-8 h-8 md:w-9 md:h-9" rounded="rounded-full md:rounded-xl" />
-      <div className="min-w-0 flex-1">
-        <div className="font-medium truncate leading-tight text-sm md:text-base flex items-center gap-2"><span className="truncate">{p.name}</span><StatusPill status={p.status} className="hidden md:inline-flex" /></div>
-        <div className="text-xs text-muted-foreground truncate">{owner ? (members.length ? members.map(m => m.name.split(' ')[0]).join(', ') : p.client || 'No members yet') : `with ${names.owner}`}</div>
-      </div>
-      {owner && (
-        <button onClick={() => { location.hash = '#/settings/ai'; }} className={cx('hidden md:flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full ring-1 ring-inset', gem ? 'ring-green-ring text-pos' : 'ring-border text-muted-foreground')} title="AI settings">
-          <span className={cx('w-1.5 h-1.5 rounded-full', gem ? 'bg-green' : 'bg-grey-400')} />{aiName(state.settings)}
-        </button>
-      )}
-      {owner && (
-        <Button size="sm" className="hidden sm:inline-flex px-2.5" variant={members.length ? 'default' : 'primary'} onClick={() => setModal('members')} title="Who can open this project">
-          <Users size={14} /><span className="hidden sm:inline">{members.length ? `Members · ${members.length}` : 'Invite'}</span>
-        </Button>
-      )}
-      {owner && (
-        <Menu trigger={t => <Button variant="ghost" size="icon" onClick={t} title="More"><MoreHorizontal size={18} /></Button>}>
-          <MenuItem icon={Pencil} onClick={() => setModal('edit')}>Edit project details & images</MenuItem>
-          <MenuItem icon={Users} onClick={() => setModal('members')}>Members</MenuItem>
-          <MenuItem icon={Braces} onClick={() => setTab('timeline')}>Timeline & raw JSON</MenuItem>
-          <MenuItem icon={Download} onClick={() => download(`${p.name.replace(/\W+/g, '-').toLowerCase()}-record.json`, JSON.stringify(p, null, 2))}>Export project record</MenuItem>
-          <MenuItem icon={KeyRound} onClick={() => { location.hash = '#/settings/ai'; }}>AI & settings</MenuItem>
-          {p.archived
-            ? <MenuItem icon={ArchiveRestore} onClick={() => { mutate(p.id, q => updateMeta(q, 'owner', { archived: false }, 'project.unarchive')); toast('Project restored'); }}>Restore from archive</MenuItem>
-            : <MenuItem icon={Archive} onClick={() => { mutate(p.id, q => updateMeta(q, 'owner', { archived: true }, 'project.archive')); toast('Archived — full history kept'); }}>Archive project</MenuItem>}
-        </Menu>
-      )}
+      <button type="button" onClick={() => setModal('members')} aria-label={members.length ? `Members, ${members.length}` : 'Invite'} title={members.length ? 'Members' : 'Invite people'} className={barButton(false)}><UserPlus aria-hidden /></button>
+      <Menu trigger={t => <button type="button" onClick={t} aria-label="More" title="More" className={barButton(false)}><MoreHorizontal aria-hidden /></button>}>
+        <MenuItem icon={Pencil} onClick={() => setModal('edit')}>Edit project details & images</MenuItem>
+        <MenuItem icon={Users} onClick={() => setModal('members')}>Members</MenuItem>
+        <MenuItem icon={Braces} onClick={() => setTab('timeline')}>Timeline & raw JSON</MenuItem>
+        <MenuItem icon={Download} onClick={() => download(`${p.name.replace(/\W+/g, '-').toLowerCase()}-record.json`, JSON.stringify(p, null, 2))}>Export project record</MenuItem>
+        <MenuItem icon={KeyRound} onClick={() => { location.hash = '#/settings/ai'; }}>AI & settings</MenuItem>
+        {p.archived
+          ? <MenuItem icon={ArchiveRestore} onClick={() => { mutate(p.id, q => updateMeta(q, 'owner', { archived: false }, 'project.unarchive')); toast('Project restored'); }}>Restore from archive</MenuItem>
+          : <MenuItem icon={Archive} onClick={() => { mutate(p.id, q => updateMeta(q, 'owner', { archived: true }, 'project.archive')); toast('Archived — full history kept'); }}>Archive project</MenuItem>}
+      </Menu>
     </>
   );
 
   return (
     <>
-      <ProjectShell p={p} role={owner ? 'owner' : 'client'} me={me} names={names} tabs={tabs} tab={tabs.includes(tab) ? tab : 'chat'} setTab={setTab} header={header} deep={deep} searchProjects={owner ? undefined : [p]} />
+      <ProjectShell p={p} role={owner ? 'owner' : 'client'} me={me} names={names} tabs={tabs} tab={tabs.includes(tab) ? tab : 'chat'} setTab={setTab} actions={actions} deep={deep} searchProjects={owner ? undefined : [p]} />
       {modal === 'members' && <MembersModal p={p} onClose={() => setModal(null)} />}
       {modal === 'edit' && <ProjectFormModal project={p} onClose={() => setModal(null)} />}
     </>

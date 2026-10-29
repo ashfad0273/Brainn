@@ -34,7 +34,8 @@ function ProgressSlider({ value, onCommit }) {
 const Label = ({ children }) => <div className="text-label-mono text-muted-foreground mb-1.5">{children}</div>;
 
 /** Right-hand panel in a project: status, progress, time remaining, who's in it and their local time. */
-export default function ProjectOverview({ onClose }) {
+/** Status, progress, deadline and counts for one project; `hidePeople` when the page shows people itself. */
+export default function ProjectOverview({ onClose, hidePeople }) {
   const { p, role, me, mut, names, openItem } = useP();
   const { state } = useStore();
   const z = useZones();
@@ -94,6 +95,7 @@ export default function ProjectOverview({ onClose }) {
         </div>
       )}
 
+      {!hidePeople && (
       <div>
         <Label>People · {members.length + 1}</Label>
         <div className="space-y-2.5">
@@ -102,6 +104,7 @@ export default function ProjectOverview({ onClose }) {
           {!members.length && <div className="text-xs text-text-tertiary">Nobody invited yet.</div>}
         </div>
       </div>
+      )}
     </div>
   );
 }
