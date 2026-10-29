@@ -1,6 +1,6 @@
 import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  Paperclip, Mic, ArrowUp, Square, X, Download, FileText, Search, MoreHorizontal,
+  Paperclip, Mic, ArrowUp, Square, X, Download, FileText, MoreHorizontal,
   Plus, Copy, Sparkles, ScanText, Check, Reply, Bold, Italic, Strikethrough,
   Link as LinkIcon, ListOrdered, List, Quote, Code, Terminal, Smile, AtSign, Loader2, Hash
 } from '@/lib/icons';
@@ -8,10 +8,10 @@ import { useStore } from '../store';
 import * as kv from '../lib/kv';
 import { api, hasServer } from '../lib/api';
 import { cleanHtml, getCaret, setCaret, textBeforeCaret, eraseBeforeCaret } from '../lib/rich';
-import { MessageSuggestions, SuggestionCard, SuggestionTools } from './Suggestions';
+import { MessageSuggestions, SuggestionCard, ReadingNote } from './Suggestions';
 import LinkPreview, { linksIn } from './LinkPreview';
 import { ChatTimeBar } from './People';
-import { useP, Button, Menu, MenuItem, Badge, Empty } from './ui';
+import { useP, Button, Menu, MenuItem, Empty } from './ui';
 import { ItemFormModal } from './Items';
 import ReadFileModal from './ReadFile';
 import { addMessage, secretValues, activeMembers, canReview } from '../lib/model';
@@ -907,8 +907,6 @@ export default function Chat({ focus }) {
   const { p, role, me, mut, names } = useP();
   const [files, setFiles] = useState([]);
   const [replyTo, setReplyTo] = useState(null);
-  const [q, setQ] = useState('');
-  const [searching, setSearching] = useState(false);
   const [drag, setDrag] = useState(false);
   const dragCounter = useRef(0);
   const [record, setRecord] = useState(null);
@@ -945,7 +943,6 @@ export default function Chat({ focus }) {
   useEffect(() => { end.current?.scrollIntoView({ block: 'end' }); }, [p.messages.length, pendingNow]);
   useEffect(() => {
     if (!focus) return;
-    setQ('');
     setHl(focus.span ? { id: focus.id, span: focus.span } : null);
     const h = setTimeout(() => {
       // a long message: scroll to the highlighted passage itself, not just the message
@@ -993,10 +990,9 @@ export default function Chat({ focus }) {
     return { byMsg, loose };
   }, [p.suggestions, p.messages, review]);
 
-  const ql = q.trim().toLowerCase();
-  const list = ql ? p.messages.filter(m => (m.text || '').toLowerCase().includes(ql) || m.attachments.some(a => a.name.toLowerCase().includes(ql))) : p.messages;
+  // Search lives in the project's header; the tab shows how many suggestions wait.
+  const list = p.messages;
   let lastDay = '';
-  const pendingCount = p.suggestions.filter(s => s.state === 'pending').length;
 
   return (
     <div className="flex-1 min-w-0 flex flex-col relative chat-bg"
@@ -1033,28 +1029,8 @@ export default function Chat({ focus }) {
       }}>
       {drag && <div className="absolute inset-3 z-10 rounded-2xl border-2 border-dashed border-primary bg-primary-soft grid place-items-center text-primary pointer-events-none">Drop files to attach</div>}
 
-      <div className={cx('items-center gap-2 px-3 md:px-8 pt-2 md:pt-3', searching ? 'flex' : 'hidden md:flex')}>
-        {searching ? (
-          <div className="flex-1 flex items-center gap-2 bg-card ring-1 ring-border rounded-xl px-3 py-1.5 anim-fade">
-            <Search size={15} className="text-muted-foreground" />
-            <input autoFocus value={q} onChange={e => setQ(e.target.value)} placeholder="Search this conversation" className="flex-1 min-w-0 bg-transparent outline-none text-sm" />
-            {q && <span className="text-xs text-muted-foreground">{list.length} found</span>}
-            <button onClick={() => { setSearching(false); setQ(''); }} className="text-muted-foreground hover:text-foreground"><X size={15} /></button>
-          </div>
-        ) : (
-          <>
-            <div className="flex-1" />
-            {review && pendingCount > 0 && <Badge tone="sky"><Sparkles size={11} />{pendingCount} to review</Badge>}
-            {review && <SuggestionTools />}
-            <Button variant="ghost" size="iconSm" onClick={() => setSearching(true)} title="Search this conversation" aria-label="Search this conversation"><Search size={15} /></Button>
-          </>
-        )}
-      </div>
-
-      <div className="flex-1 overflow-auto px-1 md:px-6 py-2 md:py-4 space-y-0.5 md:space-y-1">
-        {!list.length && (ql
-          ? <Empty icon={Search} title="No messages match" text={`Nothing in this chat contains “${q}”.`} />
-          : <Empty icon={Plus} title="Start the conversation" text="Every message is kept forever. The project brain reads it and proposes tasks, requirements, decisions and sensitive details." />)}
+      <div className="flex-1 overflow-auto px-1 md:px-6 py-2 md:py-6 space-y-0.5 md:space-y-1">
+        {!list.length && <Empty icon={Plus} title="Start the conversation" text="Every message is kept forever. The project brain reads it and proposes tasks, requirements, decisions and sensitive details." />}
         {list.map(m => {
           const day = fmtDay(m.ts);
           const sep = day !== lastDay;
@@ -1068,12 +1044,13 @@ export default function Chat({ focus }) {
             </Fragment>
           );
         })}
-        {loose.length > 0 && !ql && (
+        {loose.length > 0 && (
           <div className="max-w-md mx-auto py-3 space-y-1.5">
             <div className="text-xs text-primary flex items-center gap-1.5 px-1"><Sparkles size={11} />{loose.length} more suggestion{loose.length > 1 ? 's' : ''} (from the assistant or files)</div>
             {loose.map(s => <SuggestionCard key={s.id} s={s} />)}
           </div>
         )}
+        {review && <ReadingNote />}
         <div ref={end} />
       </div>
 

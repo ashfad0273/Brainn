@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Check, Search, UserPlus, MoreHorizontal, Archive, ArchiveRestore, Download, Pencil, MessageSquare, ListTodo, ListChecks, GitBranch, Lock, Paperclip, Brain, History, Sparkles, X, Info, ChevronLeft, Plus, SlidersHorizontal } from '@/lib/icons';
+import { Check, RefreshCw, Undo2, Search, UserPlus, MoreHorizontal, Archive, ArchiveRestore, Download, Pencil, MessageSquare, ListTodo, ListChecks, GitBranch, Lock, Paperclip, Brain, History, Sparkles, X, Info, ChevronLeft, Plus, SlidersHorizontal } from '@/lib/icons';
 import { Popover, PopoverTrigger, PopoverPopup } from '@ume/ui/components/ui/popover';
 import { Sheet, SheetPopup } from '@ume/ui/components/ui/sheet';
 import { useIsMobileNav, useMediaQuery } from '@ume/ui/hooks/use-media-query';
@@ -8,6 +8,7 @@ import { useStore } from '../store';
 import { PCtx, useP, Button, Menu, MenuItem, Drawer } from './ui';
 import { Rail, UnreadBadge, iconButton, tabPill, tabRow, useProjectList } from './Rail';
 import Chat from './Chat';
+import { useRescan, IgnoredSuggestions } from './Suggestions';
 import { TasksView, RequirementsView, DecisionsView, VaultView, FilesView } from './Items';
 import ItemDrawer from './ItemDrawer';
 import MemoryView from './Memory';
@@ -169,6 +170,8 @@ export function ProjectShell({ p: record, role, me = null, names, tabs, tab, set
   const [search, setSearch] = useState(false);
   const [assistant, setAssistant] = useState(false);
   const [status, setStatus] = useState(false); // the status, progress and deadline controls
+  const [ignored, setIgnored] = useState(false);
+  const [rescan, scanning] = useRescan(record.id);
   const p = useMemo(() => liveView(record), [record]); // deleted items are hidden everywhere
   // Wide screens keep the details docked beside the card; the choice is remembered on this device.
   const wide = useMediaQuery({ min: 1440 });
@@ -191,6 +194,7 @@ export function ProjectShell({ p: record, role, me = null, names, tabs, tab, set
   const n = counts(p, role, me);
   const View = TABS[tab]?.[2] || Chat;
   const health = projectHealth(p);
+  const nIgnored = p.suggestions.filter(s => s.state === 'ignored').length;
 
   return (
     <PCtx.Provider value={ctx}>
@@ -218,6 +222,8 @@ export function ProjectShell({ p: record, role, me = null, names, tabs, tab, set
                 <MenuItem icon={Search} onClick={() => setSearch(true)}>Search this project</MenuItem>
                 {role === 'owner' && <MenuItem icon={Sparkles} onClick={() => setAssistant(true)}>Assistant</MenuItem>}
                 <MenuItem icon={SlidersHorizontal} onClick={() => setStatus(true)}>Status & progress</MenuItem>
+                {canReview(role, me) && <MenuItem icon={RefreshCw} onClick={rescan} hint={scanning ? 'Reading…' : undefined}>Re-scan messages</MenuItem>}
+                {canReview(role, me) && nIgnored > 0 && <MenuItem icon={Undo2} onClick={() => setIgnored(true)} hint={nIgnored}>Ignored suggestions</MenuItem>}
                 {tabs.filter(k => !PILL.includes(k)).map(k => { const [label, I] = TABS[k]; return <MenuItem key={k} icon={I} onClick={() => setTab(k)}>{label}</MenuItem>; })}
                 {actions}
               </Menu>
@@ -247,6 +253,7 @@ export function ProjectShell({ p: record, role, me = null, names, tabs, tab, set
         </div>
       </div>
       {drawer && <ItemDrawer id={drawer} onClose={() => setDrawer(null)} />}
+      {ignored && <IgnoredSuggestions onClose={() => setIgnored(false)} />}
       {status && <Drawer onClose={() => setStatus(false)}><ProjectOverview onClose={() => setStatus(false)} /></Drawer>}
       {assistant && (
         <Drawer onClose={() => setAssistant(false)}>

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Modal } from './ui';
-import { Sparkles, MessageSquareQuote, RefreshCw, ChevronDown, Undo2, CheckCheck, Calendar, XCircle, FileText } from '@/lib/icons';
+import { Sparkles, MessageSquareQuote, ChevronDown, Undo2, CheckCheck, Calendar, XCircle, FileText } from '@/lib/icons';
 import { useStore } from '../store';
 import { useP, Button, Badge, Input, Select, Spinner, Secret } from './ui';
 import { resolveSuggestion, secretValues, maskText } from '../lib/model';
@@ -118,41 +118,51 @@ export function MessageSuggestions({ list, mine }) {
 }
 
 /** Chat header controls for suggestions: re-read the chat, and bring back ignored ones. */
-export function SuggestionTools() {
-  const { p, mut, me } = useP();
-  const { state, stateRef, mutate, toast } = useStore();
+/** Read the whole conversation again for suggestions: [rescan, busy]. For the project's More menu. */
+export function useRescan(projectId) {
+  const { stateRef, mutate, toast } = useStore();
   const [busy, setBusy] = useState(false);
-  const [ignoredOpen, setIgnoredOpen] = useState(false);
-  const ignored = p.suggestions.filter(s => s.state === 'ignored').reverse();
-  const unread = p.messages.filter(m => !m.analyzed).length;
-
   const rescan = async () => {
+    if (busy) return;
     setBusy(true);
     try {
-      const cur = stateRef.current.projects.find(x => x.id === p.id);
-      const latest = () => stateRef.current.projects.find(x => x.id === p.id);
+      const cur = stateRef.current.projects.find(x => x.id === projectId);
+      const latest = () => stateRef.current.projects.find(x => x.id === projectId);
       const { count, engine } = await analyze({ state: stateRef.current, project: cur, ids: cur.messages.filter(m => m.text?.trim() && !m.deleted).map(m => m.id), mutate, toast, latest });
       toast(count ? `✨ ${count} new suggestion${count > 1 ? 's' : ''} (${engineName(engine)})` : 'Read the whole chat — nothing new to record');
     } finally { setBusy(false); }
   };
+  return [rescan, busy];
+}
 
+/** Suggestions you ignored: kept forever, and each can be restored under its message. */
+export function IgnoredSuggestions({ onClose }) {
+  const { p, mut, me } = useP();
+  const ignored = p.suggestions.filter(s => s.state === 'ignored').reverse();
   return (
-    <>
-      {unread > 0 && <span className="text-xs text-primary flex items-center gap-1" title={`Read by ${aiOn(state.settings) ? aiName(state.settings) : 'built-in rules'}`}><Spinner size={10} />Reading {unread}…</span>}
-      {ignored.length > 0 && <Button variant="ghost" size="sm" onClick={() => setIgnoredOpen(true)} title="Suggestions you ignored (kept, never deleted)"><Undo2 size={13} /><span className="hidden lg:inline">{ignored.length} ignored</span></Button>}
-      <Button variant="ghost" size="sm" onClick={rescan} disabled={busy} title="Read the whole conversation again for suggestions">{busy ? <Spinner size={12} /> : <RefreshCw size={13} />}<span className="hidden lg:inline">Re-scan</span></Button>
-      {ignoredOpen && (
-        <Modal title="Ignored suggestions" sub="Kept forever. Restore one to see it under its message again." onClose={() => setIgnoredOpen(false)}>
-          <div className="space-y-1">
-            {ignored.map(s => (
-              <div key={s.id} className="flex items-center gap-2 text-sm text-muted-foreground py-1.5">
-                <span className="flex-1 truncate">{opLabel(s)}: {s.op === 'status' ? STATUS[s.status]?.label : s.title} <span className="text-text-tertiary text-xs">· {fmtRel(s.updatedAt)}</span></span>
-                <button onClick={() => mut(q => resolveSuggestion(q, me?.id || 'owner', s.id, 'restore'))} className="flex items-center gap-1 text-xs hover:text-foreground"><Undo2 size={12} />Restore</button>
-              </div>
-            ))}
+    <Modal title="Ignored suggestions" sub="Kept forever. Restore one to see it under its message again." onClose={onClose}>
+      <div className="space-y-1">
+        {ignored.map(s => (
+          <div key={s.id} className="flex items-center gap-2 text-sm text-muted-foreground py-1.5">
+            <span className="flex-1 truncate">{opLabel(s)}: {s.op === 'status' ? STATUS[s.status]?.label : s.title} <span className="text-text-tertiary text-xs">· {fmtRel(s.updatedAt)}</span></span>
+            <button onClick={() => mut(q => resolveSuggestion(q, me?.id || 'owner', s.id, 'restore'))} className="flex items-center gap-1 text-xs hover:text-foreground"><Undo2 size={12} />Restore</button>
           </div>
-        </Modal>
-      )}
-    </>
+        ))}
+        {!ignored.length && <p className="py-2 text-sm text-muted-foreground">Nothing ignored.</p>}
+      </div>
+    </Modal>
+  );
+}
+
+/** At the end of the thread while new messages are still being read for suggestions. */
+export function ReadingNote() {
+  const { p } = useP();
+  const { state } = useStore();
+  const unread = p.messages.filter(m => !m.analyzed).length;
+  if (!unread) return null;
+  return (
+    <p className="flex items-center justify-center gap-1.5 py-2 text-xs text-muted-foreground">
+      <Spinner size={10} />Reading {unread} new message{unread === 1 ? '' : 's'} with {aiOn(state.settings) ? aiName(state.settings) : 'the built-in rules'}…
+    </p>
   );
 }

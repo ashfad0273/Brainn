@@ -1392,3 +1392,20 @@
   --btn-primary-fg: #141416;
   --card-shadow: none;
 }
+
+/* Brainn: every scroller gets a thin bar with no track, shown only while the
+   pointer is over it or it is scrolling (data-scrolling, src/lib/scrolling.ts),
+   so no area falls back to the browser's boxed default. The 2px transparent
+   border insets a 6px thumb in a 10px gutter. `thin-scrollbar` still wins
+   where it's used; its track is cleared above via --scrollbar-track. */
+:root, .dark { --scrollbar-track: transparent; }
+@layer base {
+  *::-webkit-scrollbar { width: 10px; height: 10px; background: transparent; }
+  *::-webkit-scrollbar-track, *::-webkit-scrollbar-corner { background: transparent; }
+  *::-webkit-scrollbar-thumb { background-color: var(--scrollbar-thumb); background-clip: padding-box; border: 2px solid transparent; border-radius: 9999px; }
+  *::-webkit-scrollbar-thumb:hover { background-color: var(--scrollbar-thumb-hover); }
+  *:not(:hover, [data-scrolling])::-webkit-scrollbar-thumb { background-color: transparent; }
+  @supports not selector(::-webkit-scrollbar) {
+    * { scrollbar-width: thin; scrollbar-color: var(--scrollbar-thumb) transparent; }
+  }
+}
