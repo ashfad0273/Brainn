@@ -5,10 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build && npm run check",
-    "preview": "vite preview",
-    "ume:sync": "node scripts/ume.mjs sync",
-    "check": "node scripts/ume.mjs check"
+    "build": "vite build",
+    "preview": "vite preview"
   },
   "dependencies": {
     "@base-ui/react": "^1.9.0",

@@ -59,6 +59,15 @@ full trail stays in `history`. See it in **Timeline → Raw JSON**, or export it
 (open one in a new tab to try it). Adding a backend (e.g. Supabase/Firebase) for storage + auth is the
 next step to make client access work from anywhere.
 
+## Design system (Ume, local copy)
+
+The UI is built on Ume, the Squidx design system. Brainn keeps its own copy in `vendor/ume`, taken
+from `withsaber/ume` at commit `59dbfc0`, and it is **no longer synced**: there is no update workflow
+or sync script, and nothing checks the copy against Ume. Customize it in place, mainly in
+`vendor/ume/src` (tokens and global styles in `vendor/ume/src/styles/ume.css`). The app still imports it as
+`@ume/ui/*` (alias in `vite.config.ts` and `tsconfig.json`). Changes made in Ume itself don't reach
+Brainn unless you copy them over by hand.
+
 ## Code map
 
 ```
