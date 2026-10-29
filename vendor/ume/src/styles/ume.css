@@ -7,14 +7,17 @@
 /* Ume's own components. An app adds its own folder after importing this
    file: `@import "@ume/ui/styles.css"; @source "./";` */
 @source "../";
-/* IBM Plex: Plex Sans (variable, wght axis 100-700) for everything, Plex Mono
-   500 for the uppercase Label Mono style (`text-label-mono`) and 400 for code. Two
-   weights: Regular 400 and Medium 500, plus Semibold 600 (the variable font
-   carries it) only through --weight-semibold. Self-hosted — the CSP has
+/* Brainn: Open Runde (a rounded Inter, SIL OFL, see fonts/open-runde/OFL.txt) for
+   everything, IBM Plex Mono 500 for the uppercase Label Mono style
+   (`text-label-mono`) and 400 for code. Two weights: Regular 400 and Medium 500,
+   plus Semibold 600 only through --weight-semibold. Self-hosted — the CSP has
    font-src 'self'. */
-@import "@fontsource-variable/ibm-plex-sans/wght.css";
 @import "@fontsource/ibm-plex-mono/400.css";
 @import "@fontsource/ibm-plex-mono/500.css";
+@font-face { font-family: "Open Runde"; font-style: normal; font-weight: 400; font-display: swap; src: url("./fonts/open-runde/OpenRunde-Regular.woff") format("woff"); }
+@font-face { font-family: "Open Runde"; font-style: normal; font-weight: 500; font-display: swap; src: url("./fonts/open-runde/OpenRunde-Medium.woff") format("woff"); }
+@font-face { font-family: "Open Runde"; font-style: normal; font-weight: 600; font-display: swap; src: url("./fonts/open-runde/OpenRunde-Semibold.woff") format("woff"); }
+@font-face { font-family: "Open Runde"; font-style: normal; font-weight: 700; font-display: swap; src: url("./fonts/open-runde/OpenRunde-Bold.woff") format("woff"); }
 
 @custom-variant dark (&:is(.dark *));
 
@@ -114,8 +117,8 @@
     --text-body-lg--letter-spacing: -0.01em;
     /* Weights: only font-normal (400) and font-medium (500); check-conventions
        `font-weight` enforces it. The one exception is --weight-semibold. */
-    --font-heading: "IBM Plex Sans Variable", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
-    --font-sans: "IBM Plex Sans Variable", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+    --font-heading: "Open Runde", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+    --font-sans: "Open Runde", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
     --font-mono: "IBM Plex Mono", ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
     /* Grey scale for the rare case a semantic token doesn't fit:
        bg-grey-50, border-grey-200, … Semantic tokens remain the API. */
@@ -1334,4 +1337,58 @@
     .showcase-wall > [data-figure="inline"] { grid-area: 2 / 3; }
     .showcase-wall > [data-figure="canvas"] { grid-area: 2 / 4; }
   }
+}
+
+/* Brainn palette: Fog (picked Oct 2026 from design/palette-variations). Five close
+   grey steps, and even the card is grey; white is kept for what you read (your
+   message bubbles sit on --muted). Separation comes from the steps, not shadows.
+   Brainn blue stays the one accent, a shade deeper so white text on it passes.
+   These come last so they override the Ume defaults above. */
+:root {
+  --background: #ececee;
+  --sidebar: #ececee;
+  --card: #f7f7f8;
+  --muted: #ffffff;
+  --field: #e4e4e7;
+  --field-hover: #dcdce0;
+  --sidebar-active: #dddde1;
+  --border: rgb(20 20 22 / 0.06);
+  --border-strong: rgb(20 20 22 / 0.12);
+  --foreground: #141416;
+  --text-secondary: #5e5e66;
+  --text-tertiary: #86868e;
+  --muted-foreground: #5e5e66;
+  --icon-muted: #86868e;
+  --primary: #0268cc;
+  --primary-foreground: #ffffff;
+  --primary-soft: #e3eefb;
+  --primary-ink: #0256a8;
+  --ring: #0268cc;
+  --btn-primary-bg: #141416;
+  --btn-primary-fg: #ffffff;
+  --card-shadow: none;
+}
+.dark {
+  --background: #0a0a0b;
+  --sidebar: #0a0a0b;
+  --card: #141416;
+  --muted: #232327;
+  --field: #1e1e21;
+  --field-hover: #26262a;
+  --sidebar-active: #1e1e21;
+  --border: rgb(255 255 255 / 0.06);
+  --border-strong: rgb(255 255 255 / 0.11);
+  --foreground: #ececee;
+  --text-secondary: #9898a2;
+  --text-tertiary: #6a6a73;
+  --muted-foreground: #9898a2;
+  --icon-muted: #6a6a73;
+  --primary: #1e6fd6;
+  --primary-foreground: #ffffff;
+  --primary-soft: #14243b;
+  --primary-ink: #8cbcf5;
+  --ring: #4a90e8;
+  --btn-primary-bg: #ececee;
+  --btn-primary-fg: #141416;
+  --card-shadow: none;
 }

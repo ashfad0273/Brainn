@@ -1,0 +1,536 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Palette variations</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500&display=swap" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/remixicon@4.5.0/fonts/remixicon.css" rel="stylesheet">
+<style>
+/* ---------- Ume's grey scale (vendor/ume/src/styles/ume.css), so "Today" resolves ---------- */
+:root {
+  --grey-25: oklch(0.93 0.002 281.3); --grey-100: oklch(0.797 0.006 281.3); --grey-200: oklch(0.73 0.008 281.3);
+  --grey-300: oklch(0.664 0.011 281.3); --grey-500: oklch(0.53 0.016 281.3); --grey-700: oklch(0.37 0.013 281.3);
+  --grey-800: oklch(0.29 0.01 281.3); --grey-900: oklch(0.21 0.007 281.3); --grey-950: oklch(0.13 0.005 281.3);
+  --green: oklch(0.64 0.17 155);
+
+  /* Page chrome only: not part of any variation. */
+  --c-bg: #fafafa; --c-panel: #ffffff; --c-fg: #111111; --c-sub: #5c5c5c; --c-line: rgb(0 0 0 / 0.1); --c-seg: #ededed; --c-seg-on: #ffffff;
+  --pass: oklch(0.48 0.15 155); --fail: oklch(0.53 0.2 18);
+  color-scheme: light;
+}
+html[data-theme="dark"] {
+  --c-bg: #0b0b0b; --c-panel: #131313; --c-fg: #ededed; --c-sub: #a0a0a0; --c-line: rgb(255 255 255 / 0.1); --c-seg: #1d1d1d; --c-seg-on: #2c2c2c;
+  --pass: oklch(0.8 0.14 155); --fail: oklch(0.75 0.16 18);
+  --green: oklch(0.74 0.18 155);
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body {
+  background: var(--c-bg); color: var(--c-fg);
+  font: 400 15px/1.45 "IBM Plex Sans", -apple-system, system-ui, sans-serif; letter-spacing: -0.01em;
+  -webkit-font-smoothing: antialiased; overflow-x: hidden;
+}
+button { font: inherit; color: inherit; letter-spacing: inherit; border: 0; background: none; cursor: pointer; padding: 0; }
+.mono { font-family: "IBM Plex Mono", ui-monospace, monospace; letter-spacing: 0; }
+
+/* ---------- Page chrome ---------- */
+.top { max-width: 1240px; margin: 0 auto; padding: 32px 24px 20px; display: flex; flex-wrap: wrap; gap: 16px 24px; align-items: end; justify-content: space-between; }
+.top h1 { margin: 0; font-size: 24px; line-height: 30px; font-weight: 500; letter-spacing: -0.025em; }
+.top p { margin: 4px 0 0; color: var(--c-sub); max-width: 620px; }
+.controls { display: flex; flex-wrap: wrap; gap: 8px; }
+.seg { display: inline-flex; gap: 2px; padding: 3px; border-radius: 999px; background: var(--c-seg); }
+.seg button { height: 32px; padding: 0 14px; border-radius: 999px; color: var(--c-sub); white-space: nowrap; transition: background-color 120ms cubic-bezier(0.16, 1, 0.3, 1); }
+.seg button[aria-pressed="true"] { background: var(--c-seg-on); color: var(--c-fg); font-weight: 500; box-shadow: 0 1px 2px rgb(0 0 0 / 0.08); }
+.seg button:focus-visible { outline: 2px solid var(--c-fg); outline-offset: 1px; }
+.wrap { max-width: 1240px; margin: 0 auto; padding: 0 24px 64px; }
+.scroller { overflow-x: auto; border-radius: 18px; }
+
+/* ---------- The Brainn screen: reads only the variation's tokens ---------- */
+.stage {
+  min-width: 960px; height: 660px; display: flex; overflow: hidden;
+  background: var(--background); color: var(--foreground);
+  border-radius: 18px; box-shadow: 0 0 0 1px var(--c-line);
+}
+.stage i { line-height: 1; }
+.rail { width: 252px; flex-shrink: 0; background: var(--sidebar); padding: 16px 12px 12px; display: flex; flex-direction: column; min-height: 0; }
+.org { display: flex; align-items: center; gap: 10px; padding: 0 0 16px 4px; }
+.mark { width: 36px; height: 36px; border-radius: 10px; display: grid; place-items: center; background: var(--foreground); color: var(--background); font-weight: 500; }
+.org-name { font-weight: 500; line-height: 20px; }
+.org-sub { font-size: 13px; line-height: 18px; color: var(--muted-foreground); letter-spacing: 0; }
+.icon-btn { width: 40px; height: 40px; border-radius: 999px; display: grid; place-items: center; color: var(--icon-muted); font-size: 20px; flex-shrink: 0; }
+.icon-btn:hover { background: var(--field); color: var(--foreground); }
+.row { height: 38px; display: flex; align-items: center; gap: 10px; padding: 0 10px; border-radius: 12px; color: var(--text-secondary); white-space: nowrap; }
+.row > i { font-size: 18px; }
+.row:hover { background: var(--field); color: var(--foreground); }
+.row.on { background: var(--sidebar-active); color: var(--foreground); font-weight: 500; }
+.row .name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.row.unread .name { color: var(--foreground); font-weight: 500; }
+.count { margin-left: auto; font-size: 13px; color: var(--muted-foreground); font-variant-numeric: tabular-nums; letter-spacing: 0; }
+.label-mono { margin: 20px 10px 6px; font: 500 13px/18px "IBM Plex Mono", monospace; letter-spacing: 0.01em; text-transform: uppercase; color: var(--text-secondary); }
+.pav { width: 22px; height: 22px; border-radius: 6px; display: grid; place-items: center; font-size: 13px; font-weight: 500; color: #fff; background: var(--h); flex-shrink: 0; letter-spacing: 0; }
+.badge { height: 20px; min-width: 20px; padding: 0 6px; border-radius: 999px; display: grid; place-items: center; background: var(--primary); color: var(--primary-foreground); font-size: 13px; font-weight: 400; font-variant-numeric: tabular-nums; letter-spacing: 0; }
+.rail-foot { margin-top: auto; padding-top: 12px; display: flex; gap: 4px; align-items: center; }
+.rail-foot .row { flex: 1; }
+
+.card { flex: 1; min-width: 0; margin: 8px 8px 8px 0; display: flex; flex-direction: column; overflow: hidden; background: var(--card); border: 1px solid var(--border); border-radius: 20px; box-shadow: var(--card-shadow); }
+.head { display: flex; align-items: center; gap: 12px; padding: 14px 16px 12px; }
+.head .pav { width: 36px; height: 36px; border-radius: 10px; font-size: 15px; }
+.title { font-size: 17px; line-height: 24px; font-weight: 500; letter-spacing: -0.0125em; }
+.sub { font-size: 13px; line-height: 18px; color: var(--text-secondary); letter-spacing: 0; display: flex; align-items: center; gap: 6px; }
+.dot { width: 7px; height: 7px; border-radius: 999px; background: var(--green); }
+.head-actions { margin-left: auto; display: flex; align-items: center; gap: 4px; }
+.btn-field { height: 36px; padding: 0 14px 0 12px; border-radius: 999px; display: inline-flex; align-items: center; gap: 6px; background: var(--field); color: var(--foreground); font-weight: 500; }
+.btn-field:hover { background: var(--field-hover); }
+.btn-field i { font-size: 18px; color: var(--icon-muted); }
+.tabs { display: flex; gap: 4px; padding: 0 16px 12px; border-bottom: 1px solid var(--border); }
+.tab { height: 36px; display: inline-flex; align-items: center; gap: 8px; padding: 0 14px 0 12px; border-radius: 999px; color: var(--text-secondary); }
+.tab i { font-size: 18px; }
+.tab:hover { background: var(--field); color: var(--foreground); }
+.tab.on { background: var(--field); color: var(--foreground); font-weight: 500; }
+.tab .n { color: var(--muted-foreground); font-weight: 400; font-variant-numeric: tabular-nums; }
+
+.chat { flex: 1; min-height: 0; overflow: auto; padding: 8px 0 4px; scrollbar-width: thin; scrollbar-color: var(--border-strong) transparent; }
+.thread { max-width: 760px; margin: 0 auto; padding: 0 24px; }
+.day { display: flex; align-items: center; gap: 12px; margin: 12px 0 4px; font-size: 13px; color: var(--text-secondary); letter-spacing: 0; }
+.day::before, .day::after { content: ""; flex: 1; height: 1px; background: var(--border); }
+.msg { display: flex; gap: 12px; margin-top: 14px; }
+.msg.cont { margin-top: 4px; }
+.msg.cont .av { visibility: hidden; }
+.msg.mine { flex-direction: row-reverse; }
+.av { width: 32px; height: 32px; border-radius: 8px; flex-shrink: 0; display: grid; place-items: center; font-size: 13px; font-weight: 500; color: #fff; background: var(--h); letter-spacing: 0; }
+.mine .av { background: var(--field); color: var(--foreground); }
+.body { min-width: 0; display: flex; flex-direction: column; align-items: flex-start; max-width: 76%; }
+.mine .body { align-items: flex-end; }
+.meta { font-size: 13px; line-height: 18px; color: var(--text-secondary); margin-bottom: 4px; letter-spacing: 0; }
+.meta b { color: var(--foreground); font-weight: 500; margin-right: 6px; }
+.bubble { padding: 10px 16px; border-radius: 16px; border-top-left-radius: 6px; background: var(--muted); color: var(--foreground); line-height: 1.5; }
+.mine .bubble { border-radius: 16px; border-top-right-radius: 6px; background: var(--primary); color: var(--primary-foreground); }
+.mention { font-weight: 500; color: var(--primary-ink); background: var(--primary-soft); padding: 1px 4px; border-radius: 4px; }
+.file { margin-top: 6px; display: flex; align-items: center; gap: 12px; padding: 8px 14px 8px 8px; border-radius: 12px; background: var(--card); border: 1px solid var(--border); }
+.file .ic { width: 36px; height: 36px; border-radius: 8px; display: grid; place-items: center; background: var(--teal-soft); color: var(--teal-ink); font-size: 18px; }
+.file .fn { line-height: 20px; }
+.file .fs { font-size: 13px; line-height: 18px; color: var(--text-secondary); letter-spacing: 0; }
+
+.composer-wrap { max-width: 760px; width: 100%; margin: 0 auto; padding: 10px 24px 18px; }
+.composer { display: flex; align-items: center; gap: 4px; padding: 6px 6px 6px 4px; border-radius: 18px; background: var(--field); }
+.composer .ph { flex: 1; color: var(--muted-foreground); padding: 0 6px; }
+.composer .icon-btn { width: 36px; height: 36px; font-size: 19px; }
+.send { width: 36px; height: 36px; border-radius: 999px; display: grid; place-items: center; background: var(--btn-primary-bg); color: var(--btn-primary-fg); font-size: 18px; }
+
+/* ---------- Notes under the screen ---------- */
+.info { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr); gap: 32px; margin-top: 28px; }
+.info h2 { margin: 0; font-size: 20px; line-height: 28px; font-weight: 500; letter-spacing: -0.015em; }
+.idea { margin: 6px 0 0; font-size: 17px; line-height: 28px; }
+.where { margin: 10px 0 0; color: var(--c-sub); }
+h3 { margin: 24px 0 8px; font: 500 13px/18px "IBM Plex Mono", monospace; letter-spacing: 0.01em; text-transform: uppercase; color: var(--c-sub); }
+table { width: 100%; border-collapse: collapse; font-size: 13px; letter-spacing: 0; }
+th { text-align: left; font-weight: 500; color: var(--c-sub); padding: 0 8px 6px 0; }
+td { padding: 6px 8px 6px 0; border-top: 1px solid var(--c-line); vertical-align: middle; }
+td.v { font-family: "IBM Plex Mono", monospace; white-space: nowrap; }
+td.v.long { white-space: normal; min-width: 180px; }
+.tbl { overflow-x: auto; }
+.sw { display: inline-block; width: 14px; height: 14px; border-radius: 4px; vertical-align: -2px; margin-right: 8px; box-shadow: inset 0 0 0 1px var(--c-line); }
+.ok { color: var(--pass); } .bad { color: var(--fail); font-weight: 500; }
+.chips { display: flex; gap: 4px; margin-top: 4px; }
+.chips span { width: 14px; height: 14px; border-radius: 4px; }
+.research { margin-top: 40px; padding-top: 20px; border-top: 1px solid var(--c-line); color: var(--c-sub); max-width: 820px; }
+.research p { margin: 8px 0 0; }
+.research b { color: var(--c-fg); font-weight: 500; }
+#probe-host { position: absolute; left: -9999px; top: 0; width: 1px; height: 1px; overflow: hidden; }
+
+@media (max-width: 1040px) { .info { grid-template-columns: 1fr; } }
+@media (max-width: 860px) {
+  .top, .wrap { padding-left: 16px; padding-right: 16px; }
+}
+</style>
+</head>
+<body>
+<header class="top">
+  <div>
+    <h1>Palette variations</h1>
+    <p>Four grey-first palettes for Brainn, after Daryl Ginn's quiet, layered greys. The same screen in each. Pick one and it goes into the tokens in <span class="mono">vendor/ume/src/styles/ume.css</span>.</p>
+  </div>
+  <div class="controls">
+    <div class="seg" id="vseg" role="group" aria-label="Variation"></div>
+    <div class="seg" id="tseg" role="group" aria-label="Theme">
+      <button type="button" data-t="light">Light</button>
+      <button type="button" data-t="dark">Dark</button>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+  <div class="scroller">
+    <section class="stage" id="stage" aria-label="Brainn project screen">
+      <aside class="rail">
+        <div class="org">
+          <span class="mark">S</span>
+          <div style="flex:1;min-width:0"><div class="org-name">Squidx</div><div class="org-sub">Brainn</div></div>
+          <button class="icon-btn" type="button" aria-label="Search"><i class="ri-search-line"></i></button>
+        </div>
+        <nav>
+          <div class="row"><i class="ri-home-5-line"></i>Home</div>
+          <div class="row"><i class="ri-folder-3-line"></i>Projects<span class="count">6</span></div>
+          <div class="row"><i class="ri-calendar-line"></i>Calendar</div>
+          <div class="row"><i class="ri-team-line"></i>People</div>
+        </nav>
+        <div class="label-mono">Projects</div>
+        <nav>
+          <div class="row on"><span class="pav" style="--h:var(--teal)">N</span><span class="name">Northwind rebrand</span></div>
+          <div class="row unread"><span class="pav" style="--h:var(--violet)">J</span><span class="name">Juniper website</span><span class="badge">3</span></div>
+          <div class="row"><span class="pav" style="--h:var(--amber)">A</span><span class="name">Atlas app</span></div>
+          <div class="row unread"><span class="pav" style="--h:var(--rose)">H</span><span class="name">Halcyon pitch deck</span><span class="badge">1</span></div>
+          <div class="row"><span class="pav" style="--h:var(--blue)">O</span><span class="name">Orbit onboarding</span></div>
+          <div class="row"><span class="pav" style="--h:var(--green)">F</span><span class="name">Fern &amp; Co</span></div>
+        </nav>
+        <div class="rail-foot">
+          <div class="row"><i class="ri-settings-3-line"></i>Settings</div>
+          <button class="icon-btn" type="button" aria-label="Theme"><i class="ri-moon-line"></i></button>
+        </div>
+      </aside>
+
+      <div class="card">
+        <div class="head">
+          <span class="pav" style="--h:var(--teal)">N</span>
+          <div>
+            <div class="title">Northwind rebrand</div>
+            <div class="sub"><span class="dot"></span>Maya is here · 3 people</div>
+          </div>
+          <div class="head-actions">
+            <button class="btn-field" type="button"><i class="ri-user-add-line"></i>Invite</button>
+            <button class="icon-btn" type="button" aria-label="More"><i class="ri-more-line"></i></button>
+          </div>
+        </div>
+        <nav class="tabs">
+          <span class="tab on"><i class="ri-chat-3-line"></i>Chat</span>
+          <span class="tab"><i class="ri-checkbox-circle-line"></i>Tasks<span class="n">4</span></span>
+          <span class="tab"><i class="ri-folder-line"></i>Files<span class="n">12</span></span>
+          <span class="tab"><i class="ri-information-line"></i>Info</span>
+        </nav>
+        <div class="chat">
+          <div class="thread">
+            <div class="day">Today</div>
+            <div class="msg"><span class="av" style="--h:var(--violet)">M</span>
+              <div class="body"><div class="meta"><b>Maya Chen</b>10:02</div>
+                <div class="bubble">Morning! We looked at the second round of logos over the weekend.</div></div></div>
+            <div class="msg cont"><span class="av" style="--h:var(--violet)">M</span>
+              <div class="body"><div class="bubble">The team keeps coming back to the stacked mark. Can we see it in the dark navy?</div></div></div>
+            <div class="msg mine"><span class="av">S</span>
+              <div class="body"><div class="meta">10:14</div>
+                <div class="bubble">Yes, I'll send it over by lunch. Want the wordmark in navy too?</div></div></div>
+            <div class="msg"><span class="av" style="--h:var(--violet)">M</span>
+              <div class="body"><div class="meta"><b>Maya Chen</b>10:16</div>
+                <div class="bubble"><span class="mention">@Saber</span> yes please, and one on the kraft paper photo.</div></div></div>
+            <div class="msg mine"><span class="av">S</span>
+              <div class="body"><div class="meta">11:48</div>
+                <div class="bubble">Here's the navy set.</div>
+                <div class="file"><span class="ic"><i class="ri-file-pdf-2-line"></i></span><div><div class="fn">northwind-stacked-navy.pdf</div><div class="fs">2.4 MB</div></div></div></div></div>
+          </div>
+        </div>
+        <div class="composer-wrap">
+          <div class="composer">
+            <button class="icon-btn" type="button" aria-label="Attach"><i class="ri-add-line"></i></button>
+            <span class="ph">Message Northwind rebrand</span>
+            <button class="icon-btn" type="button" aria-label="Emoji"><i class="ri-emotion-line"></i></button>
+            <span class="send"><i class="ri-arrow-up-line"></i></span>
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <section class="info" aria-live="polite">
+    <div>
+      <h2 id="v-name"></h2>
+      <p class="idea" id="v-idea"></p>
+      <p class="where" id="v-where"></p>
+      <h3>Contrast, checked in this page</h3>
+      <table><thead><tr><th>Text on surface</th><th>Light</th><th>Dark</th></tr></thead><tbody id="v-contrast"></tbody></table>
+    </div>
+    <div>
+      <h3 style="margin-top:4px">Token overrides</h3>
+      <div class="tbl"><table><thead><tr><th>Token</th><th>Light</th><th>Dark</th></tr></thead><tbody id="v-tokens"></tbody></table></div>
+    </div>
+  </section>
+
+  <section class="research">
+    <h3>What the references do</h3>
+    <p><b>visitors.now</b> runs on two four-step ramps. Surfaces: <span class="mono">#fff #f5f5f5 #f0f0f0 #e8e8e8</span> in light, and an indigo-tinted <span class="mono">#181925 #212131 #2b2c3b #333447</span> on a <span class="mono">#14141f</span> page in dark. Text: <span class="mono">#181925 #666 #999 #b3b3b3</span>. Borders and hovers are black or white at 3–12% alpha (<span class="mono">#00000014</span>, <span class="mono">#cccfff24</span>), not solid greys. Most text is the darkest step, with one muted step under it. Accents (blue <span class="mono">#00c4ff</span>, sky <span class="mono">#2c78fc</span>, green, amber, red) sit in matching four-step ramps and appear only in charts and status.</p>
+    <p><b>godly.website</b> now redirects to recent.design, a pure-neutral palette with zero chroma: a white page, <span class="mono">#0b0b0b</span> text, <span class="mono">oklch(95.5% 0 0)</span> and <span class="mono">oklch(39% 0 0)</span> as the only solid greys, and surfaces separated by black at 6–15% alpha. Saturated colour (<span class="mono">oklch(62% .29 25)</span> red, <span class="mono">oklch(64% .28 350)</span> pink, <span class="mono">oklch(70% .27 145)</span> green) is kept to tiny marks.</p>
+    <p>The common idea: three or four close grey steps, hairline borders that are alpha rather than solid, one strong text colour plus one muted text colour, and colour only where it means something. Brainn's light secondary text (<span class="mono">hsl(0 0% 52%)</span>) is 3.7:1 on white today. Every variation here lifts it above 4.5:1.</p>
+  </section>
+</main>
+
+<div id="probe-host"><div id="probe-base"><div id="probe"></div></div></div>
+
+<script>
+const HUES = { violet: 293, blue: 257, sky: 232, teal: 190, green: 155, amber: 75, orange: 48, rose: 15 };
+// Ume's own base steps per hue, light / dark.
+const UME_BASE = {
+  light: { violet: [0.6, 0.22], blue: [0.6, 0.2], sky: [0.66, 0.15], teal: [0.66, 0.12], green: [0.64, 0.17], amber: [0.75, 0.17], orange: [0.66, 0.2], rose: [0.64, 0.2] },
+  dark:  { violet: [0.72, 0.18], blue: [0.72, 0.18], sky: [0.76, 0.14], teal: [0.76, 0.13], green: [0.74, 0.18], amber: [0.8, 0.16], orange: [0.72, 0.18], rose: [0.72, 0.18] },
+};
+const ok = (l, c, h) => `oklch(${l} ${c} ${h})`;
+
+// Each hue rule: base [L, C] or null for Ume's own, soft [L, C], ink [L, C].
+const UME_HUE = { light: { base: null, soft: [0.95, 0.045], ink: [0.48, 0.15] }, dark: { base: null, soft: [0.29, 0.065], ink: [0.87, 0.11] } };
+
+const VARIATIONS = [
+  {
+    id: 'today', name: 'Today',
+    idea: 'Brainn as it ships now, for comparison: a faintly cool page, white card, and Brainn blue on badges and your own bubbles.',
+    where: 'Not a proposal. Light secondary text fails 4.5:1, which every variation below fixes.',
+    hue: UME_HUE,
+    light: {
+      '--background': 'color-mix(in oklch, white 65%, var(--grey-25))', '--sidebar': 'var(--background)', '--card': '#ffffff',
+      '--muted': 'color-mix(in oklch, white 40%, var(--grey-25))', '--field': 'color-mix(in srgb, #dcdcdc 55%, transparent)',
+      '--field-hover': 'color-mix(in srgb, #dcdcdc 85%, transparent)', '--sidebar-active': 'hsl(0 0% 92%)',
+      '--border': 'color-mix(in oklch, var(--grey-100) 45%, transparent)', '--border-strong': 'var(--grey-200)',
+      '--foreground': 'hsl(0 0% 11%)', '--text-secondary': 'hsl(0 0% 52%)', '--text-tertiary': 'hsl(0 0% 62%)',
+      '--muted-foreground': 'var(--grey-500)', '--icon-muted': 'hsl(0 0% 62%)',
+      '--primary': '#0272e0', '--primary-foreground': '#ffffff', '--primary-soft': 'oklch(0.95 0.035 257)', '--primary-ink': 'oklch(0.48 0.17 257)',
+      '--ring': '#0272e0', '--btn-primary-bg': 'hsl(0 0% 11%)', '--btn-primary-fg': '#ffffff',
+      '--card-shadow': '0 1px 2px rgb(20 24 40 / 0.04), 0 6px 16px -8px rgb(20 24 40 / 0.08)',
+    },
+    dark: {
+      '--background': 'var(--grey-950)', '--sidebar': 'color-mix(in oklch, var(--grey-900) 50%, var(--grey-800))', '--card': 'var(--grey-900)',
+      '--muted': 'color-mix(in oklch, var(--grey-900) 50%, var(--grey-800))', '--field': 'color-mix(in srgb, #333338 55%, transparent)',
+      '--field-hover': 'color-mix(in srgb, #333338 85%, transparent)', '--sidebar-active': 'var(--grey-800)',
+      '--border': 'var(--grey-800)', '--border-strong': 'var(--grey-700)',
+      '--foreground': 'var(--grey-25)', '--text-secondary': 'hsl(0 0% 62%)', '--text-tertiary': 'hsl(0 0% 52%)',
+      '--muted-foreground': 'var(--grey-300)', '--icon-muted': 'hsl(0 0% 52%)',
+      '--primary': '#0272e0', '--primary-foreground': '#ffffff', '--primary-soft': 'oklch(0.3 0.07 257)', '--primary-ink': 'oklch(0.86 0.09 257)',
+      '--ring': '#3b9dff', '--btn-primary-bg': '#ededed', '--btn-primary-fg': '#111111',
+      '--card-shadow': '0 1px 0 rgb(255 255 255 / 0.03) inset, 0 1px 2px rgb(0 0 0 / 0.3), 0 8px 20px -10px rgb(0 0 0 / 0.5)',
+    },
+  },
+  {
+    id: 'graphite', name: 'Graphite',
+    idea: 'Pure neutral greys with zero chroma and no accent. Ink does the work of the brand colour.',
+    where: 'Badges, your bubbles and the send button are near-black (near-white in dark). Project colours are dusted down to grey-tinted swatches, so the only saturated colour left is the green presence dot.',
+    hue: { light: { base: [0.62, 0.06], soft: [0.955, 0.012], ink: [0.45, 0.04] }, dark: { base: [0.66, 0.06], soft: [0.26, 0.014], ink: [0.85, 0.035] } },
+    light: {
+      '--background': '#f1f1f1', '--sidebar': '#f1f1f1', '--card': '#ffffff', '--muted': '#f1f1f1',
+      '--field': '#e9e9e9', '--field-hover': '#e0e0e0', '--sidebar-active': '#e3e3e3',
+      '--border': 'rgb(0 0 0 / 0.08)', '--border-strong': 'rgb(0 0 0 / 0.14)',
+      '--foreground': '#0b0b0b', '--text-secondary': '#666666', '--text-tertiary': '#8c8c8c',
+      '--muted-foreground': '#666666', '--icon-muted': '#8c8c8c',
+      '--primary': '#161616', '--primary-foreground': '#ffffff', '--primary-soft': '#ebebeb', '--primary-ink': '#161616',
+      '--ring': '#161616', '--btn-primary-bg': '#161616', '--btn-primary-fg': '#ffffff',
+      '--card-shadow': '0 1px 2px rgb(0 0 0 / 0.04)',
+    },
+    dark: {
+      '--background': '#0c0c0c', '--sidebar': '#0c0c0c', '--card': '#151515', '--muted': '#1f1f1f',
+      '--field': '#222222', '--field-hover': '#2a2a2a', '--sidebar-active': '#1f1f1f',
+      '--border': 'rgb(255 255 255 / 0.07)', '--border-strong': 'rgb(255 255 255 / 0.12)',
+      '--foreground': '#ededed', '--text-secondary': '#9b9b9b', '--text-tertiary': '#6b6b6b',
+      '--muted-foreground': '#9b9b9b', '--icon-muted': '#6b6b6b',
+      '--primary': '#e8e8e8', '--primary-foreground': '#111111', '--primary-soft': '#262626', '--primary-ink': '#ededed',
+      '--ring': '#e8e8e8', '--btn-primary-bg': '#e8e8e8', '--btn-primary-fg': '#111111',
+      '--card-shadow': 'none',
+    },
+  },
+  {
+    id: 'ink', name: 'Ink',
+    idea: 'Cool greys with a faint indigo tint, close to visitors.now. A deep blue-black in dark, and one calm blue.',
+    where: 'Blue stays on unread badges, your bubbles, mentions and focus rings, a deeper and quieter blue than today. The send button turns ink, so the composer stops shouting. Borders are tinted alpha, not solid greys.',
+    hue: { light: { base: [0.6, 0.15], soft: [0.95, 0.035], ink: [0.47, 0.13] }, dark: { base: [0.68, 0.14], soft: [0.27, 0.05], ink: [0.86, 0.09] } },
+    light: {
+      '--background': '#f3f3f7', '--sidebar': '#f3f3f7', '--card': '#ffffff', '--muted': '#f1f1f6',
+      '--field': '#ebebf2', '--field-hover': '#e2e2eb', '--sidebar-active': '#e4e4ed',
+      '--border': 'rgb(24 25 37 / 0.08)', '--border-strong': 'rgb(24 25 37 / 0.14)',
+      '--foreground': '#181925', '--text-secondary': '#5f6075', '--text-tertiary': '#8b8ca0',
+      '--muted-foreground': '#5f6075', '--icon-muted': '#8b8ca0',
+      '--primary': '#2f62e8', '--primary-foreground': '#ffffff', '--primary-soft': '#ebf0fe', '--primary-ink': '#2449b8',
+      '--ring': '#2f62e8', '--btn-primary-bg': '#181925', '--btn-primary-fg': '#ffffff',
+      '--card-shadow': '0 1px 2px rgb(24 25 37 / 0.05), 0 4px 12px -6px rgb(24 25 37 / 0.06)',
+    },
+    dark: {
+      '--background': '#11111a', '--sidebar': '#11111a', '--card': '#181925', '--muted': '#212131',
+      '--field': '#212131', '--field-hover': '#2b2c3b', '--sidebar-active': '#212131',
+      '--border': 'rgb(204 207 255 / 0.09)', '--border-strong': 'rgb(204 207 255 / 0.15)',
+      '--foreground': '#eaeaeb', '--text-secondary': '#9a9bab', '--text-tertiary': '#6e6f86',
+      '--muted-foreground': '#9a9bab', '--icon-muted': '#6e6f86',
+      '--primary': '#3563e0', '--primary-foreground': '#ffffff', '--primary-soft': '#1f2647', '--primary-ink': '#a9bdfa',
+      '--ring': '#6b8ff0', '--btn-primary-bg': '#eaeaeb', '--btn-primary-fg': '#181925',
+      '--card-shadow': 'none',
+    },
+  },
+  {
+    id: 'stone', name: 'Stone',
+    idea: 'Warm, paper-like greys and a warm ink, with colour moved off the chrome and into the projects.',
+    where: 'Badges, your bubbles and buttons are warm ink. Only the project swatches keep their full colour, so each project reads as its own thing while the app around it stays quiet.',
+    hue: UME_HUE,
+    light: {
+      '--background': '#f2f1ee', '--sidebar': '#f2f1ee', '--card': '#fefdfb', '--muted': '#f2f0ec',
+      '--field': '#eae8e3', '--field-hover': '#e1dfd9', '--sidebar-active': '#e4e2dc',
+      '--border': 'rgb(40 30 10 / 0.09)', '--border-strong': 'rgb(40 30 10 / 0.15)',
+      '--foreground': '#1d1b18', '--text-secondary': '#69645c', '--text-tertiary': '#928c82',
+      '--muted-foreground': '#69645c', '--icon-muted': '#928c82',
+      '--primary': '#2a2722', '--primary-foreground': '#fefdfb', '--primary-soft': '#ebe9e4', '--primary-ink': '#2a2722',
+      '--ring': '#2a2722', '--btn-primary-bg': '#2a2722', '--btn-primary-fg': '#fefdfb',
+      '--card-shadow': '0 1px 2px rgb(40 30 10 / 0.04), 0 6px 16px -8px rgb(40 30 10 / 0.07)',
+    },
+    dark: {
+      '--background': '#100f0d', '--sidebar': '#100f0d', '--card': '#181715', '--muted': '#22201d',
+      '--field': '#25231f', '--field-hover': '#2d2b27', '--sidebar-active': '#22201d',
+      '--border': 'rgb(255 245 230 / 0.07)', '--border-strong': 'rgb(255 245 230 / 0.12)',
+      '--foreground': '#ece9e4', '--text-secondary': '#a19b91', '--text-tertiary': '#716c64',
+      '--muted-foreground': '#a19b91', '--icon-muted': '#716c64',
+      '--primary': '#e9e5de', '--primary-foreground': '#181715', '--primary-soft': '#2a2824', '--primary-ink': '#ece9e4',
+      '--ring': '#e9e5de', '--btn-primary-bg': '#e9e5de', '--btn-primary-fg': '#181715',
+      '--card-shadow': 'none',
+    },
+  },
+  {
+    id: 'fog', name: 'Fog',
+    idea: 'The most layered option: five close grey steps, and even the card is grey. White is kept for the things you read.',
+    where: 'Separation comes from steps, not shadows: rail, card, field, bubble. Brainn blue stays as the one accent, a shade deeper so white text on it passes, on badges, your bubbles and mentions.',
+    hue: UME_HUE,
+    light: {
+      '--background': '#ececee', '--sidebar': '#ececee', '--card': '#f7f7f8', '--muted': '#ffffff',
+      '--field': '#e4e4e7', '--field-hover': '#dcdce0', '--sidebar-active': '#dddde1',
+      '--border': 'rgb(20 20 22 / 0.06)', '--border-strong': 'rgb(20 20 22 / 0.12)',
+      '--foreground': '#141416', '--text-secondary': '#5e5e66', '--text-tertiary': '#86868e',
+      '--muted-foreground': '#5e5e66', '--icon-muted': '#86868e',
+      '--primary': '#0268cc', '--primary-foreground': '#ffffff', '--primary-soft': '#e3eefb', '--primary-ink': '#0256a8',
+      '--ring': '#0268cc', '--btn-primary-bg': '#141416', '--btn-primary-fg': '#ffffff',
+      '--card-shadow': 'none',
+    },
+    dark: {
+      '--background': '#0a0a0b', '--sidebar': '#0a0a0b', '--card': '#141416', '--muted': '#232327',
+      '--field': '#1e1e21', '--field-hover': '#26262a', '--sidebar-active': '#1e1e21',
+      '--border': 'rgb(255 255 255 / 0.06)', '--border-strong': 'rgb(255 255 255 / 0.11)',
+      '--foreground': '#ececee', '--text-secondary': '#9898a2', '--text-tertiary': '#6a6a73',
+      '--muted-foreground': '#9898a2', '--icon-muted': '#6a6a73',
+      '--primary': '#1e6fd6', '--primary-foreground': '#ffffff', '--primary-soft': '#14243b', '--primary-ink': '#8cbcf5',
+      '--ring': '#4a90e8', '--btn-primary-bg': '#ececee', '--btn-primary-fg': '#141416',
+      '--card-shadow': 'none',
+    },
+  },
+];
+
+// The full token set for one variation and theme, hue family included.
+function tokensFor(v, theme) {
+  const t = { ...v[theme] };
+  const rule = v.hue[theme];
+  for (const [name, h] of Object.entries(HUES)) {
+    const [bl, bc] = rule.base || UME_BASE[theme][name];
+    t[`--${name}`] = ok(bl, bc, h);
+    t[`--${name}-soft`] = ok(rule.soft[0], rule.soft[1], h);
+    t[`--${name}-ink`] = ok(rule.ink[0], rule.ink[1], h);
+  }
+  return t;
+}
+function applyTo(el, tokens) { for (const [k, val] of Object.entries(tokens)) el.style.setProperty(k, val); }
+
+// Contrast: resolve each token in a hidden probe, paint it on a canvas over its surface, read back sRGB.
+const host = document.getElementById('probe-host'), base = document.getElementById('probe-base'), probe = document.getElementById('probe');
+const ctx = Object.assign(document.createElement('canvas'), { width: 1, height: 1 }).getContext('2d', { willReadFrequently: true });
+function resolve(token) { probe.style.backgroundColor = `var(${token})`; return getComputedStyle(probe).backgroundColor; }
+function paint(colors) {
+  ctx.clearRect(0, 0, 1, 1);
+  for (const c of colors) { ctx.fillStyle = c; ctx.fillRect(0, 0, 1, 1); }
+  const [r, g, b] = ctx.getImageData(0, 0, 1, 1).data; return [r, g, b];
+}
+const lum = rgb => { const [r, g, b] = rgb.map(x => { x /= 255; return x <= 0.04045 ? x / 12.92 : ((x + 0.055) / 1.055) ** 2.4; }); return 0.2126 * r + 0.7152 * g + 0.0722 * b; };
+function ratio(fg, bg, under) {
+  const stack = [resolve(under || '--card'), resolve(bg)];
+  const b = paint(stack), f = paint([...stack, resolve(fg)]);
+  const [hi, lo] = [lum(f), lum(b)].sort((x, y) => y - x); return (hi + 0.05) / (lo + 0.05);
+}
+const PAIRS = [
+  ['Body text on card', '--foreground', '--card'],
+  ['Body text on rail', '--foreground', '--sidebar', '--background'],
+  ['Body text in a bubble', '--foreground', '--muted'],
+  ['Secondary text on card', '--text-secondary', '--card'],
+  ['Secondary text on rail', '--text-secondary', '--sidebar', '--background'],
+  ['Muted text on card', '--muted-foreground', '--card'],
+  ['Placeholder in composer', '--muted-foreground', '--field'],
+  ['Badge and your bubble', '--primary-foreground', '--primary'],
+  ['Send button', '--btn-primary-fg', '--btn-primary-bg'],
+  ['Mention', '--primary-ink', '--primary-soft'],
+  ['Tertiary on card (icons, 3:1)', '--text-tertiary', '--card', null, 3],
+];
+function contrastRows(v) {
+  const out = { light: [], dark: [] };
+  for (const theme of ['light', 'dark']) {
+    host.removeAttribute('style'); base.removeAttribute('style'); probe.removeAttribute('style');
+    applyTo(host, tokensFor(v, theme));
+    for (const [, fg, bg, under, min = 4.5] of PAIRS) { const r = ratio(fg, bg, under); out[theme].push([r, r >= min]); }
+  }
+  return out;
+}
+const cell = ([r, pass]) => `<td class="v ${pass ? 'ok' : 'bad'}">${r.toFixed(2)}:1 ${pass ? '✓' : '✗'}</td>`;
+
+function swatch(v, theme, token) {
+  host.removeAttribute('style'); applyTo(host, tokensFor(v, theme));
+  return resolve(token);
+}
+const SHOWN = ['--background', '--sidebar', '--card', '--muted', '--field', '--field-hover', '--sidebar-active', '--border', '--border-strong',
+  '--foreground', '--text-secondary', '--text-tertiary', '--muted-foreground', '--icon-muted', '--primary', '--primary-foreground',
+  '--primary-soft', '--primary-ink', '--ring', '--btn-primary-bg', '--btn-primary-fg', '--card-shadow'];
+
+const state = { v: 'graphite', t: 'light' };
+function readHash() {
+  const p = new URLSearchParams(location.hash.slice(1));
+  if (VARIATIONS.some(v => v.id === p.get('v'))) state.v = p.get('v');
+  else { try { const s = localStorage.getItem('palette-v'); if (VARIATIONS.some(v => v.id === s)) state.v = s; } catch (e) {} }
+  if (['light', 'dark'].includes(p.get('t'))) state.t = p.get('t');
+  else { try { const s = localStorage.getItem('palette-t'); if (s === 'light' || s === 'dark') state.t = s; } catch (e) { if (matchMedia('(prefers-color-scheme: dark)').matches) state.t = 'dark'; } }
+}
+
+const vseg = document.getElementById('vseg');
+vseg.innerHTML = VARIATIONS.map((v, i) => `<button type="button" data-v="${v.id}" title="Key ${i + 1}">${v.name}</button>`).join('');
+vseg.addEventListener('click', e => { const b = e.target.closest('button'); if (b) { state.v = b.dataset.v; render(); } });
+document.getElementById('tseg').addEventListener('click', e => { const b = e.target.closest('button'); if (b) { state.t = b.dataset.t; render(); } });
+addEventListener('keydown', e => {
+  if (e.metaKey || e.ctrlKey || e.altKey) return;
+  const n = Number(e.key); if (n >= 1 && n <= VARIATIONS.length) { state.v = VARIATIONS[n - 1].id; render(); }
+  if (e.key === 'd') { state.t = state.t === 'dark' ? 'light' : 'dark'; render(); }
+});
+
+function render() {
+  const v = VARIATIONS.find(x => x.id === state.v);
+  document.documentElement.dataset.theme = state.t;
+  const stage = document.getElementById('stage');
+  stage.removeAttribute('style'); applyTo(stage, tokensFor(v, state.t));
+  for (const b of vseg.children) b.setAttribute('aria-pressed', b.dataset.v === v.id);
+  for (const b of document.getElementById('tseg').children) b.setAttribute('aria-pressed', b.dataset.t === state.t);
+  try { localStorage.setItem('palette-v', v.id); localStorage.setItem('palette-t', state.t); } catch (e) {}
+  history.replaceState(null, '', `#v=${v.id}&t=${state.t}`);
+
+  document.getElementById('v-name').textContent = v.name;
+  document.getElementById('v-idea').textContent = v.idea;
+  document.getElementById('v-where').textContent = v.where;
+
+  const c = contrastRows(v);
+  document.getElementById('v-contrast').innerHTML = PAIRS.map(([label], i) => `<tr><td>${label}</td>${cell(c.light[i])}${cell(c.dark[i])}</tr>`).join('');
+
+  const rows = SHOWN.map(k => {
+    const col = theme => {
+      const raw = v[theme][k];
+      const sw = k === '--card-shadow' ? '' : `<span class="sw" style="background:${swatch(v, theme, k)}"></span>`;
+      return `<td class="v${k === '--card-shadow' || raw.length > 28 ? ' long' : ''}">${sw}${raw}</td>`;
+    };
+    return `<tr><td class="v">${k}</td>${col('light')}${col('dark')}</tr>`;
+  });
+  const hueCol = theme => {
+    const r = v.hue[theme], t = tokensFor(v, theme);
+    const chips = Object.keys(HUES).map(n => `<span style="background:${t['--' + n]}"></span>`).join('');
+    const baseTxt = r.base ? `base L${r.base[0]} C${r.base[1]}` : 'base as Ume';
+    return `<td class="v">${baseTxt}<br>soft L${r.soft[0]} C${r.soft[1]}<br>ink L${r.ink[0]} C${r.ink[1]}<div class="chips">${chips}</div></td>`;
+  };
+  rows.push(`<tr><td class="v">hue family<br><span style="color:var(--c-sub)">--violet … --rose</span></td>${hueCol('light')}${hueCol('dark')}</tr>`);
+  document.getElementById('v-tokens').innerHTML = rows.join('');
+}
+addEventListener('hashchange', () => { readHash(); render(); });
+readHash();
+render();
+</script>
+</body>
+</html>
