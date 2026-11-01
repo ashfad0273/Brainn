@@ -8,7 +8,9 @@
 //   POST /v1/auth/setup               { setupCode, email, password, name, tz } → first (owner) account
 //   POST /v1/auth/login               { email, password, tz } → { session, user }; rate-limited per email
 //   GET  /v1/invites/:token           who the invite is for
-//   POST /v1/invites/:token/accept    { name, password, tz } → { session, user }
+//   POST /v1/invites/:token/accept    { name, password, tz } → { session, user } (also used by password-reset links)
+//   POST /v1/auth/forgot              { email, appUrl } → emails a reset link when email sending is set up
+//   POST /v1/auth/recover             { setupCode, password, tz } → the owner sets a new password with the setup code
 // Signed in (anyone):
 //   GET/PATCH /v1/auth/me             profile: name, time zone, working hours, password
 //   POST /v1/ai                       Gemini / Workers AI with the server's keys (daily cap for members)
@@ -21,6 +23,7 @@
 //   POST /v1/people/invite            { email, name, label, appUrl } → invite link, emailed by Cloudflare when set up
 //   PATCH /v1/people/:id              label / name / time zone / disable
 //   POST /v1/people/:id/reinvite      { appUrl } → fresh invite link
+//   POST /v1/people/:id/reset         { appUrl } → password-reset link, emailed by Cloudflare when set up
 //   GET  /v1/ai/models                Gemini models the server key can use
 //   GET/PUT /v1/admin/keys            the Gemini key, set from the app (stored encrypted, never sent back)
 // Invited people:
@@ -38,6 +41,8 @@ const LOGIN_MAX_FAILS = 5;
 const LOGIN_LOCK_MS = 15 * 60 * 1000;
 const SESSION_MS = 30 * 24 * 60 * 60 * 1000;
 const INVITE_MS = 7 * 24 * 60 * 60 * 1000;
+const RESET_MS = 24 * 60 * 60 * 1000;
+const FORGOT_GAP_MS = 2 * 60 * 1000; // at most one reset email per person every 2 minutes
 const PBKDF2_ITER = 100000; // the most Workers allow
 const D1_BLOB_MAX = 1_900_000; // D1 rows top out at 2 MB
 const UNFURL_TTL = 7 * 24 * 60 * 60 * 1000;
@@ -346,30 +351,63 @@ const EMAIL_ERRORS = {
   E_RATE_LIMIT_EXCEEDED: 'sending too fast — try again in a minute',
 };
 
-async function sendInvite(env, { to, name, link, org, inviter, label }) {
-  if (!env.EMAIL || !env.EMAIL_FROM) return { sent: false, reason: 'Email sending isn’t set up yet.' };
+const canEmail = env => !!(env.EMAIL && env.EMAIL_FROM);
+
+/** One email with a button: the shared layout for invitations and password resets. */
+async function sendLinkMail(env, { to, org, subject, name, lines, button, link, footer, text }) {
+  if (!canEmail(env)) return { sent: false, reason: 'Email sending isn’t set up yet.' };
   const color = /^#[0-9a-f]{6}$/i.test(org.color) ? org.color : '#0ea5e9';
   const html = `<div style="font-family:system-ui,-apple-system,Segoe UI,sans-serif;max-width:480px;margin:auto;padding:24px;color:#111">
     <h2 style="margin:0 0 4px">${esc(org.name)}</h2>
     <p style="color:#555;margin:0 0 20px">Project Brain</p>
     <p>Hi ${esc(name || '')},</p>
-    <p>${esc(inviter)} invited you to work together in <b>${esc(org.name)}</b> as <b>${esc(label)}</b>.</p>
-    <p style="margin:28px 0"><a href="${esc(link)}" style="background:${color};color:#fff;padding:12px 20px;border-radius:10px;text-decoration:none;font-weight:600">Accept invitation</a></p>
-    <p style="color:#666;font-size:13px">Or open this link:<br><a href="${esc(link)}">${esc(link)}</a><br>It works for 7 days. You'll set a password and sign in with this email address.</p></div>`;
-  const text = `Hi ${name || ''},\n\n${inviter} invited you to ${org.name} as ${label}.\n\nAccept the invitation (works for 7 days):\n${link}\n`;
+    ${lines.map(l => `<p>${l}</p>`).join('')}
+    <p style="margin:28px 0"><a href="${esc(link)}" style="background:${color};color:#fff;padding:12px 20px;border-radius:10px;text-decoration:none;font-weight:600">${esc(button)}</a></p>
+    <p style="color:#666;font-size:13px">Or open this link:<br><a href="${esc(link)}">${esc(link)}</a><br>${esc(footer)}</p></div>`;
   try {
-    await env.EMAIL.send({ to, from: { email: env.EMAIL_FROM, name: org.name }, subject: `${inviter} invited you to ${org.name}`, html, text });
+    await env.EMAIL.send({ to, from: { email: env.EMAIL_FROM, name: org.name }, subject, html, text });
     return { sent: true };
   } catch (e) {
     return { sent: false, reason: `Couldn’t email it: ${EMAIL_ERRORS[e?.code] || e?.message || 'unknown error'}.` };
   }
 }
 
+const sendInvite = (env, { to, name, link, org, inviter, label }) => sendLinkMail(env, {
+  to, org, name, link, subject: `${inviter} invited you to ${org.name}`,
+  lines: [`${esc(inviter)} invited you to work together in <b>${esc(org.name)}</b> as <b>${esc(label)}</b>.`],
+  button: 'Accept invitation', footer: 'It works for 7 days. You\'ll set a password and sign in with this email address.',
+  text: `Hi ${name || ''},\n\n${inviter} invited you to ${org.name} as ${label}.\n\nAccept the invitation (works for 7 days):\n${link}\n`,
+});
+
+const sendReset = (env, { to, name, link, org }) => sendLinkMail(env, {
+  to, org, name, link, subject: `Reset your ${org.name} password`,
+  lines: [`Someone asked to reset the password for <b>${esc(to)}</b> in <b>${esc(org.name)}</b>.`, 'If it wasn’t you, ignore this email — your password stays the same.'],
+  button: 'Set a new password', footer: 'It works for 24 hours, once.',
+  text: `Hi ${name || ''},\n\nSet a new password for ${org.name} (works for 24 hours, once):\n${link}\n\nIf you didn't ask for this, ignore this email.\n`,
+});
+
 /* ---------------- auth & invites ---------------- */
 
 async function ownerExists(env) {
   return !!(await env.DB.prepare("SELECT 1 FROM users WHERE role = 'owner' LIMIT 1").first());
 }
+
+/** Wrong-guess limit, per key (an email, or "#setup" for the setup code). */
+async function checkLock(env, key) {
+  const now = Date.now();
+  const att = await env.DB.prepare('SELECT fails, locked_until FROM login_attempts WHERE email = ?').bind(key).first();
+  if (att && att.locked_until > now) {
+    const retryAfter = Math.ceil((att.locked_until - now) / 1000);
+    throw new HttpError(429, `Too many wrong tries — try again in ${Math.ceil(retryAfter / 60)} min`, { retryAfter });
+  }
+  return att;
+}
+async function noteFail(env, key, att) {
+  const fails = (att?.fails || 0) + 1, locked = fails >= LOGIN_MAX_FAILS;
+  await env.DB.prepare('INSERT OR REPLACE INTO login_attempts (email, fails, locked_until) VALUES (?, ?, ?)').bind(key, locked ? 0 : fails, locked ? Date.now() + LOGIN_LOCK_MS : 0).run();
+  return locked;
+}
+const clearFails = (env, key) => env.DB.prepare('DELETE FROM login_attempts WHERE email = ?').bind(key).run();
 
 async function handleAuth(req, env, cors, path, isOk) {
   if (path === '/v1/auth/status' && req.method === 'GET') {
@@ -395,20 +433,15 @@ async function handleAuth(req, env, cors, path, isOk) {
   if (path === '/v1/auth/login' && req.method === 'POST') {
     const b = await readBody(req, 5000, 'json');
     const email = normEmail(b.email), now = Date.now();
-    const att = await env.DB.prepare('SELECT fails, locked_until FROM login_attempts WHERE email = ?').bind(email).first();
-    if (att && att.locked_until > now) {
-      const retryAfter = Math.ceil((att.locked_until - now) / 1000);
-      throw new HttpError(429, `Too many wrong passwords — try again in ${Math.ceil(retryAfter / 60)} min`, { retryAfter });
-    }
+    const att = await checkLock(env, email);
     const u = await env.DB.prepare('SELECT * FROM users WHERE email = ?').bind(email).first();
     const ok = u && u.pass_hash && !u.disabled && (await sameSecret((await hashPassword(String(b.password || ''), u.pass_salt)).hash, u.pass_hash));
     if (!ok) {
       if (!u) await hashPassword(String(b.password || '')); // same work either way, so timing doesn't reveal who has an account
-      const fails = (att?.fails || 0) + 1, locked = fails >= LOGIN_MAX_FAILS;
-      await env.DB.prepare('INSERT OR REPLACE INTO login_attempts (email, fails, locked_until) VALUES (?, ?, ?)').bind(email, locked ? 0 : fails, locked ? now + LOGIN_LOCK_MS : 0).run();
+      const locked = await noteFail(env, email, att);
       throw new HttpError(locked ? 429 : 401, u?.disabled ? 'This account was turned off by the workspace owner' : locked ? 'Too many wrong passwords — try again in 15 min' : 'Wrong email or password');
     }
-    if (att) await env.DB.prepare('DELETE FROM login_attempts WHERE email = ?').bind(email).run();
+    if (att) await clearFails(env, email);
     if (!u.tz_manual && validTz(b.tz) && b.tz !== u.tz) {
       await env.DB.prepare('UPDATE users SET tz = ?, updated_at = ? WHERE id = ?').bind(b.tz, now, u.id).run();
       u.tz = b.tz;
@@ -416,7 +449,45 @@ async function handleAuth(req, env, cors, path, isOk) {
     return reply({ session: await newSession(env, u), user: publicUser(u) }, 200, cors);
   }
 
-  // /v1/invites/:token[/accept]
+  if (path === '/v1/auth/forgot' && req.method === 'POST') {
+    const b = await readBody(req, 5000, 'json');
+    const email = normEmail(b.email);
+    if (!validEmail(email)) throw new HttpError(400, 'Enter a valid email');
+    // without email sending there is no way to prove who's asking: the owner resets it from Settings → People
+    if (!canEmail(env)) return reply({ canEmail: false }, 200, cors);
+    const u = await env.DB.prepare('SELECT * FROM users WHERE email = ?').bind(email).first();
+    if (u && u.pass_hash && !u.disabled) {
+      const last = await env.DB.prepare('SELECT created_at FROM invites WHERE user_id = ?').bind(u.id).first();
+      if (!last || Date.now() - last.created_at > FORGOT_GAP_MS) {
+        const link = await tokenLink(env, u, b.appUrl, isOk, 'reset');
+        await sendReset(env, { to: u.email, name: u.name, link, org: await orgInfo(env) });
+      }
+    }
+    // the same answer whether or not the address has an account
+    return reply({ canEmail: true }, 200, cors);
+  }
+
+  if (path === '/v1/auth/recover' && req.method === 'POST') {
+    const b = await readBody(req, 5000, 'json');
+    const att = await checkLock(env, '#setup');
+    if (!(await sameSecret(String(b.setupCode || ''), env.APP_TOKEN))) {
+      const locked = await noteFail(env, '#setup', att);
+      throw new HttpError(locked ? 429 : 401, locked ? 'Too many wrong tries — try again in 15 min' : 'Wrong setup code');
+    }
+    checkPassword(b.password);
+    const owner = await env.DB.prepare("SELECT * FROM users WHERE role = 'owner' LIMIT 1").first();
+    if (!owner) throw new HttpError(404, 'There’s no owner account yet — create it instead');
+    const { hash, salt } = await hashPassword(b.password);
+    await env.DB.batch([
+      env.DB.prepare('UPDATE users SET pass_hash = ?, pass_salt = ?, epoch = epoch + 1, updated_at = ? WHERE id = ?').bind(hash, salt, Date.now(), owner.id),
+      env.DB.prepare('DELETE FROM invites WHERE user_id = ?').bind(owner.id),
+      env.DB.prepare('DELETE FROM login_attempts WHERE email IN (?, ?)').bind(owner.email, '#setup'),
+    ]);
+    const u = await env.DB.prepare('SELECT * FROM users WHERE id = ?').bind(owner.id).first();
+    return reply({ session: await newSession(env, u), user: publicUser(u) }, 200, cors);
+  }
+
+  // /v1/invites/:token[/accept] — invitations and password-reset links share the table
   const [token, action] = path.slice('/v1/invites/'.length).split('/');
   const inv = token && await env.DB.prepare('SELECT i.expires_at, u.* FROM invites i JOIN users u ON u.id = i.user_id WHERE i.token = ?').bind(token).first();
   if (!inv || inv.expires_at < Date.now() || inv.disabled) throw new HttpError(404, 'This invitation is no longer valid — ask for a new one');
@@ -435,6 +506,7 @@ async function handleAuth(req, env, cors, path, isOk) {
       env.DB.prepare('UPDATE users SET name = ?, pass_hash = ?, pass_salt = ?, tz = ?, epoch = epoch + 1, updated_at = ? WHERE id = ?')
         .bind(clip(b.name, 80).trim() || inv.name || inv.email.split('@')[0], hash, salt, tz, t, inv.id),
       env.DB.prepare('DELETE FROM invites WHERE user_id = ?').bind(inv.id),
+      env.DB.prepare('DELETE FROM login_attempts WHERE email = ?').bind(inv.email),
     ]);
     const u = await env.DB.prepare('SELECT * FROM users WHERE id = ?').bind(inv.id).first();
     return reply({ session: await newSession(env, u), user: publicUser(u) }, 200, cors);
@@ -464,16 +536,17 @@ async function handleMe(req, env, cors, user) {
 
 /* ---------------- people (owner) ---------------- */
 
-async function inviteLink(env, user, appUrl, isOk) {
+/** A one-person link: "invite" to set a first password (7 days) or "reset" to set a new one (24 hours). */
+async function tokenLink(env, user, appUrl, isOk, kind = 'invite') {
   let base;
   try { const u = new URL(appUrl); if (!isOk(u.origin)) throw new Error(); base = u.origin + u.pathname; } catch { throw new HttpError(400, 'appUrl must be this app’s address'); }
   const token = randToken();
   const t = Date.now();
   await env.DB.batch([
     env.DB.prepare('DELETE FROM invites WHERE user_id = ?').bind(user.id),
-    env.DB.prepare('INSERT INTO invites (token, user_id, expires_at, created_at) VALUES (?, ?, ?, ?)').bind(token, user.id, t + INVITE_MS, t),
+    env.DB.prepare('INSERT INTO invites (token, user_id, expires_at, created_at) VALUES (?, ?, ?, ?)').bind(token, user.id, t + (kind === 'reset' ? RESET_MS : INVITE_MS), t),
   ]);
-  return `${base}#/invite/${token}`;
+  return `${base}#/${kind}/${token}`;
 }
 
 async function handlePeople(req, env, cors, path, owner, isOk) {
@@ -501,7 +574,7 @@ async function handlePeople(req, env, cors, path, owner, isOk) {
     }
     // someone who already has an account just gets access to more projects; no new link needed
     if (u.pass_hash) return reply({ user: publicUser(u), link: null, emailed: false, existing: true }, 200, cors);
-    const link = await inviteLink(env, u, b.appUrl, isOk);
+    const link = await tokenLink(env, u, b.appUrl, isOk);
     const org = await orgInfo(env);
     const mail = await sendInvite(env, { to: email, name: u.name, link, org, inviter: owner.name, label: b.labelName || label });
     return reply({ user: publicUser(u), link, emailed: mail.sent, emailError: mail.reason || null }, 200, cors);
@@ -512,9 +585,17 @@ async function handlePeople(req, env, cors, path, owner, isOk) {
   if (action === 'reinvite' && req.method === 'POST') {
     if (u.pass_hash) throw new HttpError(400, 'They already have an account');
     const b = await readBody(req, 5000, 'json');
-    const link = await inviteLink(env, u, b.appUrl, isOk);
+    const link = await tokenLink(env, u, b.appUrl, isOk);
     const mail = await sendInvite(env, { to: u.email, name: u.name, link, org: await orgInfo(env), inviter: owner.name, label: b.labelName || u.label });
     return reply({ user: publicUser(u), link, emailed: mail.sent, emailError: mail.reason || null }, 200, cors);
+  }
+  if (action === 'reset' && req.method === 'POST') {
+    if (!u.pass_hash) throw new HttpError(400, 'They haven’t set a password yet — send a new invitation instead');
+    if (u.disabled) throw new HttpError(400, 'Turn their account back on first');
+    const b = await readBody(req, 5000, 'json');
+    const link = await tokenLink(env, u, b.appUrl, isOk, 'reset');
+    const mail = await sendReset(env, { to: u.email, name: u.name, link, org: await orgInfo(env) });
+    return reply({ user: publicUser(u), link, kind: 'reset', emailed: mail.sent, emailError: mail.reason || null }, 200, cors);
   }
   if (!action && req.method === 'PATCH') {
     const b = await readBody(req, 5000, 'json');

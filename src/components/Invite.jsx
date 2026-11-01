@@ -28,10 +28,12 @@ export function InviteResult({ r }) {
     <div className="space-y-2 rounded-xl bg-field p-3">
       <div className="text-xs flex items-start gap-1.5 text-primary">
         <Link2 size={14} className="shrink-0" />
-        {r.emailed ? `Invitation emailed to ${r.user.email}.` : `Not emailed — ${r.emailError || 'email sending isn’t set up'} Copy the link and send it to ${r.user.email}.`}
+        {r.emailed ? `${r.kind === 'reset' ? 'Reset link' : 'Invitation'} emailed to ${r.user.email}.` : `Not emailed — ${r.emailError || 'email sending isn’t set up'} Copy the link and send it to ${r.user.email}.`}
       </div>
       <div className="flex gap-2"><Input readOnly value={r.link} className="text-xs text-muted-foreground" /><Button variant="accent" onClick={() => copy(r.link)}><Copy size={14} />Copy</Button></div>
-      <div className="text-xs text-muted-foreground">The link works for 7 days. They set their own password, then sign in with their email.</div>
+      <div className="text-xs text-muted-foreground">{r.kind === 'reset'
+        ? 'The link works once, for 24 hours. They choose a new password; their old one stops working then.'
+        : 'The link works for 7 days. They set their own password, then sign in with their email.'}</div>
     </div>
   );
 }

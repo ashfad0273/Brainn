@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import {
   ShieldCheck, Eye, EyeOff, Lock, LogOut, Plus, Trash2, Pencil,
-  Bold, Italic, Strikethrough, List, ListOrdered, Copy, Ban, RotateCcw, ImagePlus, X,
+  Bold, Italic, Strikethrough, List, ListOrdered, Copy, Ban, RotateCcw, ImagePlus, X, KeyRound,
 } from '@/lib/icons';
 import { useStore } from '../store';
 import { useAuth } from './Auth';
@@ -256,6 +256,11 @@ function PersonRow({ u, projects }) {
     try { setLink(await api(`/v1/people/${u.id}/reinvite`, { method: 'POST', json: { appUrl: appUrl(), labelName: MEMBER_ROLES[u.label] } })); }
     catch (e) { toast(e.message, 'error'); } finally { setBusy(false); }
   };
+  const resetPw = async () => {
+    setBusy(true);
+    try { setLink(await api(`/v1/people/${u.id}/reset`, { method: 'POST', json: { appUrl: appUrl() } })); }
+    catch (e) { toast(e.message, 'error'); } finally { setBusy(false); }
+  };
   const count = projects.filter(inProject).length;
   return (
     <div className={cx('rounded-xl bg-field ring-1 ring-border', u.status === 'disabled' && 'opacity-60')}>
@@ -282,6 +287,7 @@ function PersonRow({ u, projects }) {
           {link && <InviteResult r={link} />}
           <div className="flex flex-wrap gap-2 pt-1">
             {u.status === 'invited' && <Button size="sm" onClick={reinvite} disabled={busy}><RotateCcw size={13} />New invitation link</Button>}
+            {u.status === 'active' && <Button size="sm" onClick={resetPw} disabled={busy}><KeyRound size={13} />Reset password</Button>}
             {u.status !== 'disabled'
               ? <Button size="sm" variant="ghost" className="text-destructive-foreground" disabled={busy} onClick={() => confirm(`Turn off ${u.name || u.email}’s account? They’re signed out everywhere and can’t sign in. Their messages stay.`) && patch({ disabled: true })}><Ban size={13} />Turn off account</Button>
               : <Button size="sm" disabled={busy} onClick={() => patch({ disabled: false })}>Turn account back on</Button>}

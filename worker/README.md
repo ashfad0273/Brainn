@@ -55,6 +55,14 @@ password, and see only the projects you add them to, limited to what you switch 
 whether they may review AI suggestions. Old PIN links no longer work; re-invite those people by email from the
 project's Members (their past messages stay attributed to them).
 
+## Forgotten passwords
+
+- **Owner:** on the sign-in page, *Forgot your password? → I'm the workspace owner*, then enter the setup code
+  (`APP_TOKEN`) and a new password. Five wrong codes lock it for 15 minutes.
+- **Invited people:** the owner opens Settings → People → their name → **Reset password** and sends them the link
+  (it's emailed automatically once email sending is set up). Once email works, people can also request it themselves
+  from *Forgot your password?*. The link works once, for 24 hours, and signs them out on other devices.
+
 ## Connect the app
 
 Settings → **AI** → choose **Cloudflare AI**, paste the Worker URL and the token, then **Test connection**.
